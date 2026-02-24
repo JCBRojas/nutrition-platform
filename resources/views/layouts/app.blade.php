@@ -13,7 +13,6 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
-
         <!-- Styles -->
         @livewireStyles
     </head>
@@ -42,4 +41,6 @@
 
         @livewireScripts
     </body>
+    <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
+
 </html>

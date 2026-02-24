@@ -25,4 +25,6 @@ Route::middleware([
     Route::get('/dashboard', function () {
         return view('dashboard');
     })->name('dashboard');
+
 });
+    Route::post('/pacientes', [App\Http\Controllers\PacienteController::class, 'savePaciente'])->name('pacientes.save');
