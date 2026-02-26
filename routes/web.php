@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -23,7 +24,14 @@ Route::middleware([
     'verified',
 ])->group(function () {
     Route::get('/dashboard', function () {
-        return view('dashboard');
+
+        $pacientes = App\Models\Paciente::all();
+        if (Auth::user()->hasRole('despachador')) {
+            return view('dashboard-live');
+        }else {
+            return view('dashboard', compact('pacientes'));
+        }
+        // return view('dashboard-live');
     })->name('dashboard');
 
 });
