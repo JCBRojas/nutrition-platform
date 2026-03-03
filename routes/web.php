@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Diet;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -25,8 +26,8 @@ Route::middleware([
 ])->group(function () {
     Route::get('/dashboard', function () {
 
-        $diets = App\Models\Diet::all();
-        if (Auth::user()->id === 2) {
+        $diets = Diet::all();
+        if (Auth::user()->hasRole('despachador')) {
             return view('dashboard-dispatcher');
         }else {
             return view('dashboard', compact('diets'));
