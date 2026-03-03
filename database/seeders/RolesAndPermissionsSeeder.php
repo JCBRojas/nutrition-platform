@@ -2,9 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\User;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
@@ -44,5 +46,11 @@ class RolesAndPermissionsSeeder extends Seeder
             'confirmDelivery',
             'generateFiles',
         ]);
+
+        $user = User::find(1);
+        if ($user) {
+            $user->givePermissionTo('createDiets');
+        }
+
     }
 }

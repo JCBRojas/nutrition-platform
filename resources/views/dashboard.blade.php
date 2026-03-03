@@ -9,7 +9,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-6">
 
-                {{-- @can('createDiets') --}}
+                @can('createDiets')
                 <button type="button" class="btn btn-success waves-effect waves-light" data-toggle="modal"
                     data-target=".bs-example-modal-lg">Crear</button>
 
@@ -101,7 +101,7 @@
                         @endforeach
                     </tbody>
                 </table>
-                {{-- @endcan --}}
+                @endcan
             </div>
         </div>
     </div>
