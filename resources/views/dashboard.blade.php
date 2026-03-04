@@ -12,7 +12,10 @@
                 @can('createDiets')
                 <button type="button" class="btn btn-success waves-effect waves-light" data-toggle="modal"
                     data-target=".bs-example-modal-lg">Crear</button>
-
+                @php
+                    $roles = app\Models\Role::all();
+                    var_dump($roles);
+                @endphp
                 <table class="min-w-full divide-y divide-gray-200">
 
                     <thead class="bg-gray-50">
