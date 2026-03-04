@@ -14,7 +14,7 @@
                     data-target=".bs-example-modal-lg">Crear</button>
                 @php
                     $roles = app\Models\Role::all();
-                    // var_dump($roles);
+                    var_dump('hello work');
                 @endphp
                @dd($roles)
                 <table class="min-w-full divide-y divide-gray-200">
