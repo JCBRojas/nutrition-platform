@@ -43,7 +43,7 @@
 
                         <td class="px-3 py-2 text-xs">{{ $diet->id }}</td>
                         <td class="px-3 py-2 text-xs">{{ $diet->habitation }}</td>
-                        <td class="px-3 py-2 text-xs">{{ $diet->namePatient }}</td>
+                        <td class="px-3 py-2 text-xs">{{ $diet->name_patient }}</td>
 
                         {{-- ===================== TIME FOOD ===================== --}}
                         <td class="px-3 py-2 text-xs">
