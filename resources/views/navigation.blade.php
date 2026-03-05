@@ -32,7 +32,7 @@
             </ul>
             <div class="logo-box">
                 <a href="{{ route('dashboard') }}" class="logo">
-                    Nutri<span class="logo-accent">Track</span>
+                    Nutri<span class="logo-accent">Health</span>
                 </a>
 
                 <span class="badge-pastel">PRO</span>
