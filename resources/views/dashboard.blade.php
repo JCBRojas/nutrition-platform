@@ -16,7 +16,7 @@
                         data-target=".bs-example-modal-lg">Crear</button>
 <div class="card">
                                     <div class="card-body">
-                        <table id="basic-datatable" class="table table-bordered" >
+                        <table class="min-w-full divide-y divide-gray-200">
 
                             <thead class="" style="font-size:12px !important;">
                                 <tr>
