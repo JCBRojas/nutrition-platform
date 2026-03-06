@@ -35,7 +35,7 @@ class DietController extends Controller
      *
      */
     public function createNewVersionDiet(StoreDietVersionRequest $request, Diet $diet)
-    {
+    {        
         $this->dietService->createNewVersion($diet, $request->validated(), auth()->id());
         return redirect()->back()->with('success', 'Dieta actualizada');
     }

@@ -27,6 +27,7 @@ class StoreDietVersionRequest extends FormRequest
             'specifications.*' => 'nullable|string',
             'observations' => 'nullable|string',
             'isolation' => 'nullable|string',
+            'changes' => 'nullable|string',
         ];
     }
 }

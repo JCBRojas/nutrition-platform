@@ -11,7 +11,7 @@ class Diet extends Model
     protected $fillable = [
         'habitation',
         'name_patient',
-        'confirmed',
+        'status',
     ];
 
     public function history()

@@ -31,7 +31,7 @@
                         </thead>
 
                         <tbody class="divide-y divide-gray-200">
-                            @foreach ($diets as $diet)
+                            @foreach ($diets->where('status', '1') as $diet)
                             <tr>
                                 <td class="px-3 py-2 text-xs">{{ $diet->habitation }}</td>
                                 <td class="px-3 py-2 text-xs">{{ $diet->name_patient }}</td>
@@ -101,7 +101,68 @@
                         </tbody>
                     </table>
                 </div>
-                @endcan
+
+                <div class="card">
+                    <h2>Dietas canceladas</h2>
+                     <table class="min-w-full divide-y divide-gray-200">
+
+                        <thead class="" >
+                            <tr>
+                                <th class=" text-xs">Hora</th>
+                                <th class=" text-xs">Habitación</th>
+                                <th class=" text-xs">Paciente</th>
+                                <th class=" text-xs">Tiempo</th>
+                                <th class=" text-xs">Consistencia</th>
+                                <th class=" text-xs">Especificaciones</th>
+                                <th class=" text-xs">Observaciones</th>
+                                <th class=" text-xs">Aislamiento</th>
+                                <th class=" text-xs">Cambios</th>
+                            </tr>
+                        </thead>
+                    <tbody>
+                        @foreach($diets->where('status', (int) 0) as $dietCanceled)
+                            <tr class="bg-red-100">
+                                <td class="px-3 py-2 text-xs">{{ \Carbon\Carbon::parse($dietCanceled->currentVersion->created_at)->format('H:i:s') ?? '' }} </td>
+                                <td class="px-3 py-2 text-xs">{{ $dietCanceled->habitation }}</td>
+                                <td class="px-3 py-2 text-xs">{{ $dietCanceled->name_patient }}</td>
+                                <td class="px-3 py-2 text-xs">
+                                    @forelse ($dietCanceled->currentVersion->timeFood ?? [] as $item)
+                                    <small class="badge badge-light-info">
+                                        {{ ucfirst(str_replace('_', ' ', $item)) }}
+                                    </small>
+                                    @empty
+                                    <span class="text-gray-400">N/A</span>
+                                    @endforelse
+                                </td>
+                                <td class="px-3 py-2 text-xs">
+                                    @forelse ($dietCanceled->currentVersion->consistency ?? [] as $item)
+                                    <small class="badge badge-light-info">
+                                        {{ ucfirst(str_replace('_', ' ', $item)) }}
+                                    </small>
+                                    @empty
+                                    <span class="text-gray-400">N/A</span>
+                                    @endforelse
+                                </td>
+                                <td class="px-3 py-2 text-xs">
+                                    @forelse ($dietCanceled->currentVersion->specifications ?? [] as $item)
+                                    <small class="badge badge-light-primary">
+                                        {{ ucfirst(str_replace('_', ' ', $item)) }}
+                                    </small>
+                                    @empty
+                                    <span class="text-gray-400">N/A</span>
+                                    @endforelse
+                                </td>
+                                <td class="px-3 py-2 text-xs">{{ $dietCanceled->currentVersion->observations ?? '' }}</td>
+                                <td class="px-3 py-2 text-xs">
+                                    {{ $dietCanceled->currentVersion->isolation ?? '' }}
+                                </td>
+                                <td class="px-3 py-2 text-xs">{{ $dietCanceled->currentVersion->changes ?? '' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                     </table>
+                    @endcan
+                </div>
             </div>
         </div>
     </div>

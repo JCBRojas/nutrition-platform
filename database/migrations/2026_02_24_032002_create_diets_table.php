@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('habitation');
             $table->string('name_patient');
-            $table->boolean('confirmed')->default(false);
+            $table->boolean('status')->default(true);
             $table->timestamps();
         });
     }

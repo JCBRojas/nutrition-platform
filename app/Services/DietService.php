@@ -19,7 +19,7 @@ class DietService
             $diet = Diet::create([
                 'habitation' => $data['habitation'],
                 'name_patient' => $data['name_patient'],
-                'confirmed' => false,
+                'status' => true, // Activa por defecto
             ]);
 
             // 2️⃣ Crear versión 1
@@ -40,12 +40,17 @@ class DietService
                                    ->lockForUpdate()
                                    ->max('version') ?? 0;
 
+            if($data['changes'] === 'cancelada') {
+                $this->setDietCanceled($diet);
+            }
+
             return $this->createInternalVersionOfDiet(
                 $diet,
                 $data,
                 $userId,
                 $lastVersion + 1
             );
+            
         });
     }
 
@@ -64,6 +69,13 @@ class DietService
             'observations' => $data['observations'] ?? null,
             'isolation' => $data['isolation'] ?? 'No',
             'changes' => $data['changes'] ?? null,
+        ]);
+    }
+
+    private function setDietCanceled(Diet $diet): bool
+    {
+        return $diet->update([
+            'status' => false,
         ]);
     }
 }
