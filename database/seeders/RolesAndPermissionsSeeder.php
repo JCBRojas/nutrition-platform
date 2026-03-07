@@ -53,7 +53,7 @@ class RolesAndPermissionsSeeder extends Seeder
             ['email' => 'camilo@gmail.com'],
             [
                 'name' => 'Nutricionista Principal',
-                'password' => Hash::make('12345678')
+                'password' => Hash::make('123123123')
             ]
         );
 
