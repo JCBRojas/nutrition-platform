@@ -27,7 +27,9 @@ $selectedSpecifications = old('specifications', data_get($version, 'specificatio
  |=========================== */
 $timeFoodOptions = [
     'desayuno' => 'Desayuno',
+    'media_manana' => 'Media mañana',
     'almuerzo' => 'Almuerzo',
+    'algo' => 'Algo',
     'cena' => 'Cena',
     'fraccionada' => 'Fraccionada',
 ];

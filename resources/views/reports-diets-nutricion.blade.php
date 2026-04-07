@@ -13,16 +13,16 @@
                 @can('createDiets')
 
 
-<h1 class="text-2xl font-bold">
+<h1 class="text-2xl font-bold text-center">
 Reporte Nutricional de Dietas
 </h1>
                {{-- =========================
 TOTALES GLOBALES
 ========================= --}}
 
-<div>
+<div class="mt-4">
 
-<h2 class="text-xl font-semibold mb-4">
+<h2 class="text-xl font-semibold mb-2 text-primary">
 Totales Globales
 </h2>
 
@@ -58,9 +58,9 @@ Totales Globales
 GRÁFICO MENSUAL
 ========================= --}}
 
-<div>
+<div class="mt-4">
 
-<h2 class="text-xl font-semibold mb-4">
+<h2 class="text-xl font-semibold mb-2">
 Producción Mensual de Comidas
 </h2>
 
@@ -74,9 +74,9 @@ Producción Mensual de Comidas
 TOTALES DIARIOS
 ========================= --}}
 
-<div>
+<div class="mt-4">
 
-<h2 class="text-xl font-semibold mb-4">
+<h2 class="text-xl font-semibold mb-2">
 Totales Diarios
 </h2>
 
@@ -90,7 +90,9 @@ Totales Diarios
 
 <th class="p-2 border">Fecha</th>
 <th class="p-2 border">Desayuno</th>
+<th class="p-2 border">Media Mañana</th>
 <th class="p-2 border">Almuerzo</th>
+<th class="p-2 border">Algo</th>
 <th class="p-2 border">Cena</th>
 <th class="p-2 border">Fraccionada</th>
 
@@ -106,7 +108,9 @@ Totales Diarios
 
 <td class="border p-2">{{ $row->fecha }}</td>
 <td class="border p-2">{{ $row->desayuno }}</td>
+<td class="border p-2">{{ $row->media_manana }}</td>
 <td class="border p-2">{{ $row->almuerzo }}</td>
+<td class="border p-2">{{ $row->algo }}</td>
 <td class="border p-2">{{ $row->cena }}</td>
 <td class="border p-2">{{ $row->fraccionada }}</td>
 
@@ -115,7 +119,18 @@ Totales Diarios
 @endforeach
 
 </tbody>
+<tfoot>
+<tr class="font-semibold font-16 text-center bg-gray-200">
+<td class="border p-2 text-danger">Total</td>
+<td class="border p-2">{{ array_sum(array_column($dailyTotals, 'desayuno')) }}</td>
+<td class="border p-2">{{ array_sum(array_column($dailyTotals, 'media_manana')) }}</td>
+<td class="border p-2">{{ array_sum(array_column($dailyTotals, 'almuerzo')) }}</td>
+<td class="border p-2">{{ array_sum(array_column($dailyTotals, 'algo')) }}</td>
+<td class="border p-2">{{ array_sum(array_column($dailyTotals, 'cena')) }}</td>
+<td class="border p-2">{{ array_sum(array_column($dailyTotals, 'fraccionada')) }}</td>
+</tr>
 
+</tfoot>
 </table>
 
 </div>
@@ -128,9 +143,9 @@ Totales Diarios
 TOTALES MENSUALES
 ========================= --}}
 
-<div>
+<div class="mt-4">
 
-<h2 class="text-xl font-semibold mb-4">
+<h2 class="text-xl font-semibold mb-2">
 Totales Mensuales
 </h2>
 
@@ -144,7 +159,9 @@ Totales Mensuales
 
 <th class="p-2 border">Mes</th>
 <th class="p-2 border">Desayuno</th>
+<th class="p-2 border">Media Mañana</th>
 <th class="p-2 border">Almuerzo</th>
+<th class="p-2 border">Algo</th>
 <th class="p-2 border">Cena</th>
 <th class="p-2 border">Fraccionada</th>
 
@@ -160,7 +177,9 @@ Totales Mensuales
 
 <td class="border p-2">{{ $row->mes }}</td>
 <td class="border p-2">{{ $row->desayuno }}</td>
+<td class="border p-2">{{ $row->media_manana }}</td>
 <td class="border p-2">{{ $row->almuerzo }}</td>
+<td class="border p-2">{{ $row->algo }}</td>
 <td class="border p-2">{{ $row->cena }}</td>
 <td class="border p-2">{{ $row->fraccionada }}</td>
 
@@ -169,6 +188,7 @@ Totales Mensuales
 @endforeach
 
 </tbody>
+
 
 </table>
 

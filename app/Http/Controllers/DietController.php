@@ -94,6 +94,8 @@ COUNT(*) AS total_bandejas
 
 FROM diet_meal_report_view
 
+WHERE MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())
+
 GROUP BY tipo_dieta
 ");
 
@@ -143,10 +145,12 @@ BASE QUERY (última versión dieta)
 
 $baseQuery = "
 SELECT 
-dv.created_at,
+d.created_at,
 
 JSON_CONTAINS(dv.timeFood,'\"desayuno\"') AS desayuno,
+JSON_CONTAINS(dv.timeFood,'\"media_manana\"') AS media_manana,
 JSON_CONTAINS(dv.timeFood,'\"almuerzo\"') AS almuerzo,
+JSON_CONTAINS(dv.timeFood,'\"algo\"') AS algo,
 JSON_CONTAINS(dv.timeFood,'\"cena\"') AS cena,
 JSON_CONTAINS(dv.timeFood,'\"fraccionada\"') AS fraccionada
 
@@ -175,12 +179,15 @@ SELECT
 DATE(created_at) AS fecha,
 
 SUM(desayuno) AS desayuno,
+SUM(media_manana) AS media_manana,
 SUM(almuerzo) AS almuerzo,
+SUM(algo) AS algo,
 SUM(cena) AS cena,
 SUM(fraccionada) AS fraccionada
 
 FROM ($baseQuery) t
 
+where MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())
 GROUP BY fecha
 ORDER BY fecha DESC
 ");
@@ -199,7 +206,9 @@ SELECT
 DATE_FORMAT(created_at,'%Y-%m') AS mes,
 
 SUM(desayuno) AS desayuno,
+SUM(media_manana) AS media_manana,
 SUM(almuerzo) AS almuerzo,
+SUM(algo) AS algo,
 SUM(cena) AS cena,
 SUM(fraccionada) AS fraccionada
 

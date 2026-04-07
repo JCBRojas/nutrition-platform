@@ -39,5 +39,8 @@ Route::middleware([
     Route::put('/dietas/{diet}/version', [DietController::class, 'createNewVersionDiet'])->name('dietas.update');
     Route::get('/diet-reports', [DietController::class,'nutritionReport'])
     ->name('diet.reports');
-
+    Route::get('/entrega/index', [EntregaController::class, 'index'])->name('entrega.index');
+    Route::get('/entrega/canceladas', [EntregaController::class, 'canceladas'])->name('dietas.canceladas');
+    Route::get('/entrega/historial', [EntregaController::class, 'historial'])->name('historial.index');
+    Route::get('/entrega/reportes', [EntregaController::class, 'reportes'])->name('reportes.nutricional');
 });
