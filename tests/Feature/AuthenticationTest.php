@@ -29,7 +29,7 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect('/login');
+        $response->assertRedirect($user->homeUrl());
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void
@@ -87,7 +87,7 @@ class AuthenticationTest extends TestCase
             'password' => 'password',
         ]);
 
-        $response->assertRedirect('/login');
+        $response->assertRedirect($user->homeUrl());
         $this->assertAuthenticated();
         $this->assertFalse(RateLimiter::tooManyAttempts($throttleKey, 3));
     }

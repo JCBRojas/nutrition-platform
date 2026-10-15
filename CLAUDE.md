@@ -119,57 +119,33 @@ Reglas:
 
 ---
 
-## 5. Módulo: Administración de usuarios (por implementar)
+## 5. Módulo: Administración de usuarios (implementado)
 
-**Objetivo**: CRUD de usuarios, asignación de roles y gestión de permisos por un rol `admin`.
+Rol `admin` con CRUD de usuarios, asignación de roles y matriz de permisos. Sin dependencias nuevas.
 
-### Dependencias
-Ninguna nueva (Spatie Permission + Livewire ya instalados).
+| Pieza | Archivo |
+|---|---|
+| Migración | `2026_10_16_000000_add_admin_fields_to_users_table` → `phone` (E.164), `is_active`, `whatsapp_opt_in`, `deleted_at` |
+| Lógica | `app/Services/UserService.php` (create/update/toggleActive/delete/restore) |
+| Autorización | `app/Policies/UserPolicy.php` + `Gate::before` para `admin` en `AuthServiceProvider` |
+| UI | `app/Livewire/Admin/UsersManager.php` (`/admin/usuarios`, `admin.users.index`) y `RolesManager.php` (`/admin/roles`, `admin.roles.index`), vistas en `resources/views/livewire/admin/` |
+| Tests | `tests/Feature/Admin/UsersManagementTest.php` |
 
-### Cambios de datos
-```php
-// migración add_admin_fields_to_users_table
-$table->string('phone', 20)->nullable();      // E.164, p.ej. +573001234567 (usado por WhatsApp)
-$table->boolean('is_active')->default(true);
-$table->boolean('whatsapp_opt_in')->default(false);
-$table->softDeletes();
-```
-`User`: añadir `SoftDeletes`, `phone`, `is_active`, `whatsapp_opt_in` a `$fillable`, cast `is_active`/`whatsapp_opt_in` boolean, `routeNotificationForWhatsApp()` → `$this->phone`.
+Permisos: `viewUsers`, `createUsers`, `editUsers`, `deleteUsers`, `manageRoles` (el rol `admin` siempre tiene todos; `RolesManager` no permite quitárselos).
 
-### Permisos y rol
-Agregar al seeder:
-```
-viewUsers, createUsers, editUsers, deleteUsers, manageRoles
-rol admin → todos los permisos (Permission::all())
-```
-Opcional: `Gate::before(fn ($u) => $u->hasRole('admin') ? true : null)` en `AuthServiceProvider`.
+Reglas de negocio (en `UserService`, lanzan `ValidationException`):
+- No desactivarse ni eliminarse a sí mismo; debe quedar ≥ 1 admin activo.
+- Eliminar = `is_active=false` + soft delete; restaurable. **Nunca** borrado físico: `diet_histories.updated_by` borra en cascada. `Actions/Jetstream/DeleteUser` también hace soft delete.
+- Desactivar/eliminar cierra las sesiones del usuario (`sessions` en BD). El login (`FortifyServiceProvider::authenticateUsing`) rechaza usuarios inactivos; los eliminados no se encuentran.
+- Email único incluyendo eliminados (restaurar en lugar de recrear). Teléfono `^\+[1-9]\d{7,14}$`.
+- Contraseña en edición: vacía = se conserva.
+- Un rol solo se elimina si no tiene usuarios (incluidos los eliminados) y no es `admin`.
 
-### Estructura
-```
-app/Livewire/Admin/UsersManager.php      // listado, búsqueda, filtros por rol/estado, paginación
-app/Livewire/Admin/UserForm.php          // crear/editar (modal)
-app/Livewire/Admin/RolesManager.php      // matriz rol × permiso (syncPermissions)
-app/Services/UserService.php             // create/update/deactivate/restore, syncRoles en DB::transaction
-app/Policies/UserPolicy.php              // viewAny/create/update/delete → can('xxxUsers'); no auto-borrado; no quitar último admin
-app/Http/Requests/Admin/StoreUserRequest.php / UpdateUserRequest.php
-resources/views/livewire/admin/*.blade.php
-```
+`Gate::before` concede todo al admin **excepto** la habilidad `delete`, para que `UserPolicy::delete` impida la autoeliminación. Tras cambiar permisos se ejecuta `forgetCachedPermissions()`.
 
-### Rutas
-```php
-Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified', 'permission:viewUsers'])
-    ->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/usuarios', UsersManager::class)->name('users.index');
-        Route::get('/roles', RolesManager::class)->middleware('permission:manageRoles')->name('roles.index');
-    });
-```
+Login: `App\Http\Responses\LoginResponse` (registrado en `FortifyServiceProvider::register`, también para 2FA) y `RedirectIfAuthenticated` usan `User::homeUrl()`: nutricionista → `dashboard.nutrition`, despachador → `dashboard.dispatch`, admin → `admin.users.index`, sin rol → `profile.show`. No usar `Fortify::redirects()` para esto (solo lee configuración). La ruta `/` cierra la sesión: nunca redirigir allí a un usuario autenticado. El seeder usa `firstOrCreate`, así que cambiar una contraseña en el seeder no modifica usuarios que ya existen. El seeder crea `admin@nutritrack.local` (`SEED_ADMIN_EMAIL`) con contraseña `SEED_USER_PASSWORD` o una aleatoria que se imprime.
 
-### Reglas
-- Validación: `email` unique (ignorando el propio y soft-deleted), `password` con `PasswordValidationRules` de Fortify, `roles` ⊆ roles existentes, `phone` regex `^\+57\d{10}$`.
-- Eliminar = soft delete + `is_active=false`; bloquear login de inactivos en `FortifyServiceProvider` (`Fortify::authenticateUsing`).
-- Tras cambiar permisos: `app(PermissionRegistrar::class)->forgetCachedPermissions()`.
-- Deshabilitar `Features::registration()` una vez exista el módulo.
-- Tests: `tests/Feature/Admin/UsersManagerTest.php` con `Livewire::test()` cubriendo autorización por permiso.
+Tests de Livewire/HTTP: usar `$this->withoutVite()` y `flushSession()` al cambiar de usuario en un mismo test (Jetstream `AuthenticateSession`).
 
 ---
 

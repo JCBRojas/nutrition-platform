@@ -21,14 +21,7 @@ class RedirectIfAuthenticated
 
         foreach ($guards as $guard) {
             if (Auth::guard($guard)->check()) {
-                 $user = Auth::user();
-
-            return match (true) {
-                $user->hasRole('nutricionista') => redirect()->route('dashboard.nutrition'),
-                $user->hasRole('despachador') => redirect()->route('dashboard.dispatch'),
-                default => redirect('/')
-            };
-                // return redirect(RouteServiceProvider::HOME);
+                return redirect(Auth::guard($guard)->user()->homeUrl());
             }
         }
 

@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -18,6 +19,7 @@ class User extends Authenticatable
     use HasFactory;
     use HasProfilePhoto;
     use Notifiable;
+    use SoftDeletes;
     use TwoFactorAuthenticatable;
 
     /**
@@ -29,6 +31,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'phone',
+        'is_active',
+        'whatsapp_opt_in',
     ];
 
     /**
@@ -50,6 +55,8 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'is_active' => 'boolean',
+        'whatsapp_opt_in' => 'boolean',
     ];
 
     /**
@@ -60,6 +67,24 @@ class User extends Authenticatable
     protected $appends = [
         'profile_photo_url',
     ];
+
+    /**
+     * Panel de inicio según el rol (login y RedirectIfAuthenticated)
+     */
+    public function homeUrl(): string
+    {
+        return match (true) {
+            $this->hasRole('nutricionista') => route('dashboard.nutrition'),
+            $this->hasRole('despachador') => route('dashboard.dispatch'),
+            $this->hasRole('admin') => route('admin.users.index'),
+            default => route('profile.show'),
+        };
+    }
+
+    public function routeNotificationForWhatsApp(): ?string
+    {
+        return $this->phone;
+    }
 
     public function dietVersions()
     {

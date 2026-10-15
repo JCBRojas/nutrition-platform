@@ -9,14 +9,16 @@ use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
+use App\Http\Responses\LoginResponse;
 use Laravel\Fortify\Contracts\LockoutResponse as LockoutResponseContract;
+use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
+use Laravel\Fortify\Contracts\TwoFactorLoginResponse as TwoFactorLoginResponseContract;
 use Laravel\Fortify\Fortify;
 use Laravel\Fortify\LoginRateLimiter;
 
@@ -27,6 +29,9 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
+        $this->app->singleton(TwoFactorLoginResponseContract::class, LoginResponse::class);
+
         $this->app->bind(LockoutResponseContract::class, function ($app) {
             return new class($app->make(LoginRateLimiter::class)) implements LockoutResponseContract {
                 public function __construct(protected LoginRateLimiter $limiter)
@@ -61,23 +66,6 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::redirectUserForTwoFactorAuthenticationUsing(RedirectIfTwoFactorAuthenticatable::class);
-
-        Fortify::redirects('login', function () {
-            $user = Auth::user();
-
-            if (! $user) {
-                return '/';
-            }
-
-            $isNutritionist = method_exists($user, 'hasRole') && $user->hasRole('nutricionista');
-            $isDispatcher = method_exists($user, 'hasRole') && $user->hasRole('despachador');
-
-            return match (true) {
-                $isNutritionist => route('dashboard.nutrition'),
-                $isDispatcher => route('dashboard.dispatch'),
-                default => '/',
-            };
-        });
 
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(
@@ -116,6 +104,12 @@ class FortifyServiceProvider extends ServiceProvider
             }
 
             RateLimiter::clear($throttleKey);
+
+            if (! $user->is_active) {
+                throw ValidationException::withMessages([
+                    Fortify::username() => 'Tu usuario está inactivo. Contacta al administrador.',
+                ]);
+            }
 
             return $user;
         });

@@ -170,6 +170,55 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        <!-- TABLA CANCELADAS -->
+                        <div x-show="tab === 'cancelled'" x-cloak>
+                            <table class="table-wrap">
+                                <thead>
+                                    <tr>
+                                        <th>Hab.</th>
+                                        <th>Paciente</th>
+                                        <th>Tiempo</th>
+                                        <th>Consistencia</th>
+                                        <th>Observaciones</th>
+                                        <th>Cancelada</th>
+                                        <th>Por</th>
+                                        <th class="text-right">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse ($cancelledDiets as $diet)
+                                        @php $version = $diet->currentVersion; @endphp
+                                        <tr class="cancelled-row">
+                                            <td><span class="room-badge">{{ $diet->habitation }}</span></td>
+                                            <td>{{ $diet->name_patient }}</td>
+                                            <td>
+                                                @forelse ($version->timeFood ?? [] as $item)
+                                                    <span class="tag tag-tiempo">{{ $foodLabels[$item] ?? $item }}</span>
+                                                @empty
+                                                    <span>—</span>
+                                                @endforelse
+                                            </td>
+                                            <td>
+                                                @forelse ($version->consistency ?? [] as $item)
+                                                    <span class="tag tag-consist">{{ $consistencyLabels[$item] ?? $item }}</span>
+                                                @empty
+                                                    <span>—</span>
+                                                @endforelse
+                                            </td>
+                                            <td>{{ $version->observations ?? '—' }}</td>
+                                            <td>{{ $diet->updated_at?->format('d/m/Y h:i a') }}</td>
+                                            <td>{{ $version?->updatedBy?->name ?? '—' }}</td>
+                                            <td class="text-right"><span class="tag tag-cancel">Cancelada</span></td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="8" class="empty">No hay dietas canceladas</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 

@@ -14,6 +14,9 @@ class DeleteUser implements DeletesUsers
     {
         $user->deleteProfilePhoto();
         $user->tokens->each->delete();
+
+        // Soft delete: un borrado físico eliminaría en cascada las versiones de dieta (diet_histories.updated_by)
+        $user->forceFill(['is_active' => false])->save();
         $user->delete();
     }
 }

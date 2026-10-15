@@ -46,7 +46,7 @@ class DietController extends Controller
 
     public function nutritionDashboard()
     {
-        $diets = Diet::all();
+        $diets = Diet::with('currentVersion.updatedBy')->latest('updated_at')->get();
         $specLabels = config('specifications.labels');
         $consistencyLabels = config('consistency.labels');
         $foodLabels = config('timeFood.labels');

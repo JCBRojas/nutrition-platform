@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\DietController;
+use App\Livewire\Admin\RolesManager;
+use App\Livewire\Admin\UsersManager;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -53,6 +55,12 @@ Route::middleware([
         Route::get('/entrega/index', [DietController::class, 'nutritionReport'])->name('entrega.index');
         Route::get('/reportes/produccion', [DietController::class, 'index'])->name('reports.production');
     });
+    // 🟣 ADMINISTRACIÓN
+    Route::prefix('admin')->name('admin.')->group(function () {
+        Route::get('/usuarios', UsersManager::class)->middleware('permission:viewUsers')->name('users.index');
+        Route::get('/roles', RolesManager::class)->middleware('permission:manageRoles')->name('roles.index');
+    });
+
     // Route::get('/entrega/canceladas', [EntregaController::class, 'canceladas'])->name('dietas.canceladas');
     // Route::get('/entrega/historial', [EntregaController::class, 'historial'])->name('historial.index');
     // Route::get('/entrega/reportes', [EntregaController::class, 'reportes'])->name('reportes.nutricional');
