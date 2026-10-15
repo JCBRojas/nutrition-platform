@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DietController;
+use App\Http\Controllers\ReportExportController;
 use App\Livewire\Admin\RolesManager;
 use App\Livewire\Admin\UsersManager;
 use Illuminate\Support\Facades\Route;
@@ -54,6 +55,7 @@ Route::middleware([
         Route::get('/diet-reports', [DietController::class, 'nutritionReport'])->name('diet.reports');
         Route::get('/entrega/index', [DietController::class, 'nutritionReport'])->name('entrega.index');
         Route::get('/reportes/produccion', [DietController::class, 'index'])->name('reports.production');
+        Route::get('/reportes/mensual/excel', [ReportExportController::class, 'monthlyExcel'])->name('reports.monthly.excel');
     });
     // 🟣 ADMINISTRACIÓN
     Route::prefix('admin')->name('admin.')->group(function () {

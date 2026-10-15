@@ -34,8 +34,9 @@ function openEditModal(id, diet) {
         diet.current_version.observations ?? "";
     document.getElementById("edit-changes-" + id).value =
         diet.current_version.changes ?? "NA";
+    // Valores del enum: "Sí" | "No" (los antiguos "Si" se muestran como "Sí")
     document.getElementById("edit-isolation-" + id).value =
-        diet.current_version.isolation ?? "NA";
+        diet.current_version.isolation === "No" || !diet.current_version.isolation ? "No" : "Sí";
 
     selections["edit-timeFood-" + id] = diet.current_version.timeFood ?? [];
     renderChips("cs-timeFood-" + id, "edit-timeFood-" + id);

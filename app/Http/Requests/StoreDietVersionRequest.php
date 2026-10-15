@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\NormalizesIsolation;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreDietVersionRequest extends FormRequest
 {
+    use NormalizesIsolation;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -26,7 +29,7 @@ class StoreDietVersionRequest extends FormRequest
             'consistency.*' => 'nullable|string',
             'specifications.*' => 'nullable|string',
             'observations' => 'nullable|string',
-            'isolation' => 'nullable|string',
+            'isolation' => $this->isolationRules(),
             'changes' => 'nullable|string',
         ];
     }

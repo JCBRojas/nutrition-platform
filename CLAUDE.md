@@ -22,6 +22,7 @@ Idioma del dominio y la UI: **español**. Mantén nombres de rutas/vistas en esp
 ```bash
 composer install && npm install
 php artisan migrate --seed          # crea roles/permisos + usuarios demo
+php artisan db:seed --class=DietDemoSeeder  # +50 dietas × 5 versiones de prueba (solo agrega; no corre en producción)
 npm run dev                         # Vite
 php artisan test                    # PHPUnit 10, SQLite :memory: (phpunit.xml). Requiere npm run build
 ./vendor/bin/pint                   # formato PSR-12
@@ -185,14 +186,27 @@ Requiere `QUEUE_CONNECTION=database` (+ `php artisan queue:table && migrate`) y 
 
 ---
 
-## 7. Módulos: Reportes PDF y Excel (por implementar)
+## 7. Módulos: Reportes PDF y Excel
+
+### Implementado: reporte nutricional + Excel del mes
+
+- `app/Services/Reports/DietReportService.php` — fuente única de datos:
+  - `monthlyCensus($mes)`: **censo diario**. Por cada día transcurrido del mes toma, por dieta, la versión vigente al cierre del día (23:59:59 Bogotá). Si está activa (la versión no es `cancelada`; para cancelaciones antiguas sin versión, `diets.updated_at`), cada tiempo de comida cuenta como 1 bandeja. Devuelve `days`, `totals`, `totalTrays`, `dietDays`, `avgDailyDiets`, `consistency`, `specifications`, `isolationDays` y `perDiet`.
+  - `monthlyHistory($mes, 6)`, `currentSnapshot()` (dietas activas hoy) y `mealLabels()`/`label()` (etiquetas de `config`, con respaldo legible para claves fuera del catálogo).
+  - `MEALS` en orden cronológico; normaliza `media_manana`/`mediamanana`/`Desayuno`.
+- Vista `reports-diets-nutricion` (rutas `diet.reports` y `entrega.index`, `?mes=YYYY-MM`): selector de mes, KPIs, barras apiladas diarias (Chart.js, paleta categórica validada en orden fijo), tabla diaria (alternativa accesible), totales por tiempo, últimos 6 meses con Excel por fila, especificaciones y aislamiento de hoy. Visible con `viewReports` o `generateFiles`.
+- Excel `GET /reportes/mensual/excel?mes=YYYY-MM` (`reports.monthly.excel`, `ReportExportController::monthlyExcel`) → `app/Exports/MonthlySummaryExport.php` con hojas `Resumen`, `Diario` y `Por paciente`. Valida `mes` (formato y no futuro).
+- **Laravel Excel:** las hojas implementan `WithStrictNullComparison` (si no, los `0` quedan como celdas vacías), y los separadores son `['']`, no `[]`, porque las filas vacías se descartan y desplazan los estilos por número de fila.
+- Tests: `tests/Feature/NutritionReportTest.php` (usa `travelTo`).
+
+### Pendiente
 
 Skills: `.claude/skills/pdf-reports/SKILL.md`, `.claude/skills/excel-reports/SKILL.md`.
 
 ### Dependencias
 ```bash
 composer require barryvdh/laravel-dompdf:^3.0   # PDF desde Blade
-composer require maatwebsite/excel:^3.1         # XLSX/CSV (PhpSpreadsheet; requiere ext-zip, ext-gd)
+composer require maatwebsite/excel:^3.1         # instalado (3.1.70)
 ```
 
 ### Arquitectura compartida

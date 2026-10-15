@@ -128,8 +128,8 @@
             <div>
                 <label class="block text-sm font-medium">Aislamiento</label>
                 <select name="isolation" class="form-control" id="edit-isolation-{{ $diet->id }}">
-                    <option value="Si">Sí</option>
                     <option value="No">No</option>
+                    <option value="Sí">Sí</option>
                 </select>
             </div>
 

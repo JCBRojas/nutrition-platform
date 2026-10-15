@@ -11,7 +11,7 @@ $id = $diet ? $diet->id : '';
 $habitation = old('habitation', data_get($diet, 'habitation', ''));
 $name_patient = old('name_patient', data_get($diet, 'name_patient', ''));
 $observations = old('observations', data_get($version, 'observations', ''));
-$isolation = old('isolation', data_get($version, 'isolation', 'no'));
+$isolation = old('isolation', data_get($version, 'isolation', 'No'));
 $changes = old('changes', data_get($version, 'changes', 'NA'));
 
 /* ===========================
@@ -169,7 +169,7 @@ $specificationOptions = [
 <div>
     <label class="block text-sm font-medium">Aislamiento</label>
     <select name="isolation" class="form-control">
-        <option value="Si" {{ $isolation === 'Si' ? 'selected' : '' }}>Sí</option>
+        <option value="Sí" {{ $isolation === 'Sí' ? 'selected' : '' }}>Sí</option>
         <option value="No" {{ $isolation === 'No' ? 'selected' : '' }}>No</option>
     </select>
 </div>

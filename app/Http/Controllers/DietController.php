@@ -7,6 +7,7 @@ use App\Http\Requests\StoreDietVersionRequest;
 use App\Models\Diet;
 use App\Models\DietHistory;
 use App\Services\DietService;
+use App\Services\Reports\DietReportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -101,61 +102,19 @@ class DietController extends Controller
     }
 
 
-    public function nutritionReport()
+    public function nutritionReport(Request $request, DietReportService $reports)
     {
-        $now = now();
-
-        // Get active diets with current version
-        $diets = Diet::where('status', true)
-            ->with('currentVersion')
-            ->get();
-
-        // Get current month histories with latest version
-        $histories = DietHistory::whereHas('diet', fn($q) => $q->where('status', true))
-            ->where('version', DB::raw('(SELECT MAX(version) FROM diet_histories WHERE diet_id = diet_histories.diet_id)'))
-            ->whereBetween('created_at', [$now->clone()->startOfMonth(), $now->clone()->endOfMonth()])
-            ->get();
-
-        // Calculate totals by grouping histories
-        $dailyTotals = $histories->groupBy(fn($h) => $h->created_at->format('Y-m-d'))
-            ->map(fn($group) => $this->aggregateFoodTotals($group))
-            ->map(fn($totals, $date) => (object)array_merge(['fecha' => $date], $totals));
-
-        $monthlyTotals = $histories->groupBy(fn($h) => $h->created_at->format('Y-m'))
-            ->map(fn($group) => $this->aggregateFoodTotals($group))
-            ->map(fn($totals, $month) => (object)array_merge(['mes' => $month], $totals))
-            ->sortByDesc('mes');
-
-        // Global totals
-        $globalTotals = (object)$this->aggregateFoodTotals($histories);
-
-        // Statistics
-        $topSpecifications = $diets->flatMap(fn($d) => $d->currentVersion?->specifications ?? [])
-            ->countBy()
-            ->sortDesc()
-            ->take(6);
-
-        $isolationCounts = $diets->countBy(fn($d) => $d->currentVersion?->isolation ?? 'No');
-
-        // Chart data
-        $chartLabels = $monthlyTotals->pluck('mes')->values();
-        $chartBreakfast = $monthlyTotals->pluck('desayuno')->values();
-        $chartLunch = $monthlyTotals->pluck('almuerzo')->values();
-        $chartDinner = $monthlyTotals->pluck('cena')->values();
+        $month = ReportExportController::monthFromRequest($request);
+        $census = $reports->monthlyCensus($month);
 
         return view('reports-diets-nutricion', [
-            'dailyTotals' => $dailyTotals,
-            'monthlyTotals' => $monthlyTotals,
-            'globalTotals' => $globalTotals,
-            'chartLabels' => $chartLabels,
-            'chartBreakfast' => $chartBreakfast,
-            'chartLunch' => $chartLunch,
-            'chartDinner' => $chartDinner,
-            'totalActiveDiets' => $diets->count(),
-            'topSpecifications' => $topSpecifications,
-            'isolationCounts' => $isolationCounts,
+            'census' => $census,
+            'history' => $reports->monthlyHistory($month, 6),
+            'snapshot' => $reports->currentSnapshot(),
+            'mealLabels' => DietReportService::mealLabels(),
+            'specLabels' => config('specifications.labels'),
             'specColors' => config('specifications.colors'),
-            'labelsColors' => config('specifications.labels'),
+            'selectedMonth' => $month->format('Y-m'),
         ]);
     }
 
