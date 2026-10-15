@@ -1,8 +1,6 @@
 <?php
 
 use App\Http\Controllers\DietController;
-use App\Models\Diet;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -43,12 +41,18 @@ Route::middleware([
             ->name('dashboard.dispatch');
     });
 
-    Route::post('/dietas', [DietController::class, 'createDiet'])->name('dietas.create');
-    Route::put('/dietas/{diet}/version', [DietController::class, 'createNewVersionDiet'])->name('dietas.update');
-    Route::get('/diet-reports', [DietController::class,'nutritionReport'])
-    ->name('diet.reports');
-    Route::get('/entrega/index', [DietController::class, 'nutritionReport'])->name('entrega.index');
-    Route::patch('/dietas/{diet}/cancel', [DietController::class, 'cancelDiet'])->name('diets.canceled');
+    Route::post('/dietas', [DietController::class, 'createDiet'])
+        ->middleware('permission:createDiets')->name('dietas.create');
+    Route::put('/dietas/{diet}/version', [DietController::class, 'createNewVersionDiet'])
+        ->middleware('permission:editDiets')->name('dietas.update');
+    Route::patch('/dietas/{diet}/cancel', [DietController::class, 'cancelDiet'])
+        ->middleware('permission:editDiets')->name('diets.canceled');
+
+    Route::middleware(['permission:viewReports|generateFiles'])->group(function () {
+        Route::get('/diet-reports', [DietController::class, 'nutritionReport'])->name('diet.reports');
+        Route::get('/entrega/index', [DietController::class, 'nutritionReport'])->name('entrega.index');
+        Route::get('/reportes/produccion', [DietController::class, 'index'])->name('reports.production');
+    });
     // Route::get('/entrega/canceladas', [EntregaController::class, 'canceladas'])->name('dietas.canceladas');
     // Route::get('/entrega/historial', [EntregaController::class, 'historial'])->name('historial.index');
     // Route::get('/entrega/reportes', [EntregaController::class, 'reportes'])->name('reportes.nutricional');

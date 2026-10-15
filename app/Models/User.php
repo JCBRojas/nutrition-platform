@@ -61,9 +61,9 @@ class User extends Authenticatable
         'profile_photo_url',
     ];
 
-    public function createdBy()
+    public function dietVersions()
     {
-        return $this->hasMany(Diet::class, 'createdBy');
+        return $this->hasMany(DietHistory::class, 'updated_by');
     }
 
 }

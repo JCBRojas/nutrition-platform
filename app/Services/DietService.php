@@ -42,7 +42,7 @@ class DietService
                                    ->lockForUpdate()
                                    ->max('version') ?? 0;
 
-            if($data['changes'] === 'cancelada') {
+            if (($data['changes'] ?? null) === 'cancelada') {
                 $this->setDietCanceled($diet);
             }
 
@@ -76,7 +76,23 @@ class DietService
         ]);
     }
 
-    // public function cancelDiet
+    /**
+     * Cancelar dieta: crea una nueva versión con changes = 'cancelada'
+     * (copia la versión actual) y desactiva la cabecera.
+     */
+    public function cancelDiet(Diet $diet, int $userId): DietHistory
+    {
+        $current = $diet->currentVersion;
+
+        return $this->createNewVersion($diet, [
+            'timeFood' => $current?->timeFood,
+            'consistency' => $current?->consistency,
+            'specifications' => $current?->specifications,
+            'observations' => $current?->observations,
+            'isolation' => $current?->isolation ?? 'No',
+            'changes' => 'cancelada',
+        ], $userId);
+    }
 
     private function setDietCanceled(Diet $diet): bool
     {

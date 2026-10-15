@@ -144,7 +144,8 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Registro público deshabilitado por defecto: los usuarios los crea un administrador.
+        ...(env('REGISTRATION_ENABLED', false) ? [Features::registration()] : []),
         Features::resetPasswords(),
         // Features::emailVerification(),
         Features::updateProfileInformation(),

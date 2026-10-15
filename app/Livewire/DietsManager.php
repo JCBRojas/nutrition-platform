@@ -63,12 +63,13 @@ class DietsManager extends Component
 
     public function confirmChanges($id)
     {
-        $diets = DietHistory::find($id);
-        // dd($diets);
-        $diets->modify = 'no';
-        $diets->save();
-        return $diets;
-        // $this->dispatch('confirmChanges', 'id': $id);
+        $history = DietHistory::find($id);
+
+        if (!$history) {
+            return;
+        }
+
+        $history->update(['modify' => 'no']);
     }
 
     /* ===================== RENDER ===================== */

@@ -12,6 +12,12 @@ class Diet extends Model
         'habitation',
         'name_patient',
         'status',
+        'confirmed',
+    ];
+
+    protected $casts = [
+        'status' => 'boolean',
+        'confirmed' => 'boolean',
     ];
 
     public function history()

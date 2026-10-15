@@ -4,8 +4,8 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -48,12 +48,18 @@ class RolesAndPermissionsSeeder extends Seeder
             'generateFiles',
         ]);
 
-          // Crear usuario Nutricionista
+        // Contraseña de usuarios demo: SEED_USER_PASSWORD en .env, o aleatoria (se imprime una vez)
+        $password = env('SEED_USER_PASSWORD') ?: Str::password(16);
+        if (! env('SEED_USER_PASSWORD')) {
+            $this->command?->warn("Contraseña generada para usuarios demo: {$password}");
+        }
+
+        // Crear usuario Nutricionista
         $userNutricionista = User::firstOrCreate(
             ['email' => 'camilo@gmail.com'],
             [
                 'name' => 'Nutricionista Principal',
-                'password' => Hash::make('123123123')
+                'password' => Hash::make($password)
             ]
         );
 
@@ -64,7 +70,7 @@ class RolesAndPermissionsSeeder extends Seeder
             ['email' => 'mariana@gmail.com'],
             [
                 'name' => 'Despachador Principal',
-                'password' => Hash::make('123123123')
+                'password' => Hash::make($password)
             ]
         );
 

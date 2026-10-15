@@ -100,7 +100,7 @@
                         {{-- <td class="px-3 py-2 text-xs">
 
                             @if($changes)
-                            <button wire:click="confirmChanges({{ $diet->id }})"
+                            <button wire:click="confirmChanges({{ $current->id }})"
                                 class="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700">
                                 Confirmar
                             </button>

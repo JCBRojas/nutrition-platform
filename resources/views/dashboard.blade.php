@@ -162,7 +162,7 @@
                                                         onclick="return confirm('¿Estás seguro de que deseas cancelar esta dieta?')">
                                                         Cancelar
                                                     </button>
-
+                                                </form>
                                             </td>
 
                                         </tr>

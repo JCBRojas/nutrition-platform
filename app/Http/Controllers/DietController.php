@@ -58,91 +58,45 @@ class DietController extends Controller
         return view('dashboard-dispatcher');
     }
 
-    public function cancelDiet(Diet $dietId)
+    public function cancelDiet(Diet $diet)
     {
-        $this->dietService->setDietCanceled($dietId);
+        $this->dietService->cancelDiet($diet, auth()->id());
+        return redirect()->back()->with('success', 'Dieta cancelada');
     }
 
     public function index()
     {
-        /*
-        -----------------------------
-        PRODUCCIÓN DE COCINA HOY
-        -----------------------------
-        */
-        $kitchenToday = DB::select("
-            SELECT
-            SUM(timeFood='desayuno') AS desayuno,
-            SUM(timeFood='media_manana') AS media_manana,
-            SUM(timeFood='almuerzo') AS almuerzo,
-            SUM(timeFood='algo') AS algo,
-            SUM(timeFood='merienda') AS merienda,
-            SUM(timeFood='cena') AS cena
+        $now = now();
 
-            FROM diet_histories
+        // Última versión de cada dieta activa, creada en el periodo
+        $latest = fn () => DietHistory::whereHas('diet', fn ($q) => $q->where('status', true))
+            ->whereRaw('version = (SELECT MAX(h2.version) FROM diet_histories h2 WHERE h2.diet_id = diet_histories.diet_id)');
 
-            WHERE DATE(created_at)=CURDATE()
+        // PRODUCCIÓN DE COCINA HOY
+        $kitchenToday = [(object) $this->aggregateFoodTotals(
+            $latest()->whereDate('created_at', $now->toDateString())->get()
+        )];
 
-            GROUP BY timeFood
-            ORDER BY timeFood
-            ");
+        // TOTALES GLOBALES (mes actual)
+        $monthHistories = $latest()
+            ->whereBetween('created_at', [$now->clone()->startOfMonth(), $now->clone()->endOfMonth()])
+            ->get();
+        $global = [(object) array_merge(
+            $this->aggregateFoodTotals($monthHistories),
+            ['total_bandejas' => $monthHistories->count()]
+        )];
 
-        /*
-        -----------------------------
-        TOTALES GLOBALES
-        -----------------------------
-        */
-
-        $global = DB::select("
-            SELECT
-
-            SUM(timeFood='desayuno') AS desayuno,
-            SUM(timeFood='media_manana') AS media_manana,
-            SUM(timeFood='almuerzo') AS almuerzo,
-            SUM(timeFood='algo') AS algo,
-            SUM(timeFood='merienda') AS merienda,
-            SUM(timeFood='cena') AS cena,
-            SUM(timeFood='fraccionada') AS fraccionada,
-
-            COUNT(*) AS total_bandejas
-
-            FROM diet_histories
-
-            WHERE MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())
-
-            GROUP BY timeFood
-            ");
-
-
-        /*
-        -----------------------------
-        PRODUCCIÓN MENSUAL
-        -----------------------------
-        */
-
-        $monthly = DB::select("
-            SELECT
-
-            DATE_FORMAT(created_at,'%Y-%m') AS mes,
-
-            SUM(timeFood='desayuno') AS desayuno,
-            SUM(timeFood='media_manana') AS media_manana,
-            SUM(timeFood='almuerzo') AS almuerzo,
-            SUM(timeFood='algo') AS algo,
-            SUM(timeFood='merienda') AS merienda,
-            SUM(timeFood='cena') AS cena
-
-            FROM diet_histories
-
-            GROUP BY mes
-            ORDER BY mes DESC
-            ");
-
+        // PRODUCCIÓN MENSUAL
+        $monthly = $latest()->get()
+            ->groupBy(fn ($h) => $h->created_at->format('Y-m'))
+            ->map(fn ($group, $mes) => (object) array_merge(['mes' => $mes], $this->aggregateFoodTotals($group)))
+            ->sortByDesc('mes')
+            ->values();
 
         return view('reports-diets', [
             'kitchenToday' => $kitchenToday,
             'global' => $global,
-            'monthly' => $monthly
+            'monthly' => $monthly,
         ]);
     }
 
@@ -207,13 +161,16 @@ class DietController extends Controller
 
     private function aggregateFoodTotals($histories): array
     {
-        $meals = ['desayuno', 'media_manana', 'almuerzo', 'algo', 'cena', 'fraccionada'];
+        $meals = ['desayuno', 'media_manana', 'almuerzo', 'algo', 'merienda', 'cena', 'fraccionada'];
         $totals = array_fill_keys($meals, 0);
 
+        // Normaliza claves guardadas: 'Desayuno', 'mediamanana', 'media_manana' → 'desayuno', 'mediamanana'
+        $normalize = fn ($value) => str_replace('_', '', mb_strtolower((string) $value));
+
         foreach ($histories as $history) {
-            $timeFood = $history->timeFood ?? [];
+            $timeFood = array_map($normalize, (array) ($history->timeFood ?? []));
             foreach ($meals as $meal) {
-                if (in_array(ucfirst($meal), $timeFood)) {
+                if (in_array($normalize($meal), $timeFood, true)) {
                     $totals[$meal]++;
                 }
             }
