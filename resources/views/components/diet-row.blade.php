@@ -55,12 +55,8 @@
     <td>{{ $diet->currentVersion->changes ?? 'N/A' }}</td>
 
     <td class="text-right">
-        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target=".edit-diet{{ $diet->id }}-modal-lg">
+        <button class="btn btn-primary btn-sm" onclick="openEditModal({{$diet->id }}, {{$diet->currentVersion}} )">
             Editar
         </button>
     </td>
 </tr>
-
-
-
-

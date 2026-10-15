@@ -11,196 +11,190 @@
             <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-6">
 
                 @can('createDiets')
-                {{-- ===============================
+                    {{-- ===============================
                 PRODUCCION COCINA HOY
                 =============================== --}}
 
-                {{-- PRODUCCIÓN COCINA HOY --}}
+                    {{-- PRODUCCIÓN COCINA HOY --}}
 
-<h4>Producción de cocina hoy</h4>
+                    <h4>Producción de cocina hoy</h4>
 
-<table class="table table-bordered">
+                    <table class="table table-bordered">
 
-<thead>
+                        <thead>
 
-<tr>
-<th>Tipo dieta</th>
-<th>Desayuno</th>
-<th>Media mañana</th>
-<th>Almuerzo</th>
-<th>Algo</th>
-<th>Merienda</th>
-<th>Cena</th>
-</tr>
+                            <tr>
+                                {{-- <th>Tipo dieta</th> --}}
+                                <th>Desayuno</th>
+                                <th>Media mañana</th>
+                                <th>Almuerzo</th>
+                                <th>Algo</th>
+                                <th>Merienda</th>
+                                <th>Cena</th>
+                            </tr>
 
-</thead>
+                        </thead>
 
-<tbody>
+                        <tbody>
 
-@foreach($kitchenToday as $row)
+                            @foreach ($kitchenToday as $row)
+                                <tr>
 
-<tr>
+                                    {{-- <td>{{ $row->tipo_dieta }}</td> --}}
 
-<td>{{ $row->tipo_dieta }}</td>
+                                    <td>{{ $row->desayuno }}</td>
+                                    <td>{{ $row->media_manana }}</td>
+                                    <td>{{ $row->almuerzo }}</td>
+                                    <td>{{ $row->algo }}</td>
+                                    <td>{{ $row->merienda }}</td>
+                                    <td>{{ $row->cena }}</td>
 
-<td>{{ $row->desayuno }}</td>
-<td>{{ $row->media_manana }}</td>
-<td>{{ $row->almuerzo }}</td>
-<td>{{ $row->algo }}</td>
-<td>{{ $row->merienda }}</td>
-<td>{{ $row->cena }}</td>
+                                </tr>
+                            @endforeach
 
-</tr>
+                        </tbody>
 
-@endforeach
-
-</tbody>
-
-</table>
+                    </table>
 
 
 
-{{-- TOTALES GLOBALES --}}
+                    {{-- TOTALES GLOBALES --}}
 
-<h4 class="mt-5">Totales globales por tipo de dieta</h4>
+                    <h4 class="mt-5">Totales globales por tipo de dieta</h4>
 
-<table class="table table-bordered">
+                    <table class="table table-bordered">
 
-<thead>
+                        <thead>
 
-<tr>
-<th>Tipo dieta</th>
-<th>Desayuno</th>
-<th>Media mañana</th>
-<th>Almuerzo</th>
-<th>Algo</th>
-<th>Merienda</th>
-<th>Cena</th>
-<th>Fraccionada</th>
-<th>Total bandejas</th>
-</tr>
+                            <tr>
+                                {{-- <th>Tipo dieta</th> --}}
+                                <th>Desayuno</th>
+                                <th>Media mañana</th>
+                                <th>Almuerzo</th>
+                                <th>Algo</th>
+                                <th>Merienda</th>
+                                <th>Cena</th>
+                                <th>Fraccionada</th>
+                                <th>Total bandejas</th>
+                            </tr>
 
-</thead>
+                        </thead>
 
-<tbody>
+                        <tbody>
 
-@foreach($global as $row)
+                            @foreach ($global as $row)
+                                <tr>
 
-<tr>
+                                    {{-- <td>{{ $row->tipo_dieta }}</td> --}}
 
-<td>{{ $row->tipo_dieta }}</td>
+                                    <td>{{ $row->desayuno }}</td>
+                                    <td>{{ $row->media_manana }}</td>
+                                    <td>{{ $row->almuerzo }}</td>
+                                    <td>{{ $row->algo }}</td>
+                                    <td>{{ $row->merienda }}</td>
+                                    <td>{{ $row->cena }}</td>
+                                    <td>{{ $row->fraccionada }}</td>
+                                    <td>{{ $row->total_bandejas }}</td>
 
-<td>{{ $row->desayuno }}</td>
-<td>{{ $row->media_manana }}</td>
-<td>{{ $row->almuerzo }}</td>
-<td>{{ $row->algo }}</td>
-<td>{{ $row->merienda }}</td>
-<td>{{ $row->cena }}</td>
-<td>{{ $row->fraccionada }}</td>
-<td>{{ $row->total_bandejas }}</td>
+                                </tr>
+                            @endforeach
 
-</tr>
+                        </tbody>
 
-@endforeach
-
-</tbody>
-
-</table>
+                    </table>
 
 
 
-{{-- GRÁFICO MENSUAL --}}
+                    {{-- GRÁFICO MENSUAL --}}
 
-<h4 class="mt-5">Producción mensual de comidas</h4>
+                    <h4 class="mt-5">Producción mensual de comidas</h4>
 
-<canvas id="monthlyChart"></canvas>
+                    <canvas id="monthlyChart"></canvas>
 
-</div>
+                </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                    
+                <script>
+                    const labels = @json(array_column($monthly, 'mes'));
 
-<script>
+                    const desayuno = @json(array_column($monthly, 'desayuno'));
+                    const almuerzo = @json(array_column($monthly, 'almuerzo'));
+                    const cena = @json(array_column($monthly, 'cena'));
 
-const labels = @json(array_column($monthly,'mes'));
+                    new Chart(document.getElementById('monthlyChart'), {
 
-const desayuno = @json(array_column($monthly,'desayuno'));
-const almuerzo = @json(array_column($monthly,'almuerzo'));
-const cena = @json(array_column($monthly,'cena'));
+                        type: 'bar',
 
-new Chart(document.getElementById('monthlyChart'),{
+                        data: {
 
-type:'bar',
+                            labels: labels,
 
-data:{
+                            datasets: [
 
-labels:labels,
+                                {
+                                    label: 'Desayuno',
+                                    data: desayuno
+                                },
 
-datasets:[
+                                {
+                                    label: 'Almuerzo',
+                                    data: almuerzo
+                                },
 
-{
-label:'Desayuno',
-data:desayuno
-},
+                                {
+                                    label: 'Cena',
+                                    data: cena
+                                }
 
-{
-label:'Almuerzo',
-data:almuerzo
-},
+                            ]
 
-{
-label:'Cena',
-data:cena
-}
+                        },
 
-]
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    position: 'top'
+                                }
+                            }
+                        }
 
-},
-
-options:{
-responsive:true,
-plugins:{
-legend:{
-position:'top'
-}
-}
-}
-
-});
-
-</script>
-                @endcan
-            </div>
+                    });
+                </script>
+            @endcan
+        </div>
 
 
 
-            {{-- =========================
+        {{-- =========================
             CHART JS
             ========================= --}}
 
-            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-   
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 
-            <script src="{{ asset('assets/libs/jquery-nice-select/jquery.nice-select.min.js') }}"></script>
-            <script src="{{ asset('assets/libs/switchery/switchery.min.js') }}"></script>
-            <script src="{{ asset('assets/libs/select2/select2.min.js') }}"></script>
-            <script src="{{ asset('assets/libs/bootstrap-select/bootstrap-select.min.js') }}"></script>
-            <script src="{{ asset('assets/libs/bootstrap-touchspin/jquery.bootstrap-touchspin.min.js') }}"></script>
-            <script src="{{ asset('assets/libs/bootstrap-maxlength/bootstrap-maxlength.min.js') }}"></script>
-            <script src="{{ asset('assets/libs/datatables/jquery.dataTables.min.js') }}"></script>
-            <script src="{{ asset('assets/libs/datatables/dataTables.bootstrap4.js') }}"></script>
-            <!-- Init js-->
-            <script src="{{ asset('assets/js/pages/form-advanced.init.js') }}"></script>
-            {{-- <script src="{{ asset('assets/libs/datatables/dataTables.responsive.min.js') }}"></script>
+
+
+        <script src="{{ asset('assets/libs/jquery-nice-select/jquery.nice-select.min.js') }}"></script>
+        <script src="{{ asset('assets/libs/switchery/switchery.min.js') }}"></script>
+        <script src="{{ asset('assets/libs/select2/select2.min.js') }}"></script>
+        <script src="{{ asset('assets/libs/bootstrap-select/bootstrap-select.min.js') }}"></script>
+        <script src="{{ asset('assets/libs/bootstrap-touchspin/jquery.bootstrap-touchspin.min.js') }}"></script>
+        <script src="{{ asset('assets/libs/bootstrap-maxlength/bootstrap-maxlength.min.js') }}"></script>
+        <script src="{{ asset('assets/libs/datatables/jquery.dataTables.min.js') }}"></script>
+        <script src="{{ asset('assets/libs/datatables/dataTables.bootstrap4.js') }}"></script>
+        <!-- Init js-->
+        <script src="{{ asset('assets/js/pages/form-advanced.init.js') }}"></script>
+        {{-- <script src="{{ asset('assets/libs/datatables/dataTables.responsive.min.js') }}"></script>
             <script src="{{ asset('assets/libs/datatables/responsive.bootstrap4.min.js') }}"></script>
             <script src="{{ asset('assets/libs/datatables/dataTables.buttons.min.js') }}"></script> --}}
-            {{-- <script src="{{ asset('assets/libs/datatables/buttons.bootstrap4.min.js') }}"></script>
+        {{-- <script src="{{ asset('assets/libs/datatables/buttons.bootstrap4.min.js') }}"></script>
             <script src="{{ asset('assets/libs/datatables/buttons.html5.min.js') }}"></script>
             <script src="{{ asset('assets/libs/datatables/buttons.flash.min.js') }}"></script>
             <script src="{{ asset('assets/libs/datatables/buttons.print.min.js') }}"></script> --}}
-            <script src="{{ asset('assets/js/pages/datatables.init.js') }}"></script>
-            <!-- App js -->
-            <script src="{{ asset('assets/js/app.min.js') }}"></script>
+        <script src="{{ asset('assets/js/pages/datatables.init.js') }}"></script>
+        <!-- App js -->
+        <script src="{{ asset('assets/js/app.min.js') }}"></script>
 </x-app-layout>

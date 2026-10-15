@@ -25,7 +25,7 @@ class DietService
             ]);
 
             // 2️⃣ Crear versión 1
-            $this->createInternalVersionOfDiet($diet, $data, $userId, 1);
+            $this->createInternalVersionOfDiet($diet, $data, $userId, 1, $modify = 'no');
 
             return $diet;
         });
@@ -50,7 +50,8 @@ class DietService
                 $diet,
                 $data,
                 $userId,
-                $lastVersion + 1
+                $lastVersion + 1,
+                $modify = 'si'
             );
             
         });
@@ -59,7 +60,7 @@ class DietService
     /**
      * Método privado reutilizable
      */
-    private function createInternalVersionOfDiet( Diet $diet, array $data, int $userId, int $numeroVersion): DietHistory {
+    private function createInternalVersionOfDiet( Diet $diet, array $data, int $userId, int $numeroVersion, string $modify): DietHistory {
 
         return DietHistory::create([
             'diet_id' => $diet->id,
@@ -71,8 +72,11 @@ class DietService
             'observations' => $data['observations'] ?? null,
             'isolation' => $data['isolation'] ?? 'No',
             'changes' => $data['changes'] ?? null,
+            'modify' => $modify ?? 'no',
         ]);
     }
+
+    // public function cancelDiet
 
     private function setDietCanceled(Diet $diet): bool
     {

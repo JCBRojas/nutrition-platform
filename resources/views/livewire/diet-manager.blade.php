@@ -52,25 +52,30 @@
                     @php
                     $changes = $diet->version_changes ?? [];
                     $current = $diet->currentVersion;
+
                     @endphp
 
-                    <tr class="{{ $changes ? 'bg-yellow-50 border-l-4 border-yellow-400' : '' }}">
+                    <tr class="{{ $current->modify === 'si' ? 'bg-yellow-50 border-l-4 border-yellow-400' : '' }}">
 
-                        <td class="px-3 py-2 text-xs">{{ $diet->id }}</td>
+                        {{-- <td class="px-3 py-2 text-xs">{{ $diet->id }}</td> --}}
+                        <td><button type="checkbox"
+                             wire:click="confirmChanges({{$current->id}})">
+                             {{ $current->modify === 'si' ? '🔵' : '' }}
+                            </button></td>
                         <td class="px-3 py-2 text-xs">{{ $diet->habitation }}</td>
                         <td class="px-3 py-2 text-xs">{{ $diet->name_patient }}</td>
 
                         {{-- TIEMPO --}}
                         <x-badges :items="$current->timeFood ?? []" :changes="$changes['timeFood'] ?? null"
-                            color="primary" />
+                            category="tiempo" />
 
                         {{-- CONSISTENCIA --}}
                         <x-badges :items="$current->consistency ?? []" :changes="$changes['consistency'] ?? null"
-                            color="info" />
+                            category="consist" />
 
                         {{-- ESPECIFICACIONES --}}
                         <x-badges :items="$current->specifications ?? []" :changes="$changes['specifications'] ?? null"
-                            color="success" />
+                            category="espec" />
 
                         {{-- OBSERVACIONES --}}
                         <td class="px-3 py-2 text-xs">

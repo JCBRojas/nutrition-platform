@@ -17,7 +17,13 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    return view('auth.login-b');
+    if (auth()->check()) {
+        auth()->logout(); // Finaliza la sesión
+        session()->invalidate(); // Invalida la sesión actual
+        session()->regenerateToken(); // Regenera el token CSRF
+    }
+
+    return view('auth.login');
 });
 
 Route::middleware([
@@ -41,9 +47,9 @@ Route::middleware([
     Route::put('/dietas/{diet}/version', [DietController::class, 'createNewVersionDiet'])->name('dietas.update');
     Route::get('/diet-reports', [DietController::class,'nutritionReport'])
     ->name('diet.reports');
-    Route::get('/entrega/index', [EntregaController::class, 'index'])->name('entrega.index');
-    Route::get('/entrega/canceladas', [EntregaController::class, 'canceladas'])->name('dietas.canceladas');
-    Route::get('/entrega/historial', [EntregaController::class, 'historial'])->name('historial.index');
-    Route::get('/entrega/reportes', [EntregaController::class, 'reportes'])->name('reportes.nutricional');
-    Route::post('/dietas', [DietController::class, 'store'])->name('dietas.store');
+    Route::get('/entrega/index', [DietController::class, 'nutritionReport'])->name('entrega.index');
+    Route::patch('/dietas/{diet}/cancel', [DietController::class, 'cancelDiet'])->name('diets.canceled');
+    // Route::get('/entrega/canceladas', [EntregaController::class, 'canceladas'])->name('dietas.canceladas');
+    // Route::get('/entrega/historial', [EntregaController::class, 'historial'])->name('historial.index');
+    // Route::get('/entrega/reportes', [EntregaController::class, 'reportes'])->name('reportes.nutricional');
 });

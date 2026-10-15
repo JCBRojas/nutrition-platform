@@ -2,11 +2,15 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
 use App\Models\Diet;
+use App\Models\DietHistory;
+use Livewire\Component;
 
 class DietsManager extends Component
 {
+
+    public $confirmmedChanges = '';
+
     /* ===================== CONFIRM ===================== */
 
     public function confirmRecord($id)
@@ -51,10 +55,21 @@ class DietsManager extends Component
                 ];
             }
         }
-
+        $this->confirmmedChanges = $changes ? 'bg-yellow-50 border-l-4 border-yellow-400' : '';
         return $changes;
     }
 
+    /* ===================== CONFIRMCHANGES ===================== */
+
+    public function confirmChanges($id)
+    {
+        $diets = DietHistory::find($id);
+        // dd($diets);
+        $diets->modify = 'no';
+        $diets->save();
+        return $diets;
+        // $this->dispatch('confirmChanges', 'id': $id);
+    }
 
     /* ===================== RENDER ===================== */
 

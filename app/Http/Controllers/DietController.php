@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreDietRequest;
 use App\Http\Requests\StoreDietVersionRequest;
 use App\Models\Diet;
+use App\Models\DietHistory;
 use App\Services\DietService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DietController extends Controller
 {
+
 
     public function __construct(private DietService $dietService) {}
 
@@ -34,21 +37,30 @@ class DietController extends Controller
      * de los usuarios.
      *
      */
-    public function createNewVersionDiet(StoreDietVersionRequest $request, Diet $diet)
+    public function createNewVersionDiet(StoreDietRequest $request, Diet $diet)
     {
+        // dd($request->all());
         $this->dietService->createNewVersion($diet, $request->validated(), auth()->id());
         return redirect()->back()->with('success', 'Dieta actualizada');
     }
 
     public function nutritionDashboard()
     {
-         $diets = Diet::all();
-       return view('dashboard', compact('diets'));
+        $diets = Diet::all();
+        $specLabels = config('specifications.labels');
+        $consistencyLabels = config('consistency.labels');
+        $foodLabels = config('timeFood.labels');
+        return view('dashboard', compact('diets','specLabels','foodLabels','consistencyLabels'));
     }
 
-     public function dispatcherDashboard()
+    public function dispatcherDashboard()
     {
         return view('dashboard-dispatcher');
+    }
+
+    public function cancelDiet(Diet $dietId)
+    {
+        $this->dietService->setDietCanceled($dietId);
     }
 
     public function index()
@@ -60,20 +72,19 @@ class DietController extends Controller
         */
         $kitchenToday = DB::select("
             SELECT
-            tipo_dieta,
-            SUM(tiempo_comida='desayuno') AS desayuno,
-            SUM(tiempo_comida='media_manana') AS media_manana,
-            SUM(tiempo_comida='almuerzo') AS almuerzo,
-            SUM(tiempo_comida='algo') AS algo,
-            SUM(tiempo_comida='merienda') AS merienda,
-            SUM(tiempo_comida='cena') AS cena
+            SUM(timeFood='desayuno') AS desayuno,
+            SUM(timeFood='media_manana') AS media_manana,
+            SUM(timeFood='almuerzo') AS almuerzo,
+            SUM(timeFood='algo') AS algo,
+            SUM(timeFood='merienda') AS merienda,
+            SUM(timeFood='cena') AS cena
 
-            FROM diet_meal_report_view
+            FROM diet_histories
 
             WHERE DATE(created_at)=CURDATE()
 
-            GROUP BY tipo_dieta
-            ORDER BY tipo_dieta
+            GROUP BY timeFood
+            ORDER BY timeFood
             ");
 
         /*
@@ -82,26 +93,24 @@ class DietController extends Controller
         -----------------------------
         */
 
-            $global = DB::select("
+        $global = DB::select("
             SELECT
 
-            tipo_dieta,
-
-            SUM(tiempo_comida='desayuno') AS desayuno,
-            SUM(tiempo_comida='media_manana') AS media_manana,
-            SUM(tiempo_comida='almuerzo') AS almuerzo,
-            SUM(tiempo_comida='algo') AS algo,
-            SUM(tiempo_comida='merienda') AS merienda,
-            SUM(tiempo_comida='cena') AS cena,
-            SUM(tiempo_comida='fraccionada') AS fraccionada,
+            SUM(timeFood='desayuno') AS desayuno,
+            SUM(timeFood='media_manana') AS media_manana,
+            SUM(timeFood='almuerzo') AS almuerzo,
+            SUM(timeFood='algo') AS algo,
+            SUM(timeFood='merienda') AS merienda,
+            SUM(timeFood='cena') AS cena,
+            SUM(timeFood='fraccionada') AS fraccionada,
 
             COUNT(*) AS total_bandejas
 
-            FROM diet_meal_report_view
+            FROM diet_histories
 
             WHERE MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())
 
-            GROUP BY tipo_dieta
+            GROUP BY timeFood
             ");
 
 
@@ -116,14 +125,14 @@ class DietController extends Controller
 
             DATE_FORMAT(created_at,'%Y-%m') AS mes,
 
-            SUM(tiempo_comida='desayuno') AS desayuno,
-            SUM(tiempo_comida='media_manana') AS media_manana,
-            SUM(tiempo_comida='almuerzo') AS almuerzo,
-            SUM(tiempo_comida='algo') AS algo,
-            SUM(tiempo_comida='merienda') AS merienda,
-            SUM(tiempo_comida='cena') AS cena
+            SUM(timeFood='desayuno') AS desayuno,
+            SUM(timeFood='media_manana') AS media_manana,
+            SUM(timeFood='almuerzo') AS almuerzo,
+            SUM(timeFood='algo') AS algo,
+            SUM(timeFood='merienda') AS merienda,
+            SUM(timeFood='cena') AS cena
 
-            FROM diet_meal_report_view
+            FROM diet_histories
 
             GROUP BY mes
             ORDER BY mes DESC
@@ -140,112 +149,45 @@ class DietController extends Controller
 
     public function nutritionReport()
     {
+        $now = now();
 
-        /*
-        --------------------------------
-        BASE QUERY (última versión dieta)
-        --------------------------------
-        */
+        // Get active diets with current version
+        $diets = Diet::where('status', true)
+            ->with('currentVersion')
+            ->get();
 
-        $baseQuery = "
-            SELECT 
-            d.created_at,
+        // Get current month histories with latest version
+        $histories = DietHistory::whereHas('diet', fn($q) => $q->where('status', true))
+            ->where('version', DB::raw('(SELECT MAX(version) FROM diet_histories WHERE diet_id = diet_histories.diet_id)'))
+            ->whereBetween('created_at', [$now->clone()->startOfMonth(), $now->clone()->endOfMonth()])
+            ->get();
 
-            JSON_CONTAINS(dv.timeFood,'\"desayuno\"') AS desayuno,
-            JSON_CONTAINS(dv.timeFood,'\"media_manana\"') AS media_manana,
-            JSON_CONTAINS(dv.timeFood,'\"almuerzo\"') AS almuerzo,
-            JSON_CONTAINS(dv.timeFood,'\"algo\"') AS algo,
-            JSON_CONTAINS(dv.timeFood,'\"cena\"') AS cena,
-            JSON_CONTAINS(dv.timeFood,'\"fraccionada\"') AS fraccionada
+        // Calculate totals by grouping histories
+        $dailyTotals = $histories->groupBy(fn($h) => $h->created_at->format('Y-m-d'))
+            ->map(fn($group) => $this->aggregateFoodTotals($group))
+            ->map(fn($totals, $date) => (object)array_merge(['fecha' => $date], $totals));
 
-            FROM diet_histories dv
-            JOIN diets d ON d.id = dv.diet_id
+        $monthlyTotals = $histories->groupBy(fn($h) => $h->created_at->format('Y-m'))
+            ->map(fn($group) => $this->aggregateFoodTotals($group))
+            ->map(fn($totals, $month) => (object)array_merge(['mes' => $month], $totals))
+            ->sortByDesc('mes');
 
-            WHERE dv.version = (
-                SELECT MAX(version)
-                FROM diet_histories
-                WHERE diet_id = dv.diet_id
-            )
-            AND d.status = true
-            ";
-        /*
-        --------------------------------
-        TOTALES DIARIOS
-        --------------------------------
-        */
+        // Global totals
+        $globalTotals = (object)$this->aggregateFoodTotals($histories);
 
-        $dailyTotals = DB::select("
-            SELECT
+        // Statistics
+        $topSpecifications = $diets->flatMap(fn($d) => $d->currentVersion?->specifications ?? [])
+            ->countBy()
+            ->sortDesc()
+            ->take(6);
 
-            DATE(created_at) AS fecha,
+        $isolationCounts = $diets->countBy(fn($d) => $d->currentVersion?->isolation ?? 'No');
 
-            SUM(desayuno) AS desayuno,
-            SUM(media_manana) AS media_manana,
-            SUM(almuerzo) AS almuerzo,
-            SUM(algo) AS algo,
-            SUM(cena) AS cena,
-            SUM(fraccionada) AS fraccionada
-
-            FROM ($baseQuery) t
-
-            where MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())
-            GROUP BY fecha
-            ORDER BY fecha DESC
-            ");
-
-        /*
-        --------------------------------
-        TOTALES MENSUALES
-        --------------------------------
-        */
-
-        $monthlyTotals = DB::select("
-            SELECT
-
-            DATE_FORMAT(created_at,'%Y-%m') AS mes,
-
-            SUM(desayuno) AS desayuno,
-            SUM(media_manana) AS media_manana,
-            SUM(almuerzo) AS almuerzo,
-            SUM(algo) AS algo,
-            SUM(cena) AS cena,
-            SUM(fraccionada) AS fraccionada
-
-            FROM ($baseQuery) t
-
-            GROUP BY mes
-            ORDER BY mes DESC
-            ");
-
-        /*
-        --------------------------------
-        TOTALES GLOBALES
-        --------------------------------
-        */
-
-        $globalTotals = DB::selectOne("
-            SELECT
-
-            SUM(desayuno) AS desayuno,
-            SUM(almuerzo) AS almuerzo,
-            SUM(cena) AS cena,
-            SUM(fraccionada) AS fraccionada
-
-            FROM ($baseQuery) t
-            ");
-
-        /*
-        --------------------------------
-        DATOS PARA GRÁFICOS
-        --------------------------------
-        */
-
-        $chartLabels = array_column($monthlyTotals, 'mes');
-        $chartBreakfast = array_column($monthlyTotals, 'desayuno');
-        $chartLunch = array_column($monthlyTotals, 'almuerzo');
-        $chartDinner = array_column($monthlyTotals, 'cena');
-
-
+        // Chart data
+        $chartLabels = $monthlyTotals->pluck('mes')->values();
+        $chartBreakfast = $monthlyTotals->pluck('desayuno')->values();
+        $chartLunch = $monthlyTotals->pluck('almuerzo')->values();
+        $chartDinner = $monthlyTotals->pluck('cena')->values();
 
         return view('reports-diets-nutricion', [
             'dailyTotals' => $dailyTotals,
@@ -254,17 +196,33 @@ class DietController extends Controller
             'chartLabels' => $chartLabels,
             'chartBreakfast' => $chartBreakfast,
             'chartLunch' => $chartLunch,
-            'chartDinner' => $chartDinner
+            'chartDinner' => $chartDinner,
+            'totalActiveDiets' => $diets->count(),
+            'topSpecifications' => $topSpecifications,
+            'isolationCounts' => $isolationCounts,
+            'specColors' => config('specifications.colors'),
+            'labelsColors' => config('specifications.labels'),
         ]);
     }
 
-    // end
-    
-    public function store(StoreDietRequest $request)
+    private function aggregateFoodTotals($histories): array
     {
-        // dd($request->all());
-        $diet = $this->dietService->createDiet($request->validated(), auth()->id());
-        return redirect()->back()->with('success', 'Dieta creada');
+        $meals = ['desayuno', 'media_manana', 'almuerzo', 'algo', 'cena', 'fraccionada'];
+        $totals = array_fill_keys($meals, 0);
+
+        foreach ($histories as $history) {
+            $timeFood = $history->timeFood ?? [];
+            foreach ($meals as $meal) {
+                if (in_array(ucfirst($meal), $timeFood)) {
+                    $totals[$meal]++;
+                }
+            }
+        }
+
+        return $totals;
     }
-    
+
+    // end
+
+
 }
