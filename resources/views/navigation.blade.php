@@ -1,3 +1,28 @@
+@php
+  $authUser = auth()->user();
+  $roleLabels = [
+    'admin' => 'Administrador',
+    'nutricionista' => 'Nutricionista',
+    'despachador' => 'Despachador',
+    'jefe_nutricion' => 'Jefe de nutrición',
+  ];
+  $roleName = $authUser?->getRoleNames()->first();
+  $roleLabel = $roleName ? ($roleLabels[$roleName] ?? \Illuminate\Support\Str::of($roleName)->replace('_', ' ')->ucfirst()) : 'Sin rol';
+  $initials = collect(preg_split('/\s+/', trim($authUser?->name ?? '')))
+    ->filter()->take(2)
+    ->map(fn ($part) => mb_strtoupper(mb_substr($part, 0, 1)))
+    ->implode('') ?: '?';
+@endphp
+
+<!-- Barra superior (solo móvil) -->
+<header class="mobile-topbar">
+  <button type="button" class="menu-toggle" onclick="openSidebar()" aria-label="Abrir menú" aria-controls="sidebar">
+    <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <span class="brand">NutriTrack</span>
+  <a href="{{ route('profile.show') }}" class="user-avatar" title="{{ $authUser?->name }}">{{ $initials }}</a>
+</header>
+
 <!-- Sidebar backdrop -->
 <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
 
@@ -8,7 +33,9 @@
     <div class="subtitle">Gestión de Dietas Hospitalarias</div>
   </div>
   <nav class="nav">
+    @canany(['viewActiveDiets', 'confirmDelivery'])
     <div class="nav-section">Principal</div>
+    @endcanany
     {{-- Cada enlace se muestra solo si el usuario pasa el middleware de su ruta --}}
     @can('viewActiveDiets')
     <a class="nav-item {{ request()->routeIs('dashboard.nutrition') ? 'active' : '' }}" href="{{ route('dashboard.nutrition')}}" id="nav-nutricional">
@@ -35,6 +62,9 @@
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       Historial de Cambios
     </div> --}}
+    @canany(['viewDispatches', 'viewDiets', 'viewReports', 'generateFiles', 'managePrices'])
+    <div class="nav-section">Seguimiento</div>
+    @endcanany
     @can('viewDispatches')
     <a class="nav-item {{ request()->routeIs('dispatches.index') ? 'active' : '' }}" href="{{ route('dispatches.index') }}" id="nav-despachos">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
@@ -59,15 +89,17 @@
       Precios
     </a>
     @endcan
-    @can('viewUsers')
+    @canany(['viewUsers', 'manageRoles'])
     <div class="nav-section">Administración</div>
-    <a class="nav-item" href="{{ route('admin.users.index') }}" id="nav-usuarios">
+    @endcanany
+    @can('viewUsers')
+    <a class="nav-item {{ request()->routeIs('admin.users.*') ? 'active' : '' }}" href="{{ route('admin.users.index') }}" id="nav-usuarios">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
       Usuarios
     </a>
     @endcan
     @can('manageRoles')
-    <a class="nav-item" href="{{ route('admin.roles.index') }}" id="nav-roles">
+    <a class="nav-item {{ request()->routeIs('admin.roles.*') ? 'active' : '' }}" href="{{ route('admin.roles.index') }}" id="nav-roles">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
       Roles y permisos
     </a>
@@ -84,26 +116,37 @@
   </nav>
   <div class="sidebar-footer">
     <div class="user-info">
-      {{-- <div class="user-avatar" id="sidebarAvatar">?</div> --}}
-      {{-- <div>
-        <div class="user-name" id="sidebarName">—</div>
-        <div class="user-role" id="sidebarRole">—</div>
-      </div> --}}
-      <form action="{{ route('logout') }}" method="POST">
+      <a href="{{ route('profile.show') }}" class="user-profile-link {{ request()->routeIs('profile.show') ? 'active' : '' }}" title="Mi perfil">
+        <span class="user-avatar" aria-hidden="true">{{ $initials }}</span>
+        <span class="user-meta">
+          <span class="user-name">{{ $authUser?->name }}</span>
+          <span class="user-role">{{ $roleLabel }}</span>
+        </span>
+      </a>
+      <form action="{{ route('logout') }}" method="POST" id="logoutForm">
         @csrf
-        <button type="button" class="logout-btn" title="Cerrar sesión" onclick="event.preventDefault(); confirmarLogout()">
+        <button type="submit" class="logout-btn" title="Cerrar sesión"
+          onclick="return confirm('¿Estás seguro de que deseas cerrar sesión?')">
           <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Cerrar sesión
         </button>
       </form>
-      <script>
-        function confirmarLogout() {
-          if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
-            event.target.closest('form').submit();
-          }
-        }
-      </script>
     </div>
   </div>
 </aside>
 
+<script>
+  function openSidebar() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('sidebarBackdrop').classList.add('open');
+  }
 
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarBackdrop').classList.remove('open');
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeSidebar();
+  });
+</script>
