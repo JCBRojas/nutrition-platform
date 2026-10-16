@@ -4,16 +4,7 @@
         <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-4">
 
             @php
-                $activeDiets = $diets->where('status', \App\Models\Diet::ACTIVE);
-                $cancelledDiets = $diets->where('status', \App\Models\Diet::CANCELLED);
-                $finishedDiets = $diets->where('status', \App\Models\Diet::FINISHED);
-                // Indicadores solo sobre dietas activas
-                $isolatedCount = $activeDiets
-                    ->filter(fn($diet) => optional($diet->currentVersion)->isolation === 'Sí')
-                    ->count();
-                $changesCount = $activeDiets
-                    ->filter(fn($diet) => ! in_array(optional($diet->currentVersion)->changes, [null, '', 'NA'], true))
-                    ->count();
+                // $activeDiets, $cancelledDiets y $finishedDiets son paginadores (ver DietController::nutritionDashboard)
                 // Etiquetas de components/form-diet.blade.php (select "Cambios en la dieta")
                 $changeLabels = ['NA' => '—', 'con_cambios' => 'Con cambios', 'aislado' => 'Se aisló', 'ya_no_aislado' => 'Ya no está aislado', 'cancelada' => 'Cancelada', 'finalizada' => 'Finalizada (alta)'];
                 // Tablas de dietas cerradas (mismas columnas)
@@ -21,7 +12,6 @@
                     'cancelled' => ['diets' => $cancelledDiets, 'date' => 'Cancelada', 'tag' => 'tag-cancel', 'label' => 'Cancelada', 'empty' => 'No hay dietas canceladas.'],
                     'finished' => ['diets' => $finishedDiets, 'date' => 'Alta', 'tag' => 'tag-finished', 'label' => 'Finalizada', 'empty' => 'No hay dietas finalizadas. Usa el botón de alta en una dieta activa cuando el paciente salga de la institución.'],
                 ];
-                $todayCount = $diets->filter(fn($diet) => optional($diet->created_at)->isToday())->count();
             @endphp
 
             @if (session('success'))
@@ -33,44 +23,45 @@
                 </div>
             @endif
 
-            <div x-data="{ tab: 'active' }">
+            <div x-data="{ tab: @js($tab) }"
+                x-init="$watch('tab', value => { const url = new URL(location.href); url.searchParams.set('tab', value); history.replaceState(null, '', url); })">
                 <div class="stats-grid">
                     <div class="stat-card green">
                         <div class="stat-label">Dietas activas</div>
-                        <div class="stat-value">{{ $activeDiets->count() }}</div>
+                        <div class="stat-value">{{ $activeDiets->total() }}</div>
                         <div class="stat-sub">Pacientes en seguimiento</div>
                     </div>
                     <div class="stat-card red">
                         <div class="stat-label">Canceladas</div>
-                        <div class="stat-value">{{ $cancelledDiets->count() }}</div>
-                        <div class="stat-sub">{{ $finishedDiets->count() }} finalizadas por alta</div>
+                        <div class="stat-value">{{ $cancelledDiets->total() }}</div>
+                        <div class="stat-sub">{{ $finishedDiets->total() }} finalizadas por alta</div>
                     </div>
                     <div class="stat-card amber">
                         <div class="stat-label">En aislamiento</div>
-                        <div class="stat-value">{{ $isolatedCount }}</div>
+                        <div class="stat-value">{{ $stats['isolated'] }}</div>
                         <div class="stat-sub">Dietas activas con protocolo especial</div>
                     </div>
                     <div class="stat-card blue">
                         <div class="stat-label">Con cambios</div>
-                        <div class="stat-value">{{ $changesCount }}</div>
+                        <div class="stat-value">{{ $stats['changes'] }}</div>
                         <div class="stat-sub">Activas cuya última versión trae cambios</div>
                     </div>
                 </div>
 
                 <div class="tabs-wrapper mb-4">
-                    <button type="button" class="btn btn-info" :class="tab === 'active' ? 'active' : ''"
-                        @click="tab = 'active'">
-                        Activas ({{ $activeDiets->count() }})
+                    <button type="button" class="btn btn-ghost tab-btn" :class="tab === 'active' && 'active'"
+                        :aria-pressed="tab === 'active'" @click="tab = 'active'">
+                        Activas ({{ $activeDiets->total() }})
                     </button>
 
-                    <button type="button" class="btn btn-ghost" :class="tab === 'cancelled' ? 'active' : ''"
-                        @click="tab = 'cancelled'">
-                        Canceladas ({{ $cancelledDiets->count() }})
+                    <button type="button" class="btn btn-ghost tab-btn" :class="tab === 'cancelled' && 'active'"
+                        :aria-pressed="tab === 'cancelled'" @click="tab = 'cancelled'">
+                        Canceladas ({{ $cancelledDiets->total() }})
                     </button>
 
-                    <button type="button" class="btn btn-ghost" :class="tab === 'finished' ? 'active' : ''"
-                        @click="tab = 'finished'">
-                        Finalizadas ({{ $finishedDiets->count() }})
+                    <button type="button" class="btn btn-ghost tab-btn" :class="tab === 'finished' && 'active'"
+                        :aria-pressed="tab === 'finished'" @click="tab = 'finished'">
+                        Finalizadas ({{ $finishedDiets->total() }})
                     </button>
 
                     <button class="btn btn-primary float-right" id="btnRegistrar" onclick="openCreateModal()">
@@ -92,7 +83,7 @@
                     <div class="table-responsive">
 
                         <!-- TABLA ACTIVA -->
-                        <div x-show="tab === 'active'">
+                        <div x-show="tab === 'active'" @unless ($tab === 'active') x-cloak @endunless>
                             <table class="table-wrap">
                                 <thead>
                                     <tr>
@@ -108,7 +99,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach ($activeDiets as $diet)
+                                    @forelse ($activeDiets as $diet)
                                         <tr>
                                             <td>
                                                 <span class="room-badge">{{ $diet->habitation }}</span>
@@ -203,14 +194,19 @@
                                             </td>
 
                                         </tr>
-                                    @endforeach
+                                    @empty
+                                        <tr>
+                                            <td colspan="9" class="empty">No hay dietas activas.</td>
+                                        </tr>
+                                    @endforelse
                                 </tbody>
                             </table>
+                            {{ $activeDiets->onEachSide(1)->links('pagination.table') }}
                         </div>
 
                         <!-- TABLAS CANCELADAS / FINALIZADAS -->
-                        @foreach ($closedTabs as $tabKey => $tab)
-                            <div x-show="tab === '{{ $tabKey }}'" x-cloak>
+                        @foreach ($closedTabs as $tabKey => $closed)
+                            <div x-show="tab === '{{ $tabKey }}'" @unless ($tab === $tabKey) x-cloak @endunless>
                                 <table class="table-wrap">
                                     <thead>
                                         <tr>
@@ -219,13 +215,13 @@
                                             <th>Tiempo</th>
                                             <th>Consistencia</th>
                                             <th>Observaciones</th>
-                                            <th>{{ $tab['date'] }}</th>
+                                            <th>{{ $closed['date'] }}</th>
                                             <th>Por</th>
                                             <th class="text-right">Estado</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @forelse ($tab['diets'] as $diet)
+                                        @forelse ($closed['diets'] as $diet)
                                             @php $version = $diet->currentVersion; @endphp
                                             <tr class="cancelled-row">
                                                 <td><span class="room-badge">{{ $diet->habitation }}</span></td>
@@ -249,7 +245,7 @@
                                                 <td>{{ $version?->updatedBy?->name ?? '—' }}</td>
                                                 <td class="text-right">
                                                     <div class="row-actions">
-                                                        <span class="tag {{ $tab['tag'] }}">{{ $tab['label'] }}</span>
+                                                        <span class="tag {{ $closed['tag'] }}">{{ $closed['label'] }}</span>
                                                         <a href="{{ route('diets.history', ['dieta' => $diet->id]) }}" class="btn btn-ghost btn-sm btn-icon"
                                                             title="Ver historial" aria-label="Ver historial de {{ $diet->name_patient }}">
                                                             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
@@ -259,11 +255,12 @@
                                             </tr>
                                         @empty
                                             <tr>
-                                                <td colspan="8" class="empty">{{ $tab['empty'] }}</td>
+                                                <td colspan="8" class="empty">{{ $closed['empty'] }}</td>
                                             </tr>
                                         @endforelse
                                     </tbody>
                                 </table>
+                                {{ $closed['diets']->onEachSide(1)->links('pagination.table') }}
                             </div>
                         @endforeach
                     </div>
@@ -285,6 +282,10 @@
     .btn-icon:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .tag-finished { background: var(--blue-light); color: var(--blue); font-weight: 600; }
     .table-wrap td:last-child { width: 1%; white-space: nowrap; }
+    .pagination a.page-btn { color: inherit; text-decoration: none; }
+    .pagination span.page-btn[aria-disabled] { opacity: .35; cursor: default; }
+    /* Pestaña seleccionada */
+    .tab-btn.active { background: var(--blue-light); color: var(--blue); border-color: #bfdbfe; font-weight: 600; }
 </style>
 <script>
     const SPEC_LABELS = @json($specLabels);

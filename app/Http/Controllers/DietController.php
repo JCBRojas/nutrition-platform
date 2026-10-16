@@ -41,14 +41,44 @@ class DietController extends Controller
         return redirect()->back()->with('success', 'Dieta actualizada');
     }
 
-    public function nutritionDashboard()
-    {
-        $diets = Diet::with('currentVersion.updatedBy')->latest('updated_at')->get();
-        $specLabels = config('specifications.labels');
-        $consistencyLabels = config('consistency.labels');
-        $foodLabels = config('timeFood.labels');
+    /** Pestañas del panel del nutricionista: estado de la dieta y nombre del parámetro de página */
+    private const DASHBOARD_TABS = [
+        'active' => ['status' => Diet::ACTIVE, 'page' => 'activas'],
+        'cancelled' => ['status' => Diet::CANCELLED, 'page' => 'canceladas'],
+        'finished' => ['status' => Diet::FINISHED, 'page' => 'finalizadas'],
+    ];
 
-        return view('dashboard', compact('diets', 'specLabels', 'foodLabels', 'consistencyLabels'));
+    private const DASHBOARD_PER_PAGE = 15;
+
+    public function nutritionDashboard(Request $request)
+    {
+        $tab = array_key_exists($request->query('tab'), self::DASHBOARD_TABS) ? $request->query('tab') : 'active';
+
+        // Una página independiente por pestaña; los enlaces conservan la pestaña abierta
+        $pages = collect(self::DASHBOARD_TABS)->map(fn ($config, $key) => Diet::with('currentVersion.updatedBy')
+            ->where('status', $config['status'])
+            ->latest('updated_at')
+            ->paginate(self::DASHBOARD_PER_PAGE, ['*'], $config['page'])
+            ->withQueryString()
+            ->appends('tab', $key));
+
+        // Indicadores sobre todas las dietas activas, no solo la página visible
+        $activeVersions = Diet::active()->with('currentVersion')->get()->pluck('currentVersion')->filter();
+        $stats = [
+            'isolated' => $activeVersions->where('isolation', 'Sí')->count(),
+            'changes' => $activeVersions->reject(fn ($v) => in_array($v->changes, [null, '', 'NA'], true))->count(),
+        ];
+
+        return view('dashboard', [
+            'tab' => $tab,
+            'activeDiets' => $pages['active'],
+            'cancelledDiets' => $pages['cancelled'],
+            'finishedDiets' => $pages['finished'],
+            'stats' => $stats,
+            'specLabels' => config('specifications.labels'),
+            'consistencyLabels' => config('consistency.labels'),
+            'foodLabels' => config('timeFood.labels'),
+        ]);
     }
 
     public function dispatcherDashboard()
