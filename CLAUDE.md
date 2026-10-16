@@ -64,7 +64,7 @@ Cada archivo expone `labels` (texto UI) y `colors` (clases Tailwind). Las claves
 
 1. **Crear** `POST /dietas` → `DietService::createDiet` → `Diet` + `DietHistory` v1 (`modify='no'`).
 2. **Editar** `PUT /dietas/{diet}/version` → `createNewVersion`: `lockForUpdate` sobre max(version), inserta v+1 con `modify='si'`. Si `changes === 'cancelada'` → `diets.status = false`.
-3. **Despacho** `DietsManager`: compara versión actual vs anterior (`detectChanges`) y resalta; `confirmChanges($historyId)` pone `modify='no'`.
+3. **Despacho** `DietsManager` (`wire:poll.3s.keep-alive`): toda versión nueva (edición, cancelación o alta) queda `modify='si'` = cambio sin confirmar. Se lista primero, con banner, contador en las pestañas y en el título del navegador; al llegar por el poll dispara `diet-changes-arrived` (sonido Web Audio + notificación del navegador si el despachador pulsó "Activar alertas"). Compara la versión actual contra la **última confirmada** (cambios acumulados). `confirmChanges($dietId)` (permiso `confirmDelivery`) → `DietService::confirmChanges` pone `modify='no'` en todas las versiones pendientes de la dieta. La v1 se crea con `modify='no'` (las dietas nuevas no alertan). La migración `2026_10_18_000000_confirm_old_closing_versions` confirma los cierres de más de un día para no alertar por históricos.
 4. **Reportes** `GET /diet-reports` y `/entrega/index` → `nutritionReport()` (totales diarios/mensuales por tiempo de comida sobre la última versión de dietas activas).
 
 5. **Finalizar (alta)** `PATCH /dietas/{diet}/finalizar` (`diets.finish`, permiso `editDiets`) → `DietService::finishDiet`: versión copia con `changes='finalizada'` y `status=FINISHED`. No borra nada. Sale de las dietas activas (pestaña "Finalizadas" del nutricionista; el despachador la ve en "Canceladas y finalizadas"). Cancelar y finalizar solo aplican a dietas activas (`closeDiet`). `Diet::CLOSING_CHANGES` (`cancelada`, `finalizada`) marca el fin del conteo en el reporte y la facturación. Para filtrar activas, usar `Diet::active()` / `isActive()`.
@@ -87,7 +87,7 @@ Corregido el 2026-10-15: columnas `modify`/`confirmed` (migración idempotente),
 Pendiente:
 - Claves de `timeFood` inconsistentes entre `config/timeFood.php` (`mediamanana`, `merienda`) y `components/form-diet.blade.php` (`media_manana`, sin `merienda`). Unificar y migrar los datos.
 - `resources/views/navigation-menu.blade.php` no se usa (el layout incluye `navigation.blade.php`) y referencia rutas inexistentes (`dashboard`, `dietas.canceladas`, `historial.index`, `costos.index`).
-- `DietsManager::confirmRecord` (`diets.confirmed`) no está conectado a ninguna vista.
+- `diets.confirmed` no se usa (se eliminó `DietsManager::confirmRecord`; la confirmación del despachador es `diet_histories.modify`).
 - Tests de auth fallan sin `npm run build` (falta el manifest de Vite) y sin `APP_KEY` en el entorno de tests.
 
 ---
@@ -192,6 +192,7 @@ Requiere `QUEUE_CONNECTION=database` (+ `php artisan queue:table && migrate`) y 
 
 ### Implementado: reporte nutricional + Excel del mes
 
+- **Regla del alta** (`docs/bussiness-rules/facturacion-alta-paciente.md`, obligatoria en reportes, facturación, Excel, PDF e indicadores): el día del alta solo cuentan los tiempos con hora en `config('timeFood.schedule')` igual o anterior a la hora del alta (alta 15:00 → desayuno y almuerzo, no cena); los tiempos sin horario (fraccionada) no cuentan ese día. Implementada en `DietReportService::activeDietsByDay()`, que devuelve por dieta y día la lista `meals` que cuenta: usar esa lista, **no** `timeFood` de la versión. El día de una cancelación sigue sin contarse (cierre del día). Tests: `tests/Feature/DischargeMealCutoffTest.php`.
 - `app/Services/Reports/DietReportService.php` — fuente única de datos:
   - `monthlyCensus($mes)`: **última versión × días**. Cada dieta usa su última versión registrada hasta el cierre del mes (sin la versión `cancelada`, que es copia). Sus tiempos de comida cuentan 1 bandeja por cada día activo: desde la creación (v1) hasta la cancelación (versión `cancelada` o, si es antigua, `diets.updated_at`), evaluado al cierre de cada día. Las versiones intermedias **no** se usan. Devuelve `days`, `totals`, `totalTrays`, `dietDays`, `avgDailyDiets`, `consistency`, `specifications`, `isolationDays` y `perDiet`.
   - `monthlyHistory($mes, 6)`, `currentSnapshot()` (dietas activas hoy) y `mealLabels()`/`label()` (etiquetas de `config`, con respaldo legible para claves fuera del catálogo).
@@ -249,6 +250,13 @@ Nombres de archivo con fecha local: `produccion_2026-10-15_0630.pdf` (`now('Amer
 - Rol `jefe_nutricion`: `viewDiets`, `viewReports`, `generateFiles`, `managePrices`; al iniciar sesión va a `prices.index`.
 - `navigation.blade.php`: cada enlace se condiciona con el mismo rol o permiso que exige su ruta (`@role` / `@can`), para no mostrar enlaces que terminan en 403.
 - Login (`auth/login.blade.php`): página independiente con CSS propio (sin Tailwind ni Vite), tema claro/oscuro con tokens en `:root`, `localStorage('nt-theme')` y respeto de `prefers-color-scheme`. Muestra la línea de servicios del día según `config('timeFood.schedule')`.
+
+## 7c. Paginación de tablas
+
+Skill `.claude/skills/table-pagination`: 15 por página, parámetros `page` y `per_page` (`App\Support\Pagination::perPage()` acepta 15/30/50; cualquier otro → 15), control común `resources/views/pagination/table.blade.php` (Anterior/Siguiente, números, selector de página, "1–15 de N registros"; en Livewire `->links('pagination.table', ['livewire' => true])`). Los filtros se conservan (`withQueryString()` / `#[Url]`) y al cambiar un filtro se vuelve a la página 1.
+- Panel del nutricionista: `?tab=active|cancelled|finished`; `page` aplica a la pestaña abierta y al cambiar de pestaña se quita de la URL.
+- Despachador, historial (`DietHistoryViewer`) y usuarios: Livewire `WithPagination`.
+- No se paginan tablas de agregados o catálogos (reportes, facturación, precios, matriz de roles).
 
 ## 8. Convenciones
 

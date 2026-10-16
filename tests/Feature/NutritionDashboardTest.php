@@ -61,11 +61,11 @@ class NutritionDashboardTest extends TestCase
 
         $first = $this->dashboard();
         $this->assertStringContainsString('Activas (17)', $first);
-        $this->assertStringContainsString('Mostrando 1–15 de 17', $first);
+        $this->assertStringContainsString('1–15 de 17 registros', $first);
         $this->assertSame(15, substr_count($first, 'id="modalEditOverlay'));
 
-        $second = $this->dashboard(['activas' => 2, 'tab' => 'active']);
-        $this->assertStringContainsString('Mostrando 16–17 de 17', $second);
+        $second = $this->dashboard(['page' => 2, 'tab' => 'active']);
+        $this->assertStringContainsString('16–17 de 17 registros', $second);
         $this->assertSame(2, substr_count($second, 'id="modalEditOverlay'));
     }
 
@@ -75,7 +75,7 @@ class NutritionDashboardTest extends TestCase
 
         $html = html_entity_decode($this->dashboard(['tab' => 'cancelled']));
         $this->assertStringContainsString('tab: \'cancelled\'', $html);
-        $this->assertMatchesRegularExpression('/activas=2[^"]*tab=active|tab=active[^"]*activas=2/', $html);
+        $this->assertMatchesRegularExpression('/page=2[^"]*tab=active|tab=active[^"]*page=2/', $html);
     }
 
     public function test_unknown_tab_falls_back_to_active(): void

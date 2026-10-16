@@ -7,6 +7,7 @@ use App\Models\Diet;
 use App\Models\DietHistory;
 use App\Services\DietService;
 use App\Services\Reports\DietReportService;
+use App\Support\Pagination;
 use Illuminate\Http\Request;
 
 class DietController extends Controller
@@ -41,24 +42,24 @@ class DietController extends Controller
         return redirect()->back()->with('success', 'Dieta actualizada');
     }
 
-    /** Pestañas del panel del nutricionista: estado de la dieta y nombre del parámetro de página */
+    /** Pestañas del panel del nutricionista => estado de la dieta */
     private const DASHBOARD_TABS = [
-        'active' => ['status' => Diet::ACTIVE, 'page' => 'activas'],
-        'cancelled' => ['status' => Diet::CANCELLED, 'page' => 'canceladas'],
-        'finished' => ['status' => Diet::FINISHED, 'page' => 'finalizadas'],
+        'active' => Diet::ACTIVE,
+        'cancelled' => Diet::CANCELLED,
+        'finished' => Diet::FINISHED,
     ];
-
-    private const DASHBOARD_PER_PAGE = 15;
 
     public function nutritionDashboard(Request $request)
     {
         $tab = array_key_exists($request->query('tab'), self::DASHBOARD_TABS) ? $request->query('tab') : 'active';
+        $perPage = Pagination::perPage($request->query('per_page'));
 
-        // Una página independiente por pestaña; los enlaces conservan la pestaña abierta
-        $pages = collect(self::DASHBOARD_TABS)->map(fn ($config, $key) => Diet::with('currentVersion.updatedBy')
-            ->where('status', $config['status'])
+        // ?page= aplica a la pestaña abierta; las demás muestran su primera página.
+        // Los enlaces de cada tabla llevan su pestaña y conservan los demás parámetros.
+        $pages = collect(self::DASHBOARD_TABS)->map(fn ($status, $key) => Diet::with('currentVersion.updatedBy')
+            ->where('status', $status)
             ->latest('updated_at')
-            ->paginate(self::DASHBOARD_PER_PAGE, ['*'], $config['page'])
+            ->paginate($perPage, ['*'], 'page', $key === $tab ? null : 1)
             ->withQueryString()
             ->appends('tab', $key));
 

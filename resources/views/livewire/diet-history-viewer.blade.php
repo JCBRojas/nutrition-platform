@@ -56,6 +56,7 @@
                         <div class="empty" style="padding:24px">No hay dietas con estos filtros.</div>
                     @endforelse
                 </div>
+                {{ $diets->onEachSide(0)->links('pagination.table', ['livewire' => true]) }}
             </div>
 
             {{-- ===================== LÍNEA DE TIEMPO ===================== --}}

@@ -123,6 +123,16 @@ class DietService
         });
     }
 
+    /**
+     * El despachador confirma que vio los cambios de la dieta antes de entregarla:
+     * marca todas sus versiones pendientes (modify = 'si') como confirmadas.
+     * Es el único campo de DietHistory que se modifica.
+     */
+    public function confirmChanges(Diet $diet): int
+    {
+        return $diet->history()->where('modify', 'si')->update(['modify' => 'no']);
+    }
+
     private function setDietCanceled(Diet $diet): bool
     {
         return $diet->update([

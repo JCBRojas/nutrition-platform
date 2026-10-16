@@ -24,7 +24,7 @@
             @endif
 
             <div x-data="{ tab: @js($tab) }"
-                x-init="$watch('tab', value => { const url = new URL(location.href); url.searchParams.set('tab', value); history.replaceState(null, '', url); })">
+                x-init="$watch('tab', value => { const url = new URL(location.href); url.searchParams.set('tab', value); url.searchParams.delete('page'); history.replaceState(null, '', url); })">
                 <div class="stats-grid">
                     <div class="stat-card green">
                         <div class="stat-label">Dietas activas</div>
@@ -282,8 +282,6 @@
     .btn-icon:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .tag-finished { background: var(--blue-light); color: var(--blue); font-weight: 600; }
     .table-wrap td:last-child { width: 1%; white-space: nowrap; }
-    .pagination a.page-btn { color: inherit; text-decoration: none; }
-    .pagination span.page-btn[aria-disabled] { opacity: .35; cursor: default; }
     /* Pestaña seleccionada */
     .tab-btn.active { background: var(--blue-light); color: var(--blue); border-color: #bfdbfe; font-weight: 600; }
 </style>

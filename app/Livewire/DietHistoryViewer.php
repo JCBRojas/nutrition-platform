@@ -4,13 +4,17 @@ namespace App\Livewire;
 
 use App\Models\Diet;
 use App\Services\DietHistoryService;
+use App\Support\Pagination;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.app')]
 class DietHistoryViewer extends Component
 {
+    use WithPagination;
+
     #[Url(as: 'dieta', except: null)]
     public ?int $dietId = null;
 
@@ -19,6 +23,17 @@ class DietHistoryViewer extends Component
 
     #[Url(as: 'estado', except: 'all')]
     public string $status = 'all'; // all | active | cancelled | finished
+
+    #[Url(as: 'per_page', except: Pagination::PER_PAGE)]
+    public int $perPage = Pagination::PER_PAGE;
+
+    public function updated(string $property): void
+    {
+        if (in_array($property, ['search', 'status', 'perPage'], true)) {
+            $this->perPage = Pagination::perPage($this->perPage);
+            $this->resetPage();
+        }
+    }
 
     public function select(int $id): void
     {
@@ -36,8 +51,7 @@ class DietHistoryViewer extends Component
                 ->where('habitation', 'like', "%{$this->search}%")
                 ->orWhere('name_patient', 'like', "%{$this->search}%")))
             ->orderByDesc('updated_at')
-            ->limit(40)
-            ->get();
+            ->paginate(Pagination::perPage($this->perPage));
 
         $selected = $this->dietId ? Diet::find($this->dietId) : null;
 

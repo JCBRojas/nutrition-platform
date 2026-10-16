@@ -102,16 +102,18 @@ class FinishDietTest extends TestCase
     public function test_report_and_billing_stop_counting_after_discharge(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-10-10 15:00:00'));
-        $this->finish(); // alta el 10 a las 15:00 → cuenta días 1–9
+        $this->finish(); // alta el 10 a las 15:00 → días 1–9 completos + desayuno y almuerzo del 10
         $this->travelTo(CarbonImmutable::parse('2026-10-15 12:00:00'));
 
         $census = app(DietReportService::class)->monthlyCensus(CarbonImmutable::parse('2026-10-01'));
-        $this->assertSame(9, $census['totals']['desayuno']);
+        $this->assertSame(10, $census['totals']['desayuno']);
+        $this->assertSame(10, $census['totals']['almuerzo']);
         $this->assertSame(0, app(DietReportService::class)->currentSnapshot()['totalActiveDiets']);
 
         $billing = app(BillingService::class)->monthly(CarbonImmutable::parse('2026-10-01'));
         $row = collect($billing['rows'])->first(fn ($r) => $r['type'] === 'normal' && $r['service'] === 'almuerzo');
-        $this->assertSame(9, $row['count']);
+        $this->assertSame(10, $row['count']);
+        $this->assertSame(1, $row['days'][10]);
     }
 
     public function test_history_marks_the_discharge(): void

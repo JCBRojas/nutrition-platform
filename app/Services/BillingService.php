@@ -13,7 +13,8 @@ use InvalidArgumentException;
  * Facturación mensual por tipo de dieta × servicio (formato "Facturación ... UCI.xlsx").
  *
  * - Conteo: misma regla que el reporte nutricional (DietReportService::activeDietsByDay):
- *   última versión de cada dieta × días activa.
+ *   última versión de cada dieta × días activa. El día del alta solo se facturan los
+ *   servicios anteriores a la hora del alta (docs/bussiness-rules/facturacion-alta-paciente.md).
  * - Tipo: diet_histories.billing_type de esa versión. Sin tipo → se lista en 'unassigned'.
  * - Refrigerios de un tipo sin esa fila → config('billing.snack_type') (Entrecomidas).
  * - Fraccionada no se factura (no está en config('billing.services')).
@@ -120,7 +121,7 @@ class BillingService
         foreach ($this->reports->activeDietsByDay($start) as $day) {
             $d = (int) $day['date']->format('j');
 
-            foreach ($day['diets'] as ['diet' => $diet, 'version' => $version]) {
+            foreach ($day['diets'] as ['diet' => $diet, 'version' => $version, 'meals' => $meals]) {
                 $type = $version->billing_type;
 
                 if (! $type || ! isset($types[$type])) {
@@ -130,7 +131,7 @@ class BillingService
                     continue;
                 }
 
-                foreach ($this->reports->mealsOf($version) as $meal) {
+                foreach ($meals as $meal) {
                     if (! isset($services[$meal])) {
                         continue; // fraccionada: no se factura
                     }

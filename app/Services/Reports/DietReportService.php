@@ -18,6 +18,12 @@ use Illuminate\Support\Str;
  * versión es una bandeja por cada día en que la dieta estuvo activa: desde su
  * creación hasta su cancelación o alta, evaluado al cierre del día (23:59:59
  * America/Bogota). Las versiones intermedias no se usan.
+ *
+ * Día del alta (docs/bussiness-rules/facturacion-alta-paciente.md): solo cuentan
+ * los tiempos de comida programados (config('timeFood.schedule')) a la hora del
+ * alta o antes. Alta 15:00 con desayuno, almuerzo y cena → desayuno y almuerzo.
+ * Los tiempos sin horario (fraccionada) no cuentan ese día. Aplica a todo lo que
+ * sale de aquí: reporte, Excel, facturación e indicadores.
  */
 class DietReportService
 {
@@ -29,7 +35,9 @@ class DietReportService
      * por cada día, las dietas activas con su versión de referencia (última versión
      * no cancelada hasta el cierre del mes).
      *
-     * @return Collection<int, array{date: CarbonImmutable, diets: array<int, array{diet: Diet, version: DietHistory}>}>
+     * `meals` son los tiempos que cuentan ese día (en el día del alta, solo los anteriores a la hora del alta).
+     *
+     * @return Collection<int, array{date: CarbonImmutable, diets: array<int, array{diet: Diet, version: DietHistory, meals: array<int, string>}>}>
      */
     public function activeDietsByDay(CarbonInterface $month): Collection
     {
@@ -43,18 +51,30 @@ class DietReportService
 
         $days = collect();
         for ($day = $start; $day <= $lastDay; $day = $day->addDay()) {
-            $dayEnd = $day->endOfDay();
             $days->push([
                 'date' => $day,
                 'diets' => $diets
-                    ->filter(fn ($d) => $d['from'] <= $dayEnd && ($d['until'] === null || $d['until'] > $dayEnd))
-                    ->map(fn ($d) => ['diet' => $d['diet'], 'version' => $d['reference']])
+                    ->map(fn ($d) => $this->dayEntry($d, $day))
+                    ->filter()
                     ->values()
                     ->all(),
             ]);
         }
 
         return $days;
+    }
+
+    /**
+     * Tiempos de comida que se sirven antes de $moment el mismo día (regla del alta).
+     * Un tiempo cuenta si su hora programada es igual o anterior a la del alta.
+     */
+    public function mealsServedBefore(array $meals, CarbonInterface $moment): array
+    {
+        $schedule = config('timeFood.schedule', []);
+        $moment = CarbonImmutable::parse($moment);
+
+        return array_values(array_filter($meals, fn ($meal) => isset($schedule[$meal])
+            && $moment->startOfDay()->setTimeFromTimeString($schedule[$meal]) <= $moment));
     }
 
     /**
@@ -79,8 +99,7 @@ class DietReportService
         foreach ($this->activeDietsByDay($start) as $active) {
             $row = ['date' => $active['date'], 'diets' => 0, 'meals' => $emptyMeals, 'total' => 0];
 
-            foreach ($active['diets'] as ['diet' => $diet, 'version' => $version]) {
-                $meals = $this->normalizeMeals($version->timeFood);
+            foreach ($active['diets'] as ['diet' => $diet, 'version' => $version, 'meals' => $meals]) {
                 $row['diets']++;
 
                 $perDiet[$diet->id] ??= [
@@ -197,26 +216,54 @@ class DietReportService
     }
 
     /**
+     * Entrada de una dieta en un día, o null si ese día no cuenta.
+     * Activa al cierre del día → todos sus tiempos. Día del alta → solo los
+     * tiempos anteriores a la hora del alta. Día de la cancelación → no cuenta
+     * (regla vigente: se evalúa al cierre del día).
+     */
+    private function dayEntry(array $d, CarbonImmutable $day): ?array
+    {
+        $dayEnd = $day->endOfDay();
+
+        if ($d['from'] > $dayEnd || ($d['until'] !== null && $d['until'] < $day)) {
+            return null;
+        }
+
+        $meals = $this->normalizeMeals($d['reference']->timeFood);
+
+        if ($d['until'] !== null && $d['until'] <= $dayEnd) {
+            $meals = $d['closing'] === 'finalizada' ? $this->mealsServedBefore($meals, $d['until']) : [];
+        }
+
+        return $meals === [] && $d['until'] !== null && $d['until'] <= $dayEnd
+            ? null
+            : ['diet' => $d['diet'], 'version' => $d['reference'], 'meals' => $meals];
+    }
+
+    /**
      * Ciclo de vida de una dieta respecto al mes:
      * reference = última versión no cancelada creada hasta el cierre del mes,
-     * from = creación (v1), until = momento de cancelación o null si sigue activa.
+     * from = creación (v1), until = momento de cancelación o alta (null si sigue activa),
+     * closing = 'cancelada' | 'finalizada' | null.
      */
     private function lifecycle(Diet $diet, CarbonImmutable $monthEnd): array
     {
         $history = $diet->history;
         $closing = $history->first(fn ($h) => in_array($h->changes, Diet::CLOSING_CHANGES, true));
 
-        $until = match (true) {
-            $closing !== null => $closing->created_at,            // cancelación o alta
-            ! $diet->isActive() => $diet->updated_at,             // cancelaciones antiguas sin versión 'cancelada'
-            default => null,
+        [$until, $kind] = match (true) {
+            $closing !== null => [$closing->created_at, $closing->changes],  // cancelación o alta
+            // cierres antiguos sin versión de cierre
+            ! $diet->isActive() => [$diet->updated_at, $diet->status === Diet::FINISHED ? 'finalizada' : 'cancelada'],
+            default => [null, null],
         };
 
         return [
             'diet' => $diet,
             'reference' => $history->last(fn ($h) => ! in_array($h->changes, Diet::CLOSING_CHANGES, true) && $h->created_at <= $monthEnd),
             'from' => $history->first()?->created_at ?? $diet->created_at,
-            'until' => $until,
+            'until' => $until ? CarbonImmutable::parse($until) : null,
+            'closing' => $kind,
         ];
     }
 

@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Actions\Fortify\PasswordValidationRules;
 use App\Models\User;
 use App\Services\UserService;
+use App\Support\Pagination;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
@@ -31,18 +32,29 @@ class UsersManager extends Component
     #[Url(except: 'active')]
     public string $status = 'active'; // active | inactive | trashed | all
 
+    #[Url(as: 'per_page', except: Pagination::PER_PAGE)]
+    public int $perPage = Pagination::PER_PAGE;
+
     /* ===================== FORMULARIO ===================== */
 
     public bool $showForm = false;
+
     public ?int $editingId = null;
 
     public string $name = '';
+
     public string $email = '';
+
     public string $phone = '';
+
     public string $password = '';
+
     public string $password_confirmation = '';
+
     public bool $is_active = true;
+
     public bool $whatsapp_opt_in = false;
+
     public array $roles = [];
 
     public function mount(): void
@@ -96,6 +108,7 @@ class UsersManager extends Component
             $user ? $service->update($user, $data) : $service->create($data);
         } catch (ValidationException $e) {
             $this->addError('user', $e->validator->errors()->first());
+
             return;
         }
 
@@ -181,7 +194,7 @@ class UsersManager extends Component
                 ->orWhere('phone', 'like', "%{$this->search}%")))
             ->when($allRoles->contains($this->role), fn ($q) => $q->role($this->role))
             ->orderBy('name')
-            ->paginate(15);
+            ->paginate(Pagination::perPage($this->perPage));
 
         return view('livewire.admin.users-manager', [
             'users' => $users,

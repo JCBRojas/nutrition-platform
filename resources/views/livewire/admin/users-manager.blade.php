@@ -125,7 +125,7 @@
             </div>
         </div>
 
-        <div class="mt-4">{{ $users->links() }}</div>
+        {{ $users->onEachSide(1)->links('pagination.table', ['livewire' => true]) }}
     </div>
 
     {{-- ===================== MODAL FORMULARIO ===================== --}}
