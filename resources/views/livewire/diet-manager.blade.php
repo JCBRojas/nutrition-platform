@@ -6,7 +6,8 @@
 <div class="content" id="page-despacho" wire:poll.3s.keep-alive="checkPending"
     x-data="{ toast: null, flash: false }"
     x-on:diet-changes-arrived.window="toast = 'Nuevo cambio en hab. ' + $event.detail.rooms.join(', ') + '. Confírmalo antes de entregar.'; flash = true; setTimeout(() => flash = false, 2400)"
-    x-on:diet-change-confirmed.window="toast = 'Cambio de la hab. ' + $event.detail.room + ' confirmado.'">
+    x-on:diet-change-confirmed.window="toast = 'Cambio de la hab. ' + $event.detail.room + ' confirmado.'"
+    x-on:diet-dispatched.window="toast = $event.detail.message">
 
     <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-4">
 
@@ -46,6 +47,7 @@
                                 </span>
                                 <span class="dm-meta">v{{ $v?->version }} · {{ $fmtTime($v?->created_at) }}</span>
                                 <button type="button" class="btn btn-sm dm-confirm" wire:click="confirmChanges({{ $p->id }})"
+                                    wire:confirm="¿Confirmas que revisaste el cambio de la habitación {{ $p->habitation }} ({{ $p->name_patient }})? Dejará de aparecer como pendiente."
                                     wire:loading.attr="disabled" wire:target="confirmChanges({{ $p->id }})"
                                     aria-label="Confirmar cambio de la habitación {{ $p->habitation }}">
                                     Confirmar
@@ -83,12 +85,53 @@
                 aria-label="Buscar habitación o paciente" wire:model.live.debounce.300ms="search">
         </div>
 
+        {{-- ===================== DESPACHO ===================== --}}
+        @if ($tab === 'active')
+            @can('confirmDelivery')
+                <div class="dm-dispatchbar">
+                    <label class="dm-dispatch-meal">
+                        <span>Servicio a despachar</span>
+                        <select class="filter-input" wire:model.live="meal" aria-label="Tiempo de comida a despachar">
+                            @foreach ($meals as $key => $label)
+                                <option value="{{ $key }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <p class="dm-meta dm-dispatch-help">
+                        Marca las dietas listas y pulsa «Despachar». El nutricionista confirma la recepción; solo lo recibido se factura.
+                    </p>
+                    <button type="button" class="btn btn-sm dm-dispatch-btn" wire:click="dispatchSelected"
+                        @disabled(count($selected) === 0)
+                        wire:confirm="¿Despachar {{ count($selected) }} dieta(s) de {{ mb_strtolower($meals[$meal] ?? '') }}? Se notificará al nutricionista para que confirme la recepción."
+                        wire:loading.attr="disabled" wire:target="dispatchSelected">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                        Despachar seleccionadas ({{ count($selected) }})
+                    </button>
+                </div>
+            @endcan
+        @endif
+
         {{-- ===================== TABLA ===================== --}}
+        @if ($tab === 'active')
+            <x-meal-legend />
+        @endif
         <div class="card">
             <div class="table-responsive">
                 <table class="table-wrap dm-table">
                     <thead>
                         <tr>
+                            @if ($tab === 'active')
+                                <th class="dm-check">
+                                    @can('confirmDelivery')
+                                        @if ($dispatchable)
+                                            <input type="checkbox" class="dm-checkbox" aria-label="Seleccionar todas las dietas listas de esta página"
+                                                @checked(array_diff($dispatchable, $selected) === [])
+                                                wire:click="togglePage(@js($dispatchable))">
+                                        @endif
+                                    @endcan
+                                    <span class="dm-check-title">Despacho</span>
+                                </th>
+                            @endif
                             <th>Estado</th>
                             <th>Hab.</th>
                             <th>Paciente</th>
@@ -114,7 +157,31 @@
                                 $chg = $diet->pending_changes;
                                 $isPending = (bool) $diet->has_pending;
                             @endphp
-                            <tr wire:key="diet-{{ $diet->id }}-{{ $v?->version }}" @class(['dm-row-pending' => $isPending, 'cancelled-row' => $tab === 'closed' && ! $isPending])>
+                            <tr wire:key="diet-{{ $diet->id }}-{{ $v?->version }}" @class(['dm-row-pending' => $isPending, 'dm-row-selected' => in_array($diet->id, $selected), 'cancelled-row' => $tab === 'closed' && ! $isPending])>
+                                {{-- DESPACHO DEL SERVICIO ELEGIDO --}}
+                                @if ($tab === 'active')
+                                    @php $record = $diet->dispatch_record; @endphp
+                                    <td class="dm-check">
+                                        @if ($record)
+                                            <span @class(['dm-dispatch-state', 'dm-received' => $record->isReceived()])>
+                                                {{ $record->isReceived() ? 'Recibida' : 'Despachada' }}
+                                            </span>
+                                            <div class="dm-meta">
+                                                {{ $record->isReceived() ? $record->received_at->format('g:i a') : $record->dispatched_at->format('g:i a').' · esperando recepción' }}
+                                            </div>
+                                        @elseif ($diet->dispatch_block)
+                                            <span class="dm-meta" title="{{ $diet->dispatch_block }}">{{ $diet->dispatch_block }}</span>
+                                        @else
+                                            @can('confirmDelivery')
+                                                <label class="dm-check-label">
+                                                    <input type="checkbox" class="dm-checkbox" value="{{ $diet->id }}" wire:model.live="selected"
+                                                        aria-label="Lista para despachar: habitación {{ $diet->habitation }}">
+                                                    <span>Lista</span>
+                                                </label>
+                                            @endcan
+                                        @endif
+                                    </td>
+                                @endif
                                 {{-- ESTADO / CONFIRMACIÓN --}}
                                 <td class="dm-status">
                                     @if ($isPending)
@@ -123,6 +190,7 @@
                                             {{ $tab === 'active' ? 'Cambio sin confirmar' : 'Cierre sin confirmar' }}
                                         </span>
                                         <button type="button" class="btn btn-sm dm-confirm" wire:click="confirmChanges({{ $diet->id }})"
+                                            wire:confirm="¿Confirmas que revisaste el cambio de la habitación {{ $diet->habitation }} ({{ $diet->name_patient }})? Dejará de aparecer como pendiente."
                                             wire:loading.attr="disabled" wire:target="confirmChanges({{ $diet->id }})"
                                             aria-label="Confirmar cambio de la habitación {{ $diet->habitation }}">
                                             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
@@ -140,7 +208,7 @@
                                 <td>{{ $diet->name_patient }}</td>
 
                                 @if ($tab === 'active')
-                                    <x-dispatch-tags :items="$v?->timeFood ?? []" :labels="$foodLabels" :change="$chg['timeFood'] ?? null" class="tag-tiempo" />
+                                    <x-dispatch-tags :items="$v?->timeFood ?? []" :labels="$foodLabels" :change="$chg['timeFood'] ?? null" :delivery="$delivery[$diet->id] ?? []" class="tag-tiempo" />
                                     <x-dispatch-tags :items="$v?->consistency ?? []" :labels="$consistencyLabels" :change="$chg['consistency'] ?? null" class="tag-consist" />
                                     <x-dispatch-tags :items="$v?->specifications ?? []" :labels="$specLabels" :change="$chg['specifications'] ?? null" class="tag-espec" />
 
@@ -158,10 +226,6 @@
                                     </td>
                                     <td class="dm-last">
                                         <span class="tag dm-type">{{ $changeLabel($v) }}</span>
-                                        <div class="dm-meta">v{{ $v?->version }} · {{ $fmtTime($v?->created_at) }}</div>
-                                        @if ($v?->updatedBy)
-                                            <div class="dm-meta">por {{ $v->updatedBy->name }}</div>
-                                        @endif
                                     </td>
                                 @else
                                     <td>{{ $v?->observations ?: '—' }}</td>
@@ -178,7 +242,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $tab === 'active' ? 9 : 7 }}" class="empty">
+                                <td colspan="{{ $tab === 'active' ? 10 : 7 }}" class="empty">
                                     @if ($search !== '')
                                         No hay dietas que coincidan con «{{ $search }}».
                                     @else
@@ -205,13 +269,13 @@
         .dm-alerts-on { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-muted); }
 
         /* Banner de cambios pendientes */
-        .dm-alert { border: 2px solid var(--amber); border-left-width: 8px; background: var(--amber-light); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+        .dm-alert { border: 2px solid #bfdbfe; border-left: 8px solid var(--blue); background: #eff6ff; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
         .dm-alert-flash { animation: dm-flash .6s ease-in-out 4; }
-        .dm-alert-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: #8a4b00; margin-bottom: 10px; }
+        .dm-alert-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: #1e3a8a; margin-bottom: 10px; }
         .dm-alert-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
         .dm-alert-list li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #fff; border-radius: 8px; padding: 6px 10px; }
         .dm-alert-who { font-weight: 600; }
-        .dm-alert-list .dm-confirm { margin-left: auto; }
+        .dm-alert-list .dm-confirm { margin-left: auto; background: var(--blue); }
 
         .dm-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
         .dm-toolbar .tabs-wrapper { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -244,7 +308,23 @@
         .dm-toast { position: fixed; right: 20px; bottom: 20px; z-index: 300; max-width: min(360px, calc(100vw - 32px)); background: var(--text); color: #fff; padding: 12px 16px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.2); font-size: 13.5px; }
 
         @keyframes dm-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .5; } }
-        @keyframes dm-flash { 0%, 100% { box-shadow: none; } 50% { box-shadow: 0 0 0 6px rgba(212, 137, 42, .35); } }
+        @keyframes dm-flash { 0%, 100% { box-shadow: none; } 50% { box-shadow: 0 0 0 6px rgba(74, 127, 203, .35); } }
+
+        /* Despacho */
+        .dm-dispatchbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 12px; margin-bottom: 12px; border: 1px solid var(--border, #e5e7eb); border-radius: 10px; background: var(--surface2, #f8fafc); }
+        .dm-dispatch-meal { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+        .dm-dispatch-meal select { min-width: 150px; }
+        .dm-dispatch-help { flex: 1 1 240px; margin: 0; }
+        .dm-dispatch-btn { background: var(--accent, #2f855a); color: #fff; font-weight: 700; border: 0; }
+        .dm-dispatch-btn[disabled] { opacity: .5; cursor: not-allowed; }
+        .dm-dispatch-btn:focus-visible, .dm-checkbox:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .dm-check { min-width: 110px; }
+        .dm-check-title { margin-left: 6px; }
+        .dm-check-label { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; cursor: pointer; }
+        .dm-checkbox { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent, #2f855a); }
+        .dm-dispatch-state { display: inline-block; font-size: 12px; font-weight: 700; color: var(--blue); }
+        .dm-dispatch-state.dm-received { color: #166534; }
+        .dm-row-selected td { background: #f0fdf4; }
         @media (prefers-reduced-motion: reduce) { .dm-dot, .dm-alert-flash { animation: none; } }
         @media (max-width: 640px) { .dm-search { max-width: none; width: 100%; } .dm-alert-list .dm-confirm { margin-left: 0; } }
     </style>

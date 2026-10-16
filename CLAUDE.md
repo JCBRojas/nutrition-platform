@@ -69,14 +69,18 @@ Cada archivo expone `labels` (texto UI) y `colors` (clases Tailwind). Las claves
 
 5. **Finalizar (alta)** `PATCH /dietas/{diet}/finalizar` (`diets.finish`, permiso `editDiets`) → `DietService::finishDiet`: versión copia con `changes='finalizada'` y `status=FINISHED`. No borra nada. Sale de las dietas activas (pestaña "Finalizadas" del nutricionista; el despachador la ve en "Canceladas y finalizadas"). Cancelar y finalizar solo aplican a dietas activas (`closeDiet`). `Diet::CLOSING_CHANGES` (`cancelada`, `finalizada`) marca el fin del conteo en el reporte y la facturación. Para filtrar activas, usar `Diet::active()` / `isActive()`.
 
+6. **Despacho y recepción** (`diet_dispatches`, `App\Services\DispatchService`): un registro por **dieta × día × tiempo de comida**. En `DietsManager` el despachador elige el servicio (`?servicio=`, por defecto el último cuya hora de `timeFood.schedule` ya pasó), marca las dietas listas (checkbox) y pulsa «Despachar» (permiso `confirmDelivery`). No se puede despachar una dieta con cambios sin confirmar, que no incluya ese tiempo o ya despachada. El nutricionista ve los pendientes en `App\Livewire\DispatchReceipts` (arriba de su panel, `wire:poll.5s`) y confirma la recepción (permiso `confirmReception` → `received_at`/`received_by`).
+7. **Excel solo de lo recibido**: desde `config('dispatch.required_from')` (`DISPATCH_REQUIRED_FROM`, por defecto `2026-10-15`; vacío = no se exige) `DietReportService::activeDietsByDay($mes, receivedOnly: true)` solo deja los tiempos con despacho recibido (los demás en `withheld`). Lo usan `BillingService::monthly()` (aviso `notReceived` en `/precios`) y el Excel del reporte (`monthlyCensus($mes, receivedOnly: true)`, fila «Tiempos sin recepción» en la hoja Resumen). Los días anteriores al corte conservan la regla previa. La vista web del reporte nutricional sigue mostrando lo programado.
+8. **Despachos del día** `/despachos` (`dispatches.index`, permiso `viewDispatches`: nutricionista y despachador): `App\Livewire\DispatchLog`, filtros `?fecha=`, `servicio`, `estado` (`pending`/`received`), `q`; resumen por tiempo (`DispatchService::daySummary`). La columna Tiempo de las tablas del despachador y del nutricionista marca el estado del día con `x-meal-tag` (`DispatchService::statusByDiet`): turquesa sólido con check = entregado (recibido), borde punteado con camión = despachado sin recibir; leyenda `x-meal-legend`.
+
 Nunca se edita un `DietHistory` existente (salvo el flag `modify`); todo cambio clínico es una nueva versión.
 
 ### Roles y permisos (seeder `RolesAndPermissionsSeeder`)
 
 | Rol | Permisos |
 |---|---|
-| `nutricionista` | `createDiets`, `editDiets`, `viewDiets`, `viewReports` |
-| `despachador` | `viewDiets`, `confirmDelivery`, `generateFiles` |
+| `nutricionista` | `createDiets`, `editDiets`, `viewDiets`, `viewReports`, `confirmReception`, `viewDispatches` |
+| `despachador` | `viewDiets`, `confirmDelivery`, `viewDispatches`, `generateFiles` |
 
 Convención de permisos: **camelCase verbo+Recurso**. Middleware alias registrados: `role`, `permission`, `role_or_permission`.
 

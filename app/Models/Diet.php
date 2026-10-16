@@ -59,6 +59,11 @@ class Diet extends Model
         return $this->hasMany(DietHistory::class, 'diet_id');
     }
 
+    public function dispatches()
+    {
+        return $this->hasMany(DietDispatch::class);
+    }
+
     public function currentVersion()
     {
         return $this->hasOne(DietHistory::class, 'diet_id')->latestOfMany('version');

@@ -22,6 +22,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'viewDiets',
             'viewReports',
             'confirmDelivery',
+            'confirmReception',
+            'viewDispatches',
             'generateFiles',
             'viewUsers',
             'createUsers',
@@ -37,9 +39,9 @@ class RolesAndPermissionsSeeder extends Seeder
 
         // Roles
         $nutricionista = Role::firstOrCreate(['name' => 'nutricionista']);
-        $despachador   = Role::firstOrCreate(['name' => 'despachador']);
-        $admin         = Role::firstOrCreate(['name' => 'admin']);
-        $jefe          = Role::firstOrCreate(['name' => 'jefe_nutricion']);
+        $despachador = Role::firstOrCreate(['name' => 'despachador']);
+        $admin = Role::firstOrCreate(['name' => 'admin']);
+        $jefe = Role::firstOrCreate(['name' => 'jefe_nutricion']);
 
         // Admin: todos los permisos
         $admin->syncPermissions(Permission::all());
@@ -50,6 +52,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'editDiets',
             'viewDiets',
             'viewReports',
+            'confirmReception',
+            'viewDispatches',
         ]);
 
         // Asignar permisos a Jefe de nutrición
@@ -64,6 +68,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $despachador->syncPermissions([
             'viewDiets',
             'confirmDelivery',
+            'viewDispatches',
             'generateFiles',
         ]);
 
@@ -78,7 +83,7 @@ class RolesAndPermissionsSeeder extends Seeder
             ['email' => 'camilo@gmail.com'],
             [
                 'name' => 'Nutricionista Principal',
-                'password' => Hash::make('nutricionista')
+                'password' => Hash::make('nutricionista'),
             ]
         );
 
@@ -89,7 +94,7 @@ class RolesAndPermissionsSeeder extends Seeder
             ['email' => 'mariana@gmail.com'],
             [
                 'name' => 'Despachador Principal',
-                'password' => Hash::make('despachador')
+                'password' => Hash::make('despachador'),
             ]
         );
 
@@ -100,7 +105,7 @@ class RolesAndPermissionsSeeder extends Seeder
             ['email' => env('SEED_ADMIN_EMAIL', 'admin@nutritrack.com')],
             [
                 'name' => 'Administrador',
-                'password' => Hash::make('admin1234') // Cambia esto a $password si deseas usar la contraseña generada
+                'password' => Hash::make('admin1234'), // Cambia esto a $password si deseas usar la contraseña generada
             ]
         );
 
@@ -111,7 +116,7 @@ class RolesAndPermissionsSeeder extends Seeder
             ['email' => env('SEED_JEFE_EMAIL', 'jefe@nutritrack.com')],
             [
                 'name' => 'Jefe de Nutrición',
-                'password' => Hash::make($password)
+                'password' => Hash::make($password),
             ]
         );
 

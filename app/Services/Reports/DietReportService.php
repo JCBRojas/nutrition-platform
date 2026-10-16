@@ -3,6 +3,7 @@
 namespace App\Services\Reports;
 
 use App\Models\Diet;
+use App\Models\DietDispatch;
 use App\Models\DietHistory;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -24,6 +25,11 @@ use Illuminate\Support\Str;
  * alta o antes. Alta 15:00 con desayuno, almuerzo y cena → desayuno y almuerzo.
  * Los tiempos sin horario (fraccionada) no cuentan ese día. Aplica a todo lo que
  * sale de aquí: reporte, Excel, facturación e indicadores.
+ *
+ * Solo lo recibido ($receivedOnly, Excel y facturación): desde config('dispatch.required_from')
+ * cada tiempo cuenta únicamente si tiene despacho con recepción confirmada por el
+ * nutricionista (diet_days sin ningún tiempo recibido no cuentan). Los tiempos
+ * descartados se devuelven en `withheld` de cada día.
  */
 class DietReportService
 {
@@ -36,10 +42,11 @@ class DietReportService
      * no cancelada hasta el cierre del mes).
      *
      * `meals` son los tiempos que cuentan ese día (en el día del alta, solo los anteriores a la hora del alta).
+     * Con $receivedOnly, solo los despachados y recibidos; `withheld` lista los descartados.
      *
-     * @return Collection<int, array{date: CarbonImmutable, diets: array<int, array{diet: Diet, version: DietHistory, meals: array<int, string>}>}>
+     * @return Collection<int, array{date: CarbonImmutable, withheld: array<int, string>, diets: array<int, array{diet: Diet, version: DietHistory, meals: array<int, string>}>}>
      */
-    public function activeDietsByDay(CarbonInterface $month): Collection
+    public function activeDietsByDay(CarbonInterface $month, bool $receivedOnly = false): Collection
     {
         $start = CarbonImmutable::parse($month)->startOfMonth();
         $end = $start->endOfMonth();
@@ -49,19 +56,51 @@ class DietReportService
             ->map(fn (Diet $diet) => $this->lifecycle($diet, $end))
             ->filter(fn ($d) => $d['reference'] !== null);
 
+        $requiredFrom = $receivedOnly ? self::dispatchRequiredFrom() : null;
+        $received = $requiredFrom ? $this->receivedKeys($start, $end) : [];
+
         $days = collect();
         for ($day = $start; $day <= $lastDay; $day = $day->addDay()) {
-            $days->push([
-                'date' => $day,
-                'diets' => $diets
-                    ->map(fn ($d) => $this->dayEntry($d, $day))
-                    ->filter()
-                    ->values()
-                    ->all(),
-            ]);
+            $entries = $diets->map(fn ($d) => $this->dayEntry($d, $day))->filter()->values();
+            $withheld = [];
+
+            if ($requiredFrom && $day >= $requiredFrom) {
+                $entries = $entries->map(function ($entry) use ($day, $received, &$withheld) {
+                    $kept = array_values(array_filter($entry['meals'], fn ($meal) => isset($received[self::dispatchKey($entry['diet']->id, $day, $meal)])));
+                    array_push($withheld, ...array_diff($entry['meals'], $kept));
+
+                    return $kept === [] ? null : ['meals' => $kept] + $entry;
+                })->filter()->values();
+            }
+
+            $days->push(['date' => $day, 'diets' => $entries->all(), 'withheld' => $withheld]);
         }
 
         return $days;
+    }
+
+    /** Fecha desde la que se exige despacho recibido, o null si no se exige */
+    public static function dispatchRequiredFrom(): ?CarbonImmutable
+    {
+        $from = config('dispatch.required_from');
+
+        return $from ? CarbonImmutable::parse($from)->startOfDay() : null;
+    }
+
+    public static function dispatchKey(int $dietId, CarbonInterface $date, string $meal): string
+    {
+        return $dietId.'|'.$date->format('Y-m-d').'|'.$meal;
+    }
+
+    /** Despachos recibidos del rango como conjunto "dietId|Y-m-d|meal" => true */
+    private function receivedKeys(CarbonInterface $from, CarbonInterface $to): array
+    {
+        return DietDispatch::received()
+            ->whereDate('service_date', '>=', $from->toDateString())
+            ->whereDate('service_date', '<=', $to->toDateString())
+            ->get(['diet_id', 'service_date', 'meal'])
+            ->mapWithKeys(fn ($d) => [self::dispatchKey($d->diet_id, $d->service_date, $d->meal) => true])
+            ->all();
     }
 
     /**
@@ -85,7 +124,8 @@ class DietReportService
         return $this->normalizeMeals($version->timeFood);
     }
 
-    public function monthlyCensus(CarbonInterface $month): array
+    /** Con $receivedOnly (Excel) solo cuentan los tiempos despachados y recibidos */
+    public function monthlyCensus(CarbonInterface $month, bool $receivedOnly = false): array
     {
         $start = CarbonImmutable::parse($month)->startOfMonth();
         $emptyMeals = array_fill_keys(self::MEALS, 0);
@@ -96,7 +136,10 @@ class DietReportService
         $specifications = [];
         $isolationDays = 0;
 
-        foreach ($this->activeDietsByDay($start) as $active) {
+        $withheld = 0;
+
+        foreach ($this->activeDietsByDay($start, $receivedOnly) as $active) {
+            $withheld += count($active['withheld']);
             $row = ['date' => $active['date'], 'diets' => 0, 'meals' => $emptyMeals, 'total' => 0];
 
             foreach ($active['diets'] as ['diet' => $diet, 'version' => $version, 'meals' => $meals]) {
@@ -155,6 +198,8 @@ class DietReportService
             'consistency' => $consistency,
             'specifications' => $specifications,
             'perDiet' => collect($perDiet)->sortBy('habitation', SORT_NATURAL)->values(),
+            'receivedOnly' => $receivedOnly,
+            'notReceived' => $withheld,
         ];
     }
 

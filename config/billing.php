@@ -20,12 +20,12 @@ return [
     | de config/timeFood.php. "Comida" del formato = cena. Fraccionada no se factura.
     */
     'services' => [
-        'desayuno'    => 'DESAYUNO',
+        'desayuno' => 'DESAYUNO',
         'mediamanana' => 'M.MAÑANA',
-        'almuerzo'    => 'ALMUERZO',
-        'algo'        => 'ALGO',
-        'cena'        => 'COMIDA',
-        'merienda'    => 'MERIENDA',
+        'almuerzo' => 'ALMUERZO',
+        'algo' => 'ALGO',
+        'cena' => 'COMIDA',
+        'merienda' => 'MERIENDA',
     ],
 
     // Refrigerios de tipos sin esa fila se facturan en este tipo

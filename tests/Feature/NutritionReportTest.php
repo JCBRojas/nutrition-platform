@@ -22,6 +22,8 @@ class NutritionReportTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Conteo sin exigir despacho; el Excel con solo lo recibido se prueba en DispatchFlowTest
+        config(['dispatch.required_from' => null]);
         $this->withoutVite();
         $this->seed(RolesAndPermissionsSeeder::class);
         $this->nutritionist = User::role('nutricionista')->first();

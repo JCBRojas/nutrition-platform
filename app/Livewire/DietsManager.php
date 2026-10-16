@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Diet;
 use App\Models\DietHistory;
 use App\Services\DietService;
+use App\Services\DispatchService;
 use App\Support\Pagination;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -33,6 +34,13 @@ class DietsManager extends Component
     #[Url(as: 'per_page', except: Pagination::PER_PAGE)]
     public int $perPage = Pagination::PER_PAGE;
 
+    /** Tiempo de comida que se está despachando (clave de config/timeFood.php) */
+    #[Url(as: 'servicio')]
+    public string $meal = '';
+
+    /** IDs de dietas marcadas como listas para despachar */
+    public array $selected = [];
+
     /** Claves "dieta:versión" pendientes que ya se mostraron; para alertar solo por las nuevas */
     public array $knownPending = [];
 
@@ -45,7 +53,14 @@ class DietsManager extends Component
     {
         $this->tab = in_array($this->tab, ['active', 'closed'], true) ? $this->tab : 'active';
         $this->perPage = Pagination::perPage($this->perPage);
+        $this->meal = array_key_exists($this->meal, DispatchService::meals()) ? $this->meal : DispatchService::currentMeal();
         $this->knownPending = $this->pendingKeys();
+    }
+
+    public function updatedMeal(): void
+    {
+        $this->meal = array_key_exists($this->meal, DispatchService::meals()) ? $this->meal : DispatchService::currentMeal();
+        $this->selected = [];
     }
 
     public function updatedSearch(): void
@@ -62,6 +77,7 @@ class DietsManager extends Component
     public function setTab(string $tab): void
     {
         $this->tab = $tab === 'closed' ? 'closed' : 'active';
+        $this->selected = [];
         $this->resetPage();
     }
 
@@ -103,6 +119,42 @@ class DietsManager extends Component
         $this->dispatch('diet-change-confirmed', room: $diet->habitation);
     }
 
+    /* ===================== DESPACHAR ===================== */
+
+    /** Marca o desmarca todas las dietas despachables de la página visible */
+    public function togglePage(array $ids): void
+    {
+        $ids = array_map('intval', $ids);
+        $this->selected = array_map('intval', $this->selected);
+        $this->selected = array_diff($ids, $this->selected) === []
+            ? array_values(array_diff($this->selected, $ids))
+            : array_values(array_unique([...$this->selected, ...$ids]));
+    }
+
+    public function dispatchSelected(DispatchService $dispatches): void
+    {
+        abort_unless(auth()->user()?->can('confirmDelivery'), 403);
+
+        if ($this->selected === []) {
+            $this->dispatch('diet-dispatched', message: 'Selecciona al menos una dieta lista para despachar.');
+
+            return;
+        }
+
+        $result = $dispatches->dispatch($this->selected, $this->meal, auth()->id());
+        $this->selected = [];
+
+        $meal = mb_strtolower(DispatchService::meals()[$this->meal]);
+        $message = $result['dispatched']
+            ? count($result['dispatched'])." dieta(s) despachada(s) ({$meal}). El nutricionista debe confirmar la recepción."
+            : 'No se despachó ninguna dieta.';
+        foreach ($result['skipped'] as $room => $reason) {
+            $message .= " Hab. {$room}: {$reason}";
+        }
+
+        $this->dispatch('diet-dispatched', message: $message);
+    }
+
     /* ===================== RENDER ===================== */
 
     public function render()
@@ -124,12 +176,31 @@ class DietsManager extends Component
             $diet->pending_changes = $diet->has_pending ? $this->changesSinceConfirmed($diet) : [];
         });
 
+        // Estado de despacho de cada dieta de la página en el tiempo elegido
+        $dispatchService = app(DispatchService::class);
+        $dispatches = $this->tab === 'active'
+            ? $dispatchService->dispatchesFor($diets->getCollection()->pluck('id')->all(), $this->meal)
+            : collect();
+        $diets->getCollection()->each(function (Diet $diet) use ($dispatches, $dispatchService) {
+            $diet->dispatch_record = $dispatches->get($diet->id);
+            $diet->dispatch_block = $this->tab === 'active' ? $dispatchService->blockReason($diet, $this->meal) : null;
+        });
+        $dispatchable = $diets->getCollection()
+            ->filter(fn (Diet $d) => ! $d->dispatch_record && ! $d->dispatch_block)
+            ->pluck('id')
+            ->all();
+        // Lo que dejó de ser despachable (cambio nuevo, ya despachado) se desmarca solo
+        $this->selected = array_values(array_filter(array_map('intval', $this->selected), fn ($id) => ! $diets->getCollection()->contains('id', $id) || in_array($id, $dispatchable, true)));
+
         $pending = $this->pending();
         $this->pendingCount = $pending->count();
 
         return view('livewire.diet-manager', [
             'diets' => $diets,
             'pending' => $pending,
+            'meals' => DispatchService::meals(),
+            'delivery' => $this->tab === 'active' ? $dispatchService->statusByDiet($diets->getCollection()->pluck('id')->all()) : [],
+            'dispatchable' => $dispatchable,
             'counts' => [
                 'active' => Diet::active()->count(),
                 'closed' => Diet::whereIn('status', [Diet::CANCELLED, Diet::FINISHED])->count(),

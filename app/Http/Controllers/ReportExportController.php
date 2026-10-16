@@ -20,7 +20,7 @@ class ReportExportController extends Controller
         $month = self::monthFromRequest($request);
 
         return Excel::download(
-            new MonthlySummaryExport($this->reports->monthlyCensus($month)),
+            new MonthlySummaryExport($this->reports->monthlyCensus($month, receivedOnly: true)), // solo lo despachado y recibido
             sprintf('reporte-nutricional_%s_%s.xlsx', $month->format('Y-m'), now()->format('Ymd_Hi')),
         );
     }

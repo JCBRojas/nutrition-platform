@@ -6,6 +6,7 @@ use App\Http\Controllers\ReportExportController;
 use App\Livewire\Admin\RolesManager;
 use App\Livewire\Admin\UsersManager;
 use App\Livewire\DietHistoryViewer;
+use App\Livewire\DispatchLog;
 use App\Livewire\PricesManager;
 use Illuminate\Support\Facades\Route;
 
@@ -35,7 +36,7 @@ Route::middleware([
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
-     // 🔵 NUTRICIONISTA
+    // 🔵 NUTRICIONISTA
     Route::middleware(['role:nutricionista'])->group(function () {
         Route::get('/dashboard/nutrition', [DietController::class, 'nutritionDashboard'])
             ->name('dashboard.nutrition');
@@ -60,6 +61,10 @@ Route::middleware([
         Route::get('/precios', PricesManager::class)->name('prices.index');
         Route::get('/facturacion/excel', [BillingExportController::class, 'excel'])->name('billing.excel');
     });
+
+    Route::get('/despachos', DispatchLog::class)
+        ->middleware('permission:viewDispatches')
+        ->name('dispatches.index');
 
     Route::get('/historial', DietHistoryViewer::class)
         ->middleware('permission:viewDiets')->name('diets.history');

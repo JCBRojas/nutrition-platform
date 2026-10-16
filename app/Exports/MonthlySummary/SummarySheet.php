@@ -26,8 +26,14 @@ class SummarySheet implements FromArray, ShouldAutoSize, WithStrictNullCompariso
             ['Días contados', $c['daysCounted']],
             ['Generado', now()->format('d/m/Y h:i a')],
             ['Método', 'Última versión de cada dieta × días activa en el mes'],
-            [''],
         ];
+
+        if ($c['receivedOnly'] ?? false) {
+            $from = DietReportService::dispatchRequiredFrom();
+            $rows[] = ['Criterio', 'Solo tiempos despachados por cocina y recibidos por el nutricionista'.($from ? ' (desde el '.$from->format('d/m/Y').')' : '')];
+            $rows[] = ['Tiempos sin recepción (no contados)', $c['notReceived']];
+        }
+        $rows[] = [''];
 
         $rows = $this->section($rows, ['Tiempo de comida', 'Bandejas', '% del total']);
         foreach (DietReportService::mealLabels() as $key => $label) {

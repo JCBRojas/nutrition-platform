@@ -177,6 +177,13 @@
                     </div>
                 @endif
 
+                @if ($monthly['notReceived'] > 0)
+                    <div class="pm-warn" role="alert">
+                        <strong>{{ $monthly['notReceived'] }} servicio(s) sin despacho recibido en {{ $monthName }}.</strong>
+                        No se facturan: solo cuentan los tiempos que cocina despachó y el nutricionista confirmó como recibidos.
+                    </div>
+                @endif
+
                 @if (count($monthly['missingPrices']))
                     <div class="pm-warn" role="alert">
                         <strong>{{ count($monthly['missingPrices']) }} fila(s) con servicios sin precio en {{ $monthName }}.</strong>

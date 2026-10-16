@@ -23,12 +23,15 @@
                 </div>
             @endif
 
+            {{-- Despachos de cocina por confirmar recepción (se actualiza solo) --}}
+            <livewire:dispatch-receipts />
+
             <div x-data="{ tab: @js($tab) }"
                 x-init="$watch('tab', value => { const url = new URL(location.href); url.searchParams.set('tab', value); url.searchParams.delete('page'); history.replaceState(null, '', url); })">
                 <div class="stats-grid">
                     <div class="stat-card green">
                         <div class="stat-label">Dietas activas</div>
-                        <div class="stat-value">{{ $activeDiets->total() }}</div>
+                        <div class="stat-value">{{ $activeTotal }}</div>
                         <div class="stat-sub">Pacientes en seguimiento</div>
                     </div>
                     <div class="stat-card red">
@@ -51,7 +54,7 @@
                 <div class="tabs-wrapper mb-4">
                     <button type="button" class="btn btn-ghost tab-btn" :class="tab === 'active' && 'active'"
                         :aria-pressed="tab === 'active'" @click="tab = 'active'">
-                        Activas ({{ $activeDiets->total() }})
+                        Activas ({{ $activeTotal }})
                     </button>
 
                     <button type="button" class="btn btn-ghost tab-btn" :class="tab === 'cancelled' && 'active'"
@@ -79,11 +82,27 @@
                     </div>
                 </div>
 
+
                 <div class="card">
                     <div class="table-responsive">
 
                         <!-- TABLA ACTIVA -->
                         <div x-show="tab === 'active'" @unless ($tab === 'active') x-cloak @endunless>
+                            {{-- Búsqueda en dietas activas (vuelve a la página 1) --}}
+                            <form method="get" action="{{ route('dashboard.nutrition') }}" class="nd-search" role="search">
+                                <input type="hidden" name="tab" value="active">
+                                @if (request('per_page'))
+                                    <input type="hidden" name="per_page" value="{{ request('per_page') }}">
+                                @endif
+                                <input type="search" name="q" value="{{ $search }}" class="filter-input"
+                                    placeholder="Buscar habitación o paciente" aria-label="Buscar dietas activas por habitación o paciente">
+                                <button type="submit" class="btn btn-ghost btn-sm">Buscar</button>
+                                @if ($search !== '')
+                                    <a href="{{ route('dashboard.nutrition', array_filter(['tab' => 'active', 'per_page' => request('per_page')])) }}" class="btn btn-ghost btn-sm">Limpiar</a>
+                                    <span class="nd-search-info">{{ $activeDiets->total() }} resultado(s) para «{{ $search }}»</span>
+                                @endif
+                                <x-meal-legend class="nd-legend" />
+                            </form>
                             <table class="table-wrap">
                                 <thead>
                                     <tr>
@@ -114,9 +133,8 @@
                                                 @endphp
 
                                                 @forelse ($items as $item)
-                                                    <span class="tag tag-tiempo">
-                                                        {{ $foodLabels[$item] ?? '' }}
-                                                    </span>
+                                                    <x-meal-tag :label="$foodLabels[$item] ?? ucfirst(str_replace('_', ' ', $item))"
+                                                        :status="$delivery[$diet->id][str_replace('_', '', mb_strtolower($item))] ?? null" />
                                                 @empty
                                                     <span>—</span>
                                                 @endforelse
@@ -196,7 +214,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="9" class="empty">No hay dietas activas.</td>
+                                            <td colspan="9" class="empty">{{ $search !== '' ? "No hay dietas activas que coincidan con «{$search}»." : 'No hay dietas activas.' }}</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -284,6 +302,12 @@
     .table-wrap td:last-child { width: 1%; white-space: nowrap; }
     /* Pestaña seleccionada */
     .tab-btn.active { background: var(--blue-light); color: var(--blue); border-color: #bfdbfe; font-weight: 600; }
+    /* Búsqueda de dietas activas */
+    .nd-search { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    .nd-search .filter-input { max-width: 280px; }
+    .nd-search-info { font-size: 12.5px; color: var(--text-muted); }
+    .nd-legend { margin: 0 0 0 auto; }
+    @media (max-width: 640px) { .nd-search .filter-input { max-width: none; flex: 1 1 100%; } .nd-legend { margin-left: 0; } }
 </style>
 <script>
     const SPEC_LABELS = @json($specLabels);

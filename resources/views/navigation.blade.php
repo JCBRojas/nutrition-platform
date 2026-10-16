@@ -35,6 +35,12 @@
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       Historial de Cambios
     </div> --}}
+    @can('viewDispatches')
+    <a class="nav-item {{ request()->routeIs('dispatches.index') ? 'active' : '' }}" href="{{ route('dispatches.index') }}" id="nav-despachos">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      Despachos del día
+    </a>
+    @endcan
     @can('viewDiets')
     <a class="nav-item {{ request()->routeIs('diets.history') ? 'active' : '' }}" href="{{ route('diets.history') }}" id="nav-historial">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>

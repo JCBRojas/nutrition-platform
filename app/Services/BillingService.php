@@ -19,6 +19,9 @@ use InvalidArgumentException;
  * - Refrigerios de un tipo sin esa fila → config('billing.snack_type') (Entrecomidas).
  * - Fraccionada no se factura (no está en config('billing.services')).
  * - Valor: cada día se valora con el precio vigente ese día (service_prices).
+ * - Desde config('dispatch.required_from') solo se factura el tiempo de comida despachado
+ *   por cocina y recibido por el nutricionista (activeDietsByDay con $receivedOnly).
+ *   Lo demás se informa en 'notReceived'.
  */
 class BillingService
 {
@@ -101,7 +104,7 @@ class BillingService
      *   rows: array<int, array{type: string, service: string, days: array<int, int>, count: int,
      *                          price: ?float, priceChanges: array, value: float, missingPriceTrays: int}>,
      *   serviceTotals: array<string, int>, total: float, totalTrays: int,
-     *   unassigned: Collection, missingPrices: array<int, string>
+     *   unassigned: Collection, missingPrices: array<int, string>, notReceived: int
      * }
      */
     public function monthly(CarbonInterface $month): array
@@ -117,9 +120,12 @@ class BillingService
             $counts["{$r['type']}.{$r['service']}"] = [];
         }
         $unassigned = [];
+        $notReceived = 0;
 
-        foreach ($this->reports->activeDietsByDay($start) as $day) {
+        foreach ($this->reports->activeDietsByDay($start, receivedOnly: true) as $day) {
             $d = (int) $day['date']->format('j');
+            // Servicios facturables sin despacho recibido (fraccionada no se factura)
+            $notReceived += count(array_filter($day['withheld'], fn ($meal) => isset($services[$meal])));
 
             foreach ($day['diets'] as ['diet' => $diet, 'version' => $version, 'meals' => $meals]) {
                 $type = $version->billing_type;
@@ -202,6 +208,7 @@ class BillingService
             'totalTrays' => array_sum($serviceTotals),
             'unassigned' => collect($unassigned)->values(),
             'missingPrices' => $missingPrices,
+            'notReceived' => $notReceived,
         ];
     }
 

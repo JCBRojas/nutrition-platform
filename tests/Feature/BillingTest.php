@@ -23,6 +23,8 @@ class BillingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Estas pruebas cubren el conteo sin exigir despacho; el despacho se prueba en DispatchFlowTest
+        config(['dispatch.required_from' => null]);
         $this->withoutVite();
         $this->seed(RolesAndPermissionsSeeder::class);
         $this->nutritionist = User::role('nutricionista')->firstOrFail();
