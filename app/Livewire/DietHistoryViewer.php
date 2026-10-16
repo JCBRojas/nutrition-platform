@@ -50,7 +50,8 @@ class DietHistoryViewer extends Component
             ->when($this->search !== '', fn ($q) => $q->where(fn ($q) => $q
                 ->where('habitation', 'like', "%{$this->search}%")
                 ->orWhere('name_patient', 'like', "%{$this->search}%")))
-            ->orderByDesc('updated_at')
+            ->orderByRoom()
+            ->orderByDesc('updated_at') // misma habitación: la dieta más reciente primero
             ->paginate(Pagination::perPage($this->perPage));
 
         $selected = $this->dietId ? Diet::find($this->dietId) : null;

@@ -97,7 +97,14 @@
                             @endforeach
                         </select>
                     </label>
-                    <p class="dm-meta dm-dispatch-help">
+                    <label class="dm-check-label dm-showall">
+                        <input type="checkbox" class="dm-checkbox" wire:model.live="showAll">
+                        <span>Mostrar todas las activas</span>
+                    </label>
+                    <p class="dm-meta dm-dispatch-help" role="status">
+                        @if ($counts['applies'] !== null)
+                            <strong>{{ $counts['applies'] }} de {{ $counts['active'] }}</strong> dietas aplican a {{ mb_strtolower($meals[$meal] ?? '') }} (se incluyen las que tienen cambios sin confirmar).
+                        @endif
                         Marca las dietas listas y pulsa «Despachar». El nutricionista confirma la recepción; solo lo recibido se factura.
                     </p>
                     <button type="button" class="btn btn-sm dm-dispatch-btn" wire:click="dispatchSelected"
@@ -246,7 +253,11 @@
                                     @if ($search !== '')
                                         No hay dietas que coincidan con «{{ $search }}».
                                     @else
-                                        {{ $tab === 'active' ? 'No hay dietas activas.' : 'No hay dietas canceladas ni finalizadas.' }}
+                                        @if ($tab === 'active' && $counts['applies'] === 0 && $counts['active'] > 0)
+                                            Ninguna dieta activa incluye {{ mb_strtolower($meals[$meal] ?? '') }}.
+                                        @else
+                                            {{ $tab === 'active' ? 'No hay dietas activas.' : 'No hay dietas canceladas ni finalizadas.' }}
+                                        @endif
                                     @endif
                                 </td>
                             </tr>
@@ -315,6 +326,8 @@
         .dm-dispatch-meal { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
         .dm-dispatch-meal select { min-width: 150px; }
         .dm-dispatch-help { flex: 1 1 240px; margin: 0; }
+        .dm-dispatch-help strong { color: var(--text); }
+        .dm-showall { font-weight: 600; }
         .dm-dispatch-btn { background: var(--accent, #2f855a); color: #fff; font-weight: 700; border: 0; }
         .dm-dispatch-btn[disabled] { opacity: .5; cursor: not-allowed; }
         .dm-dispatch-btn:focus-visible, .dm-checkbox:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

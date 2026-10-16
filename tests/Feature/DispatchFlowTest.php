@@ -6,6 +6,7 @@ use App\Exports\MonthlySummaryExport;
 use App\Livewire\DietsManager;
 use App\Livewire\DispatchLog;
 use App\Livewire\DispatchReceipts;
+use App\Livewire\NutritionDiets;
 use App\Models\Diet;
 use App\Models\DietDispatch;
 use App\Models\User;
@@ -68,7 +69,11 @@ class DispatchFlowTest extends TestCase
 
         Livewire::actingAs($this->dispatcher)->test(DietsManager::class)
             ->assertSet('meal', 'almuerzo')
+            ->assertDontSee('Paciente 103') // no incluye almuerzo: oculta por defecto
+            ->assertSee('2 de 3')
+            ->set('showAll', true)
             ->assertSee('No incluye almuerzo.')
+            ->set('showAll', false)
             ->call('togglePage', [$a->id, $b->id])
             ->assertSet('selected', [$a->id, $b->id])
             ->call('dispatchSelected')
@@ -248,7 +253,7 @@ class DispatchFlowTest extends TestCase
 
         Livewire::actingAs($this->nutritionist)->test(DispatchLog::class)
             ->assertSet('date', '2026-10-20')
-            ->assertSeeInOrder(['Paciente 802', 'Paciente 801']) // sin recibir primero
+            ->assertSeeInOrder(['Paciente 801', 'Paciente 802']) // por habitación
             ->assertSee('Esperando recepción')
             ->set('status', 'received')
             ->assertSee('Paciente 801')
@@ -264,5 +269,45 @@ class DispatchFlowTest extends TestCase
     public function test_users_without_permission_cannot_see_the_dispatch_log(): void
     {
         $this->actingAs(User::factory()->create())->get(route('dispatches.index'))->assertForbidden();
+    }
+
+    public function test_dispatcher_sees_only_diets_for_the_selected_service(): void
+    {
+        $this->diet('901', ['desayuno', 'cena']);
+        $this->diet('902', ['media_manana']); // clave antigua del formulario
+        $changed = $this->diet('903', ['cena']);
+        app(DietService::class)->createNewVersion($changed, ['timeFood' => ['desayuno'], 'billing_type' => 'normal', 'changes' => 'con_cambios'], $this->nutritionist->id);
+
+        Livewire::actingAs($this->dispatcher)->test(DietsManager::class)
+            ->set('meal', 'cena')
+            ->assertSee('Paciente 901')
+            ->assertDontSee('Paciente 902')
+            ->assertSee('Paciente 903') // quitó la cena, pero tiene un cambio sin confirmar
+            ->set('meal', 'mediamanana')
+            ->assertSee('Paciente 902')
+            ->assertDontSee('Paciente 901')
+            ->set('meal', 'merienda')
+            ->assertDontSee('Paciente 901')
+            ->assertDontSee('Paciente 902');
+    }
+
+    public function test_tables_are_sorted_by_room_in_natural_order(): void
+    {
+        foreach (['1001', '205', '12', '101'] as $room) {
+            $this->diet($room);
+        }
+
+        Livewire::actingAs($this->nutritionist)->test(NutritionDiets::class)
+            ->assertSeeInOrder(['Paciente 12', 'Paciente 101', 'Paciente 205', 'Paciente 1001']);
+
+        Livewire::actingAs($this->dispatcher)->test(DietsManager::class)
+            ->assertSeeInOrder(['Paciente 12', 'Paciente 101', 'Paciente 205', 'Paciente 1001']);
+
+        app(DispatchService::class)->dispatch(Diet::pluck('id')->all(), 'almuerzo', $this->dispatcher->id);
+
+        Livewire::actingAs($this->nutritionist)->test(DispatchLog::class)
+            ->assertSeeInOrder(['Paciente 12', 'Paciente 101', 'Paciente 205', 'Paciente 1001']);
+        Livewire::actingAs($this->nutritionist)->test(DispatchReceipts::class)
+            ->assertSeeInOrder(['Paciente 12', 'Paciente 101', 'Paciente 205', 'Paciente 1001']);
     }
 }

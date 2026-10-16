@@ -71,8 +71,7 @@ class DispatchLog extends Component
 
         $rows = $dispatches->dayQuery($date, $this->meal, $this->status, trim($this->search))
             ->with(['diet', 'version', 'dispatchedBy', 'receivedBy'])
-            ->orderByRaw('received_at is not null') // pendientes de recibir primero
-            ->latest('dispatched_at')
+            ->orderByRoom()
             ->paginate($this->perPage);
 
         return view('livewire.dispatch-log', [

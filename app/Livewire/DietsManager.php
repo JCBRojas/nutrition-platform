@@ -38,6 +38,10 @@ class DietsManager extends Component
     #[Url(as: 'servicio')]
     public string $meal = '';
 
+    /** false = en activas solo se listan las dietas que incluyen el servicio elegido */
+    #[Url(as: 'todas')]
+    public bool $showAll = false;
+
     /** IDs de dietas marcadas como listas para despachar */
     public array $selected = [];
 
@@ -61,6 +65,12 @@ class DietsManager extends Component
     {
         $this->meal = array_key_exists($this->meal, DispatchService::meals()) ? $this->meal : DispatchService::currentMeal();
         $this->selected = [];
+        $this->resetPage();
+    }
+
+    public function updatedShowAll(): void
+    {
+        $this->resetPage();
     }
 
     public function updatedSearch(): void
@@ -161,15 +171,19 @@ class DietsManager extends Component
     {
         $statuses = $this->tab === 'closed' ? [Diet::CANCELLED, Diet::FINISHED] : [Diet::ACTIVE];
 
+        $filterByMeal = $this->tab === 'active' && ! $this->showAll;
+
         $diets = Diet::query()
             ->whereIn('status', $statuses)
+            ->when($filterByMeal, fn (Builder $q) => $this->appliesToMeal($q))
             ->when($this->search !== '', fn (Builder $q) => $q->where(fn (Builder $q) => $q
                 ->where('habitation', 'like', "%{$this->search}%")
                 ->orWhere('name_patient', 'like', "%{$this->search}%")))
             ->withExists(['history as has_pending' => fn (Builder $q) => $q->where('modify', 'si')])
             ->with(['currentVersion.updatedBy', 'history'])
-            ->orderByDesc('has_pending') // los cambios sin confirmar siempre arriba
-            ->when($this->tab === 'closed', fn (Builder $q) => $q->latest('updated_at'), fn (Builder $q) => $q->orderBy('habitation'))
+            ->orderByDesc('has_pending') // los cambios sin confirmar siempre arriba; luego por habitación
+            ->orderByRoom()
+            ->latest('updated_at')
             ->paginate($this->perPage);
 
         $diets->getCollection()->each(function (Diet $diet) {
@@ -206,6 +220,7 @@ class DietsManager extends Component
                 'closed' => Diet::whereIn('status', [Diet::CANCELLED, Diet::FINISHED])->count(),
                 'pendingActive' => $pending->where('status', Diet::ACTIVE)->count(),
                 'pendingClosed' => $pending->where('status', '!=', Diet::ACTIVE)->count(),
+                'applies' => $filterByMeal ? $this->appliesToMeal(Diet::active())->count() : null,
             ],
             'foodLabels' => config('timeFood.labels'),
             'consistencyLabels' => config('consistency.labels'),
@@ -215,6 +230,24 @@ class DietsManager extends Component
     }
 
     /* ===================== INTERNOS ===================== */
+
+    /**
+     * Dietas cuya versión actual incluye el servicio elegido, más las que tienen cambios
+     * sin confirmar (el despachador debe verlas aunque el cambio haya quitado ese tiempo).
+     */
+    private function appliesToMeal(Builder $query): Builder
+    {
+        // Claves guardadas de un mismo tiempo: 'mediamanana' / 'media_manana' (JSON: ["almuerzo","cena"])
+        $keys = $this->meal === 'mediamanana' ? ['mediamanana', 'media_manana'] : [$this->meal];
+
+        return $query->where(fn (Builder $q) => $q
+            ->whereHas('currentVersion', fn (Builder $v) => $v->where(function (Builder $v) use ($keys) {
+                foreach ($keys as $key) {
+                    $v->orWhere('timeFood', 'like', '%"'.$key.'"%');
+                }
+            }))
+            ->orWhereHas('history', fn (Builder $h) => $h->where('modify', 'si')));
+    }
 
     /** Dietas con versiones sin confirmar, la más reciente primero */
     private function pending(): Collection

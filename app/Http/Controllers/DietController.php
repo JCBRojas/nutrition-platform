@@ -6,9 +6,7 @@ use App\Http\Requests\StoreDietRequest;
 use App\Models\Diet;
 use App\Models\DietHistory;
 use App\Services\DietService;
-use App\Services\DispatchService;
 use App\Services\Reports\DietReportService;
-use App\Support\Pagination;
 use Illuminate\Http\Request;
 
 class DietController extends Controller
@@ -43,49 +41,13 @@ class DietController extends Controller
         return redirect()->back()->with('success', 'Dieta actualizada');
     }
 
-    /** Pestañas del panel del nutricionista => estado de la dieta */
-    private const DASHBOARD_TABS = [
-        'active' => Diet::ACTIVE,
-        'cancelled' => Diet::CANCELLED,
-        'finished' => Diet::FINISHED,
-    ];
-
-    public function nutritionDashboard(Request $request, DispatchService $dispatches)
+    /**
+     * Panel del nutricionista. Las pestañas, la búsqueda (?q=), la paginación y los
+     * indicadores viven en App\Livewire\NutritionDiets (se actualiza sin recargar).
+     */
+    public function nutritionDashboard()
     {
-        $tab = array_key_exists($request->query('tab'), self::DASHBOARD_TABS) ? $request->query('tab') : 'active';
-        $perPage = Pagination::perPage($request->query('per_page'));
-        $search = trim((string) $request->query('q', ''));
-
-        // ?page= aplica a la pestaña abierta; las demás muestran su primera página.
-        // Los enlaces de cada tabla llevan su pestaña y conservan los demás parámetros.
-        // La búsqueda (?q=) filtra la tabla de dietas activas por habitación o paciente
-        $pages = collect(self::DASHBOARD_TABS)->map(fn ($status, $key) => Diet::with('currentVersion.updatedBy')
-            ->where('status', $status)
-            ->when($key === 'active' && $search !== '', fn ($q) => $q->where(fn ($q) => $q
-                ->where('habitation', 'like', "%{$search}%")
-                ->orWhere('name_patient', 'like', "%{$search}%")))
-            ->latest('updated_at')
-            ->paginate($perPage, ['*'], 'page', $key === $tab ? null : 1)
-            ->withQueryString()
-            ->appends('tab', $key));
-
-        // Indicadores sobre todas las dietas activas, no solo la página visible
-        $activeTotal = $search === '' ? $pages['active']->total() : Diet::active()->count();
-        $activeVersions = Diet::active()->with('currentVersion')->get()->pluck('currentVersion')->filter();
-        $stats = [
-            'isolated' => $activeVersions->where('isolation', 'Sí')->count(),
-            'changes' => $activeVersions->reject(fn ($v) => in_array($v->changes, [null, '', 'NA'], true))->count(),
-        ];
-
         return view('dashboard', [
-            'tab' => $tab,
-            'search' => $search,
-            'activeTotal' => $activeTotal,
-            'delivery' => $dispatches->statusByDiet($pages['active']->getCollection()->pluck('id')->all()),
-            'activeDiets' => $pages['active'],
-            'cancelledDiets' => $pages['cancelled'],
-            'finishedDiets' => $pages['finished'],
-            'stats' => $stats,
             'specLabels' => config('specifications.labels'),
             'consistencyLabels' => config('consistency.labels'),
             'foodLabels' => config('timeFood.labels'),

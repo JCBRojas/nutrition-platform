@@ -86,7 +86,7 @@ class DispatchService
                 ->withExists(['history as has_pending' => fn ($q) => $q->where('modify', 'si')])
                 ->with('currentVersion')
                 ->lockForUpdate()
-                ->orderBy('habitation')
+                ->orderByRoom()
                 ->get();
 
             $already = DietDispatch::whereIn('diet_id', $diets->pluck('id'))
@@ -129,12 +129,13 @@ class DispatchService
             ->keyBy('diet_id');
     }
 
-    /** Despachos que el nutricionista aún no confirma, el más reciente primero */
+    /** Despachos que el nutricionista aún no confirma, por fecha y habitación */
     public function pendingReceipts(): Collection
     {
         return DietDispatch::pendingReceipt()
             ->with(['diet', 'version', 'dispatchedBy'])
-            ->latest('dispatched_at')
+            ->orderBy('service_date')
+            ->orderByRoom()
             ->get();
     }
 

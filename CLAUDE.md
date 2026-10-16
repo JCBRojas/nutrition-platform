@@ -258,8 +258,10 @@ Nombres de archivo con fecha local: `produccion_2026-10-15_0630.pdf` (`now('Amer
 ## 7c. Paginación de tablas
 
 Skill `.claude/skills/table-pagination`: 15 por página, parámetros `page` y `per_page` (`App\Support\Pagination::perPage()` acepta 15/30/50; cualquier otro → 15), control común `resources/views/pagination/table.blade.php` (Anterior/Siguiente, números, selector de página, "1–15 de N registros"; en Livewire `->links('pagination.table', ['livewire' => true])`). Los filtros se conservan (`withQueryString()` / `#[Url]`) y al cambiar un filtro se vuelve a la página 1.
-- Panel del nutricionista: `?tab=active|cancelled|finished`; `page` aplica a la pestaña abierta y al cambiar de pestaña se quita de la URL.
+- Panel del nutricionista: `App\Livewire\NutritionDiets` (indicadores, pestañas `?tab=active|cancelled|finished`, búsqueda en vivo `?q=` de la pestaña abierta, `page`/`per_page`). Se refresca cada 5 s con `$wire.$refresh()` y se pausa si hay un `.overlay.open` o `.chip-select.open` (edición en curso). Los modales de edición llevan `wire:ignore` y la fila `wire:key` con la versión (si la dieta cambia, el modal se recrea con los datos nuevos); el modal de registro está fuera del componente. Cambiar de pestaña o de búsqueda vuelve a la página 1.
 - Despachador, historial (`DietHistoryViewer`) y usuarios: Livewire `WithPagination`.
+- Orden: las tablas de dietas y despachos van por habitación ascendente en orden natural (`Diet::orderByRoom()` / `DietDispatch::orderByRoom()`: `LENGTH(habitation)`, luego `habitation`; 12 < 101 < 1001). En el despachador las dietas con cambios sin confirmar siguen arriba.
+- Despachador, pestaña activas: por defecto solo lista las dietas cuya versión actual incluye el servicio elegido (`media_manana`/`mediamanana` equivalen) más las que tienen cambios sin confirmar; `?todas=1` («Mostrar todas las activas») quita el filtro.
 - No se paginan tablas de agregados o catálogos (reportes, facturación, precios, matriz de roles).
 
 ## 8. Convenciones

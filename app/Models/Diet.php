@@ -44,6 +44,15 @@ class Diet extends Model
         return $query->where('status', self::ACTIVE);
     }
 
+    /**
+     * Habitación ascendente en orden natural (101, 102, …, 1001): primero por longitud,
+     * luego alfabético. Igual en MySQL y SQLite.
+     */
+    public function scopeOrderByRoom($query)
+    {
+        return $query->orderByRaw('LENGTH(habitation)')->orderBy('habitation');
+    }
+
     public function isActive(): bool
     {
         return $this->status === self::ACTIVE;

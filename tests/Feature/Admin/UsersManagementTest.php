@@ -172,9 +172,10 @@ class UsersManagementTest extends TestCase
             'timeFood' => ['desayuno'], 'changes' => 'cancelada', 'modify' => 'si',
         ]);
 
-        $this->actingAs($nutritionist)->get(route('dashboard.nutrition'))
+        // Solo se dibuja la pestaña abierta (componente Livewire NutritionDiets)
+        $this->actingAs($nutritionist)->get(route('dashboard.nutrition', ['tab' => 'cancelled']))
             ->assertOk()
-            ->assertSee("tab === 'cancelled'", false)
+            ->assertSee('Canceladas (1)')
             ->assertSee('Paciente Cancelado')
             ->assertSee('Nutricionista Principal');
     }

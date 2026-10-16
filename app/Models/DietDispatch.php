@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Reports\DietReportService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -32,6 +33,17 @@ class DietDispatch extends Model
     public function scopeReceived(Builder $query): Builder
     {
         return $query->whereNotNull('received_at');
+    }
+
+    /** Habitación ascendente (orden natural, como Diet::orderByRoom) y luego tiempo de comida en orden cronológico */
+    public function scopeOrderByRoom(Builder $query): Builder
+    {
+        $room = fn (string $expr) => Diet::selectRaw($expr)->whereColumn('diets.id', 'diet_dispatches.diet_id');
+        $meals = collect(DietReportService::MEALS)->map(fn ($m, $i) => "WHEN '{$m}' THEN {$i}")->implode(' ');
+
+        return $query->orderBy($room('LENGTH(habitation)'))
+            ->orderBy($room('habitation'))
+            ->orderByRaw("CASE meal {$meals} ELSE 99 END");
     }
 
     public function isReceived(): bool
