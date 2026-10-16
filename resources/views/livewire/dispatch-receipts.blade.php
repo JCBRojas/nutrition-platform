@@ -5,17 +5,33 @@
     x-on:dispatch-received.window="toast = $event.detail.message">
 
     @if ($total > 0)
-        <section class="dr-panel mb-4" role="region" aria-labelledby="dr-title">
+        {{-- Panel compacto: encabezado de una línea con la acción y lista con alto máximo (desplazable); se puede plegar --}}
+        <section class="dr-panel mb-4" role="region" aria-labelledby="dr-title"
+            x-data="{ open: (() => { try { return localStorage.getItem('dr-open') !== '0' } catch (e) { return true } })() }"
+            x-effect="try { localStorage.setItem('dr-open', open ? '1' : '0') } catch (e) {}">
             <div class="dr-head">
-                <h2 id="dr-title" class="dr-title">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-                    {{ $total === 1 ? '1 despacho' : "{$total} despachos" }} por confirmar recepción
-                </h2>
-                <p class="dr-help">Solo los despachos con recepción confirmada se cuentan en la facturación.</p>
+                <button type="button" class="dr-toggle" x-on:click="open = ! open" :aria-expanded="open" aria-controls="dr-body">
+                    <svg class="dr-chevron" :class="open && 'dr-chevron-open'" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
+                    <h2 id="dr-title" class="dr-title">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                        {{ $total === 1 ? '1 despacho' : "{$total} despachos" }} por confirmar recepción
+                    </h2>
+                </button>
+                <span class="dr-help" title="Solo los despachos con recepción confirmada se cuentan en la facturación.">Solo lo recibido se factura</span>
+
+                @can('confirmReception')
+                    <button type="button" class="btn btn-sm dr-confirm" wire:click="confirmReceipt"
+                        @disabled(count($selected) === 0)
+                        wire:confirm="¿Confirmas que se recibieron {{ count($selected) }} despacho(s)? Se contarán en la facturación."
+                        wire:loading.attr="disabled" wire:target="confirmReceipt">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                        Confirmar recepción ({{ count($selected) }})
+                    </button>
+                @endcan
             </div>
 
-            <div class="table-responsive">
-                <table class="table-wrap dr-table">
+            <div id="dr-body" class="dr-body" x-show="open" x-cloak>
+                <table class="dr-table">
                     <thead>
                         <tr>
                             <th class="dr-check">
@@ -25,7 +41,7 @@
                             <th>Hab.</th>
                             <th>Paciente</th>
                             <th>Servicio</th>
-                            <th>Fecha</th>
+                            <th>Despachado</th>
                             <th>Despachó</th>
                         </tr>
                     </thead>
@@ -37,30 +53,20 @@
                                         aria-label="Confirmar recepción: habitación {{ $d->diet?->habitation }}, {{ $meals[$d->meal] ?? $d->meal }}">
                                 </td>
                                 <td><span class="room-badge">{{ $d->diet?->habitation }}</span></td>
-                                <td>{{ $d->diet?->name_patient }}</td>
+                                <td class="dr-patient">{{ $d->diet?->name_patient }}</td>
                                 <td><span class="tag tag-tiempo">{{ $meals[$d->meal] ?? $d->meal }}</span></td>
-                                <td>
-                                    {{ $d->service_date->locale('es')->isoFormat('D MMM') }}
-                                    <div class="dr-meta">{{ $d->dispatched_at->format('g:i a') }} · v{{ $d->version?->version }}</div>
+                                <td class="dr-when">
+                                    @unless ($d->service_date->isToday())
+                                        {{ $d->service_date->locale('es')->isoFormat('D MMM') }} ·
+                                    @endunless
+                                    {{ $d->dispatched_at->format('g:i a') }}
                                 </td>
-                                <td>{{ $d->dispatchedBy?->name ?? '—' }}</td>
+                                <td class="dr-when">{{ $d->dispatchedBy?->name ?? '—' }}</td>
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
-
-            @can('confirmReception')
-                <div class="dr-actions">
-                    <button type="button" class="btn btn-sm dr-confirm" wire:click="confirmReceipt"
-                        @disabled(count($selected) === 0)
-                        wire:confirm="¿Confirmas que se recibieron {{ count($selected) }} despacho(s)? Se contarán en la facturación."
-                        wire:loading.attr="disabled" wire:target="confirmReceipt">
-                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-                        Confirmar recepción ({{ count($selected) }})
-                    </button>
-                </div>
-            @endcan
         </section>
     @endif
 
@@ -69,20 +75,28 @@
         x-text="toast"></div>
 
     <style>
-        .dr-panel { border: 2px solid #bfdbfe; border-left: 8px solid var(--blue); background: #eff6ff; border-radius: 10px; padding: 14px 16px; }
-        .dr-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; margin-bottom: 10px; }
-        .dr-title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 15px; font-weight: 700; color: #1e3a8a; }
-        .dr-help { margin: 0; font-size: 12.5px; color: var(--text-muted); }
-        .dr-table { background: #fff; border-radius: 8px; }
-        .dr-check { width: 40px; }
-        .dr-checkbox { width: 18px; height: 18px; cursor: pointer; accent-color: var(--blue); }
-        .dr-checkbox:focus-visible, .dr-confirm:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .dr-panel { border: 1px solid #bfdbfe; border-left: 5px solid var(--blue); background: #eff6ff; border-radius: 10px; padding: 8px 12px; }
+        .dr-head { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; }
+        .dr-toggle { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 2px 0; cursor: pointer; color: #1e3a8a; }
+        .dr-chevron { transition: transform .15s; }
+        .dr-chevron-open { transform: rotate(90deg); }
+        .dr-title { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; font-weight: 700; color: #1e3a8a; }
+        .dr-help { font-size: 12px; color: var(--text-muted); }
+        .dr-head .dr-confirm { margin-left: auto; }
+        .dr-body { margin-top: 8px; max-height: 196px; overflow: auto; border-radius: 8px; background: #fff; }
+        .dr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .dr-table th { position: sticky; top: 0; z-index: 1; background: #f8fafc; text-align: left; font-size: 11.5px; font-weight: 600; color: var(--text-muted); padding: 5px 8px; border-bottom: 1px solid var(--border); }
+        .dr-table td { padding: 4px 8px; border-bottom: 1px solid #eef2f7; vertical-align: middle; }
+        .dr-table .tag { margin: 0; }
+        .dr-patient { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .dr-when { white-space: nowrap; font-size: 12px; color: var(--text-muted); }
+        .dr-check { width: 32px; }
+        .dr-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--blue); }
+        .dr-checkbox:focus-visible, .dr-confirm:focus-visible, .dr-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         .dr-row-selected td { background: #dbeafe; }
-        .dr-meta { font-size: 11.5px; color: var(--text-muted); }
-        .dr-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
         .dr-confirm { background: var(--blue); color: #fff; font-weight: 700; border: 0; }
         .dr-confirm[disabled] { opacity: .5; cursor: not-allowed; }
         .dr-toast { position: fixed; right: 20px; bottom: 20px; z-index: 300; max-width: min(360px, calc(100vw - 32px)); background: var(--text); color: #fff; padding: 12px 16px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.2); font-size: 13.5px; }
-        @media (max-width: 640px) { .dr-actions .dr-confirm { width: 100%; justify-content: center; } }
+        @media (max-width: 640px) { .dr-head .dr-confirm { width: 100%; justify-content: center; margin-left: 0; } .dr-help { display: none; } }
     </style>
 </div>

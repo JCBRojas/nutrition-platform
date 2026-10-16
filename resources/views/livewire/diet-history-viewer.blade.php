@@ -13,6 +13,8 @@
         .vtable td { vertical-align: top; }
         .vtable tr.vrow-finish td { background: var(--blue-light); }
         .vtable tr.vrow-finish td:first-child { border-left: 3px solid var(--blue); }
+        .vtable tr.vrow-day td { background: #f0fdfa; }
+        .vtable tr.vrow-day td:first-child { border-left: 3px solid #0f766e; }
         .vtable td.hv-changed { box-shadow: inset 0 0 0 2px var(--amber); }
         .chip-removed { text-decoration: line-through; opacity: .75; background: var(--accent2-light); color: var(--accent2); }
         .chip-added { background: var(--accent-light); color: var(--accent); font-weight: 600; }
@@ -47,7 +49,7 @@
                                 {{ $diet->name_patient }}
                             </div>
                             <div class="hv-meta">
-                                {{ $diet->history_count }} versión(es) ·
+                                {{ $diet->history_count }} {{ $diet->history_count === 1 ? 'registro' : 'registros' }} ·
                                 {{ $diet->statusLabel() }} ·
                                 {{ $diet->updated_at?->format('d/m/Y') }}
                             </div>
@@ -68,7 +70,7 @@
                             {{ $selected->name_patient }}
                         </h2>
                         <span class="text-sm text-slate-500">
-                            {{ $timeline->count() }} versiones ·
+                            {{ $timeline->count() }} {{ $timeline->count() === 1 ? 'registro' : 'registros' }} ·
                             @if ($selected->isActive())
                                 <span class="badge badge-success">Activa</span>
                             @elseif ($selected->status === \App\Models\Diet::FINISHED)
@@ -83,7 +85,7 @@
                         <table class="vtable">
                             <thead>
                                 <tr>
-                                    <th>Versión</th>
+                                    <th>Registro</th>
                                     <th>Fecha</th>
                                     <th>Tiempo</th>
                                     <th>Consistencia</th>
@@ -99,15 +101,14 @@
                                     @php
                                         $v = $row['version'];
                                         $f = $row['fields'];
-                                        $rowClass = ['creacion' => 'vrow-create', 'edicion' => 'vrow-edit', 'cancelacion' => 'vrow-cancel', 'finalizacion' => 'vrow-finish'][$row['type']];
-                                        $typeLabel = ['creacion' => 'Creación', 'edicion' => 'Edición', 'cancelacion' => 'Cancelación', 'finalizacion' => 'Alta (finalizada)'][$row['type']];
+                                        $rowClass = ['creacion' => 'vrow-create', 'edicion' => 'vrow-edit', 'cancelacion' => 'vrow-cancel', 'finalizacion' => 'vrow-finish', 'completada' => 'vrow-day', 'continuacion' => 'vrow-day'][$row['type']];
+                                        $typeLabel = ['creacion' => 'Creación', 'edicion' => 'Edición', 'cancelacion' => 'Cancelación', 'finalizacion' => 'Alta (finalizada)', 'completada' => 'Día completado', 'continuacion' => 'Continuada (día siguiente)'][$row['type']];
                                         $tagClass = ['timeFood' => 'tag-tiempo', 'consistency' => 'tag-consist', 'specifications' => 'tag-espec'];
                                     @endphp
                                     <tr class="{{ $rowClass }}" wire:key="v-{{ $v->id }}">
                                         <td style="white-space:nowrap">
-                                            <strong>v{{ $v->version }}</strong>
-                                            <div class="text-xs text-slate-500">{{ $typeLabel }}</div>
-                                            @if ($v->changes && ! in_array($v->changes, ['NA', 'cancelada', 'finalizada'], true))
+                                            <strong>{{ $typeLabel }}</strong>
+                                            @if ($v->changes && ! in_array($v->changes, ['NA', ...\App\Models\Diet::CLOSING_CHANGES, ...\App\Models\Diet::DAY_CHANGES], true))
                                                 <div class="text-xs text-slate-500">{{ ucfirst(str_replace('_', ' ', $v->changes)) }}</div>
                                             @endif
                                         </td>
@@ -164,11 +165,11 @@
                         <span><span class="tag chip-added">Agregado</span></span>
                         <span><span class="tag chip-removed">Quitado</span></span>
                         <span><span class="diff-old">Antes</span><span class="diff-new">Después</span></span>
-                        <span>Recuadro ámbar: campo modificado en esa versión</span>
+                        <span>Recuadro ámbar: campo modificado en ese registro</span>
                     </div>
                 @else
                     <div class="empty">
-                        Selecciona una dieta de la lista para ver sus versiones.
+                        Selecciona una dieta de la lista para ver su historial.
                     </div>
                 @endif
             </div>

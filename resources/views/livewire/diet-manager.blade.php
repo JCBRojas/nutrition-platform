@@ -31,33 +31,36 @@
         {{-- ===================== CAMBIOS PENDIENTES ===================== --}}
         <div role="alert" aria-live="assertive">
             @if ($total > 0)
+                {{-- Compacto: título de una línea y un chip por dieta; con muchas, el bloque se desplaza --}}
                 <section class="dm-alert" :class="flash && 'dm-alert-flash'">
                     <div class="dm-alert-title">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                        {{ $total === 1 ? '1 dieta cambió' : "{$total} dietas cambiaron" }}. Revisa y confirma antes de entregar.
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        {{ $total === 1 ? '1 dieta cambió' : "{$total} dietas cambiaron" }}
+                        <span class="dm-alert-sub">Revisa y confirma antes de entregar.</span>
                     </div>
                     <ul class="dm-alert-list">
-                        @foreach ($pending->take(8) as $p)
-                            @php $v = $p->currentVersion; @endphp
-                            <li wire:key="pending-{{ $p->id }}-{{ $v?->version }}">
+                        @foreach ($pending as $p)
+                            @php
+                                $v = $p->currentVersion;
+                                $closing = in_array($v?->changes, \App\Models\Diet::CLOSING_CHANGES, true);
+                            @endphp
+                            <li wire:key="pending-{{ $p->id }}-{{ $v?->version }}" title="{{ $p->name_patient }} · {{ $fmtTime($v?->created_at) }}">
                                 <span class="room-badge">{{ $p->habitation }}</span>
                                 <span class="dm-alert-who">{{ $p->name_patient }}</span>
-                                <span @class(['tag', 'dm-type-closing' => in_array($v?->changes, \App\Models\Diet::CLOSING_CHANGES, true), 'dm-type' => ! in_array($v?->changes, \App\Models\Diet::CLOSING_CHANGES, true)])>
+                                <span @class(['tag', 'dm-type-closing' => $closing, 'dm-type' => ! $closing])>
                                     {{ $p->isActive() ? $changeLabel($v) : ($p->status === \App\Models\Diet::FINISHED ? 'Alta: no despachar' : 'Cancelada: no despachar') }}
                                 </span>
-                                <span class="dm-meta">v{{ $v?->version }} · {{ $fmtTime($v?->created_at) }}</span>
+                                <span class="dm-meta">{{ $v?->created_at?->format('g:i a') }}</span>
                                 <button type="button" class="btn btn-sm dm-confirm" wire:click="confirmChanges({{ $p->id }})"
                                     wire:confirm="¿Confirmas que revisaste el cambio de la habitación {{ $p->habitation }} ({{ $p->name_patient }})? Dejará de aparecer como pendiente."
                                     wire:loading.attr="disabled" wire:target="confirmChanges({{ $p->id }})"
-                                    aria-label="Confirmar cambio de la habitación {{ $p->habitation }}">
+                                    title="Confirmar cambio" aria-label="Confirmar cambio de la habitación {{ $p->habitation }}">
+                                    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
                                     Confirmar
                                 </button>
                             </li>
                         @endforeach
                     </ul>
-                    @if ($total > 8)
-                        <p class="dm-meta">Y {{ $total - 8 }} más: aparecen primero en la tabla.</p>
-                    @endif
                 </section>
             @endif
         </div>
@@ -280,13 +283,15 @@
         .dm-alerts-on { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-muted); }
 
         /* Banner de cambios pendientes */
-        .dm-alert { border: 2px solid #bfdbfe; border-left: 8px solid var(--blue); background: #eff6ff; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+        .dm-alert { border: 1px solid #bfdbfe; border-left: 5px solid var(--blue); background: #eff6ff; border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; }
         .dm-alert-flash { animation: dm-flash .6s ease-in-out 4; }
-        .dm-alert-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: #1e3a8a; margin-bottom: 10px; }
-        .dm-alert-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-        .dm-alert-list li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #fff; border-radius: 8px; padding: 6px 10px; }
-        .dm-alert-who { font-weight: 600; }
-        .dm-alert-list .dm-confirm { margin-left: auto; background: var(--blue); }
+        .dm-alert-title { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14px; color: #1e3a8a; margin-bottom: 6px; }
+        .dm-alert-sub { font-weight: 500; font-size: 12.5px; color: var(--text-muted); }
+        .dm-alert-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 4px 6px; max-height: 104px; overflow-y: auto; }
+        .dm-alert-list li { display: flex; align-items: center; gap: 6px; min-width: 0; background: #fff; border-radius: 6px; padding: 3px 4px 3px 6px; font-size: 13px; }
+        .dm-alert-list .tag { margin: 0; white-space: nowrap; }
+        .dm-alert-who { font-weight: 600; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .dm-alert-list .dm-confirm { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; font-size: 12px; background: var(--blue); white-space: nowrap; }
 
         .dm-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
         .dm-toolbar .tabs-wrapper { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -339,7 +344,7 @@
         .dm-dispatch-state.dm-received { color: #166534; }
         .dm-row-selected td { background: #f0fdf4; }
         @media (prefers-reduced-motion: reduce) { .dm-dot, .dm-alert-flash { animation: none; } }
-        @media (max-width: 640px) { .dm-search { max-width: none; width: 100%; } .dm-alert-list .dm-confirm { margin-left: 0; } }
+        @media (max-width: 640px) { .dm-search { max-width: none; width: 100%; } .dm-alert-list { grid-template-columns: 1fr; } }
     </style>
 </div>
 

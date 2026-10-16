@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Diet;
 use App\Models\DietHistory;
+use App\Services\DietDayService;
 use App\Services\DietService;
 use App\Services\DispatchService;
 use App\Support\Pagination;
@@ -169,7 +170,7 @@ class DietsManager extends Component
 
     public function render()
     {
-        $statuses = $this->tab === 'closed' ? [Diet::CANCELLED, Diet::FINISHED] : [Diet::ACTIVE];
+        $statuses = $this->tab === 'closed' ? [Diet::CANCELLED, Diet::FINISHED] : Diet::OPEN_STATUSES;
 
         $filterByMeal = $this->tab === 'active' && ! $this->showAll;
 
@@ -195,7 +196,11 @@ class DietsManager extends Component
         $dispatches = $this->tab === 'active'
             ? $dispatchService->dispatchesFor($diets->getCollection()->pluck('id')->all(), $this->meal)
             : collect();
-        $diets->getCollection()->each(function (Diet $diet) use ($dispatches, $dispatchService) {
+        $authorized = $this->tab === 'active'
+            ? app(DietDayService::class)->authorizedIds($diets->getCollection()->pluck('id')->all())
+            : [];
+        $diets->getCollection()->each(function (Diet $diet) use ($dispatches, $dispatchService, $authorized) {
+            $diet->authorized_for_day = in_array($diet->id, $authorized, true);
             $diet->dispatch_record = $dispatches->get($diet->id);
             $diet->dispatch_block = $this->tab === 'active' ? $dispatchService->blockReason($diet, $this->meal) : null;
         });
@@ -218,8 +223,8 @@ class DietsManager extends Component
             'counts' => [
                 'active' => Diet::active()->count(),
                 'closed' => Diet::whereIn('status', [Diet::CANCELLED, Diet::FINISHED])->count(),
-                'pendingActive' => $pending->where('status', Diet::ACTIVE)->count(),
-                'pendingClosed' => $pending->where('status', '!=', Diet::ACTIVE)->count(),
+                'pendingActive' => $pending->filter(fn (Diet $d) => $d->isActive())->count(),
+                'pendingClosed' => $pending->reject(fn (Diet $d) => $d->isActive())->count(),
                 'applies' => $filterByMeal ? $this->appliesToMeal(Diet::active())->count() : null,
             ],
             'foodLabels' => config('timeFood.labels'),

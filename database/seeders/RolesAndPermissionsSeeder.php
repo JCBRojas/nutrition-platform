@@ -25,6 +25,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'confirmReception',
             'viewDispatches',
             'viewActiveDiets',
+            'continueDiets',
             'generateFiles',
             'viewUsers',
             'createUsers',
@@ -56,6 +57,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'confirmReception',
             'viewDispatches',
             'viewActiveDiets',
+            'continueDiets',
         ]);
 
         // Asignar permisos a Jefe de nutrición

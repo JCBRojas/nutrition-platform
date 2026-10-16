@@ -21,7 +21,8 @@ use InvalidArgumentException;
  * - Valor: cada día se valora con el precio vigente ese día (service_prices).
  * - Desde config('dispatch.required_from') solo se factura el tiempo de comida despachado
  *   por cocina y recibido por el nutricionista (activeDietsByDay con $receivedOnly).
- *   Lo demás se informa en 'notReceived'.
+ * - Desde config('dispatch.completion_required_from') solo se facturan los días en que la
+ *   dieta quedó Completada (todos sus tiempos recibidos). Lo demás se informa en 'notReceived'.
  */
 class BillingService
 {
@@ -124,7 +125,7 @@ class BillingService
 
         foreach ($this->reports->activeDietsByDay($start, receivedOnly: true) as $day) {
             $d = (int) $day['date']->format('j');
-            // Servicios facturables sin despacho recibido (fraccionada no se factura)
+            // Servicios facturables sin recepción o de días sin completar (fraccionada no se factura)
             $notReceived += count(array_filter($day['withheld'], fn ($meal) => isset($services[$meal])));
 
             foreach ($day['diets'] as ['diet' => $diet, 'version' => $version, 'meals' => $meals]) {

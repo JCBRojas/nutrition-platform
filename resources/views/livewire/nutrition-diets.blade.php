@@ -1,6 +1,6 @@
 @php
     // Etiquetas del select "Cambios en la dieta" (components/form-diet.blade.php)
-    $changeLabels = ['NA' => '—', 'con_cambios' => 'Con cambios', 'aislado' => 'Se aisló', 'ya_no_aislado' => 'Ya no está aislado', 'cancelada' => 'Cancelada', 'finalizada' => 'Finalizada (alta)'];
+    $changeLabels = ['NA' => '—', 'con_cambios' => 'Con cambios', 'aislado' => 'Se aisló', 'ya_no_aislado' => 'Ya no está aislado', 'cancelada' => 'Cancelada', 'finalizada' => 'Finalizada (alta)', 'completada' => '—', 'continuada' => '—'];
     $closedTabs = [
         'cancelled' => ['date' => 'Cancelada', 'tag' => 'tag-cancel', 'label' => 'Cancelada', 'empty' => 'No hay dietas canceladas.'],
         'finished' => ['date' => 'Alta', 'tag' => 'tag-finished', 'label' => 'Finalizada', 'empty' => 'No hay dietas finalizadas. Usa el botón de alta en una dieta activa cuando el paciente salga de la institución.'],
@@ -34,6 +34,10 @@
             <div class="stat-sub">Activas cuya última versión trae cambios</div>
         </div>
     </div>
+
+    @if ($notice)
+        <div @class(['nd-notice', 'error' => $noticeError]) role="status">{{ $notice }}</div>
+    @endif
 
     <div class="tabs-wrapper mb-4">
         @foreach ($tabNames as $key => $name)
@@ -76,6 +80,7 @@
                         <tr>
                             <th>Hab.</th>
                             <th>Paciente</th>
+                            <th>Día</th>
                             <th>Tiempo</th>
                             <th>Consistencia</th>
                             <th>Especificaciones</th>
@@ -93,6 +98,41 @@
                                 </td>
 
                                 <td>{{ $diet->name_patient }}</td>
+
+                                {{-- Estado del día y autorización de mañana --}}
+                                @php $day = $dayStatus[$diet->id] ?? []; @endphp
+                                <td>
+                                    <div class="nd-day">
+                                        @if ($day['completed'] ?? false)
+                                            <span class="tag tag-completed" title="Se recibieron todos los tiempos de hoy">Completada</span>
+                                        @elseif ($day['authorizedToday'] ?? false)
+                                            <span class="tag tag-in-progress" title="Autorizada para hoy; faltan tiempos por recibir">En curso</span>
+                                        @else
+                                            <span class="tag tag-blocked" title="No se puede despachar hoy: no se continuó ayer">Sin autorizar hoy</span>
+                                        @endif
+
+                                        @if ($day['authorizedTomorrow'] ?? false)
+                                            <span class="nd-next nd-next-ok" title="Continúa mañana: cocina puede despacharla" aria-label="Continúa mañana">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                                Mañana
+                                            </span>
+                                        @else
+                                            @can('continueDiets')
+                                                <button type="button" class="nd-next nd-continue" title="Continuar dieta: autoriza el despacho de mañana"
+                                                    wire:click="continueDiet({{ $diet->id }})" wire:loading.attr="disabled" wire:target="continueDiet({{ $diet->id }})"
+                                                    wire:confirm="{{ "¿Continuar la dieta de {$diet->name_patient} (hab. {$diet->habitation}) mañana?
+
+Cocina podrá despacharla el día siguiente." }}"
+                                                    aria-label="Continuar dieta de {{ $diet->name_patient }} mañana">
+                                                    <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="13 6 19 12 13 18"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                                    Continuar
+                                                </button>
+                                            @else
+                                                <span class="nd-next nd-next-off" title="Mañana sin autorizar">Mañana —</span>
+                                            @endcan
+                                        @endif
+                                    </div>
+                                </td>
 
                                 {{-- Tiempo de comida --}}
                                 <td>
@@ -189,7 +229,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="empty">{{ trim($search) !== '' ? 'No hay dietas activas que coincidan con «'.trim($search).'».' : 'No hay dietas activas.' }}</td>
+                                <td colspan="10" class="empty">{{ trim($search) !== '' ? 'No hay dietas activas que coincidan con «'.trim($search).'».' : 'No hay dietas activas.' }}</td>
                             </tr>
                         @endforelse
                     </tbody>

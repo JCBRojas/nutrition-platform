@@ -64,6 +64,8 @@ class DietHistoryService
                 'type' => match (true) {
                     $version->changes === 'cancelada' => 'cancelacion',
                     $version->changes === 'finalizada' => 'finalizacion',
+                    $version->changes === 'completada' => 'completada',
+                    $version->changes === 'continuada' => 'continuacion',
                     $previous === null => 'creacion',
                     default => 'edicion',
                 },

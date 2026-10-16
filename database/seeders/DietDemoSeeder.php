@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Diet;
+use App\Models\DietDay;
 use App\Models\DietHistory;
 use App\Models\User;
 use Database\Factories\DietHistoryFactory;
@@ -18,12 +19,14 @@ use Spatie\Permission\Models\Role;
 class DietDemoSeeder extends Seeder
 {
     private const DIETS = 50;
+
     private const VERSIONS = 5;
 
     public function run(): void
     {
         if (app()->environment('production')) {
             $this->command?->error('DietDemoSeeder no se ejecuta en producción.');
+
             return;
         }
 
@@ -93,6 +96,15 @@ class DietDemoSeeder extends Seeder
         // Igual que DietService::cancelDiet: status=false y updated_at = fecha de cancelación
         $diet->forceFill(['status' => $cancelled ? Diet::CANCELLED : Diet::ACTIVE])->save();
         $this->stamp($diet, $createdAt, $at);
+
+        // Las activas quedan autorizadas para hoy (sin esto cocina no podría despacharlas)
+        if (! $cancelled) {
+            DietDay::upsertFor($diet->id, now(), [
+                'authorized_via' => DietDay::VIA_CONTINUATION,
+                'authorized_by' => $userId,
+                'authorized_at' => now(),
+            ]);
+        }
 
         return $cancelled;
     }

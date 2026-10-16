@@ -179,8 +179,8 @@
 
                 @if ($monthly['notReceived'] > 0)
                     <div class="pm-warn" role="alert">
-                        <strong>{{ $monthly['notReceived'] }} servicio(s) sin despacho recibido en {{ $monthName }}.</strong>
-                        No se facturan: solo cuentan los tiempos que cocina despachó y el nutricionista confirmó como recibidos.
+                        <strong>{{ $monthly['notReceived'] }} servicio(s) sin facturar en {{ $monthName }}.</strong>
+                        Solo se facturan los días en que la dieta quedó Completada: todos sus tiempos despachados por cocina y recibidos por nutrición.
                     </div>
                 @endif
 

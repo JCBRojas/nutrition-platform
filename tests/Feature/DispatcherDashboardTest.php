@@ -6,6 +6,7 @@ use App\Livewire\DietsManager;
 use App\Models\Diet;
 use App\Models\User;
 use App\Services\DietService;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -26,6 +27,8 @@ class DispatcherDashboardTest extends TestCase
         $this->seed(RolesAndPermissionsSeeder::class);
         $this->nutritionist = User::role('nutricionista')->firstOrFail();
         $this->dispatcher = User::role('despachador')->firstOrFail();
+        // Hora fija: el servicio por defecto depende de la hora (a las 12:00 sería almuerzo y las dietas de solo desayuno no se listan)
+        $this->travelTo(CarbonImmutable::parse('2026-10-20 07:00:00'));
     }
 
     private function diet(string $room, array $timeFood = ['desayuno']): Diet

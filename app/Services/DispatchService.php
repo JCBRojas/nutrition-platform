@@ -16,11 +16,17 @@ use Illuminate\Support\Facades\DB;
  * 1. El despachador selecciona las dietas listas de un servicio (desayuno, almuerzo…)
  *    y las despacha: se crea un DietDispatch por dieta × día × tiempo.
  * 2. El nutricionista lo ve en su panel y confirma la recepción (received_at).
- * 3. BillingService solo factura los tiempos con despacho recibido.
+ *    Al recibirse todos los tiempos del día, la dieta queda Completada (DietDayService).
+ * 3. BillingService solo factura los días completados (antes, los tiempos recibidos).
+ *
+ * Solo se despacha una dieta autorizada para el día: por su creación o por «Continuar dieta».
  */
 class DispatchService
 {
-    public function __construct(private DietReportService $reports) {}
+    public function __construct(
+        private DietReportService $reports,
+        private DietDayService $days,
+    ) {}
 
     /** Tiempos de comida que se pueden despachar, en orden: clave => etiqueta */
     public static function meals(): array
@@ -48,12 +54,18 @@ class DispatchService
 
     /**
      * Motivo por el que una dieta no se puede despachar en ese tiempo, o null si se puede.
-     * $diet debe traer currentVersion; has_pending (withExists) evita una consulta.
+     * $diet debe traer currentVersion; has_pending (withExists) y authorized_for_day
+     * (authorizedIds) evitan consultas.
      */
-    public function blockReason(Diet $diet, string $meal): ?string
+    public function blockReason(Diet $diet, string $meal, ?CarbonInterface $date = null): ?string
     {
         if (! $diet->isActive()) {
             return 'La dieta no está activa.';
+        }
+
+        $authorized = $diet->authorized_for_day ?? $this->days->isAuthorized($diet, $date);
+        if (! $authorized) {
+            return 'Sin autorización para hoy: nutrición o enfermería debe usar «Continuar dieta».';
         }
 
         $pending = $diet->has_pending ?? $diet->history()->where('modify', 'si')->exists();
@@ -78,10 +90,16 @@ class DispatchService
     {
         abort_unless(array_key_exists($meal, self::meals()), 422, 'Tiempo de comida no válido.');
 
-        $date = CarbonImmutable::parse($date ?? now())->toDateString();
+        $day = CarbonImmutable::parse($date ?? now())->startOfDay();
+        $date = $day->toDateString();
         $result = ['dispatched' => [], 'skipped' => []];
 
-        DB::transaction(function () use ($dietIds, $meal, $userId, $date, &$result) {
+        // Las dietas Completadas ayer y continuadas para hoy vuelven a Activa (por si no corrió diets:start-day)
+        if ($day->isToday()) {
+            $this->days->startDay($day);
+        }
+
+        DB::transaction(function () use ($dietIds, $meal, $userId, $day, $date, &$result) {
             $diets = Diet::whereIn('id', $dietIds)
                 ->withExists(['history as has_pending' => fn ($q) => $q->where('modify', 'si')])
                 ->with('currentVersion')
@@ -94,9 +112,11 @@ class DispatchService
                 ->where('meal', $meal)
                 ->pluck('diet_id')
                 ->all();
+            $authorized = $this->days->authorizedIds($diets->pluck('id')->all(), $day);
 
             foreach ($diets as $diet) {
-                $reason = in_array($diet->id, $already, true) ? 'Ya se despachó.' : $this->blockReason($diet, $meal);
+                $diet->authorized_for_day = in_array($diet->id, $authorized, true);
+                $reason = in_array($diet->id, $already, true) ? 'Ya se despachó.' : $this->blockReason($diet, $meal, $day);
 
                 if ($reason) {
                     $result['skipped'][$diet->habitation] = $reason;
@@ -139,12 +159,25 @@ class DispatchService
             ->get();
     }
 
-    /** El nutricionista confirma que recibió los despachos; devuelve cuántos confirmó */
-    public function confirmReceipt(array $dispatchIds, int $userId): int
+    /**
+     * El nutricionista confirma que recibió los despachos. Si con eso se reciben todos los
+     * tiempos del día, la dieta queda Completada.
+     *
+     * @return array{received: int, completed: array<int, string>} habitaciones completadas
+     */
+    public function confirmReceipt(array $dispatchIds, int $userId): array
     {
-        return DietDispatch::whereIn('id', $dispatchIds)
-            ->pendingReceipt()
-            ->update(['received_by' => $userId, 'received_at' => now()]);
+        return DB::transaction(function () use ($dispatchIds, $userId) {
+            $dispatches = DietDispatch::whereIn('id', $dispatchIds)->pendingReceipt()->with('diet')->lockForUpdate()->get();
+
+            DietDispatch::whereIn('id', $dispatches->pluck('id'))
+                ->update(['received_by' => $userId, 'received_at' => now()]);
+
+            return [
+                'received' => $dispatches->count(),
+                'completed' => $this->days->evaluateDispatches($dispatches, $userId),
+            ];
+        });
     }
 
     /**

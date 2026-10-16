@@ -36,7 +36,8 @@ class DispatchFlowTest extends TestCase
         $this->nutritionist = User::role('nutricionista')->firstOrFail();
         $this->dispatcher = User::role('despachador')->firstOrFail();
         $this->travelTo(CarbonImmutable::parse('2026-10-20 12:30:00'));
-        config(['dispatch.required_from' => '2026-10-20']);
+        // Estos tests cubren la regla de lo recibido; la de días completados está en DietDayCompletionTest
+        config(['dispatch.required_from' => '2026-10-20', 'dispatch.completion_required_from' => null]);
     }
 
     private function diet(string $room, array $timeFood = ['desayuno', 'almuerzo']): Diet
@@ -197,7 +198,7 @@ class DispatchFlowTest extends TestCase
             $summary = collect($export->sheets()[0]->array());
 
             return $summary->contains(fn ($row) => $row[0] === 'Total bandejas' && $row[1] === 1)
-                && $summary->contains(fn ($row) => $row[0] === 'Tiempos sin recepción (no contados)' && $row[1] === 1);
+                && $summary->contains(fn ($row) => $row[0] === 'Tiempos no contados (sin recepción o día sin completar)' && $row[1] === 1);
         });
     }
 

@@ -8,7 +8,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | Mismas claves que el select "Cambios en la dieta" del formulario y las
-    | versiones de cierre de DietService (cancelada, finalizada).
+    | versiones de cierre de DietService (cancelada, finalizada) y las del día
+    | (completada, continuada; Diet::DAY_CHANGES).
     |
     */
 
@@ -20,6 +21,8 @@ return [
         'no_aislado' => 'Ya no está aislado',
         'cancelada' => 'Cancelada',
         'finalizada' => 'Finalizada (alta)',
+        'completada' => 'Día completado',
+        'continuada' => 'Continuada al día siguiente',
     ],
 
     'colors' => [
@@ -29,6 +32,8 @@ return [
         'no_aislado' => 'bg-green-100 text-green-800',
         'cancelada' => 'bg-red-100 text-red-800',
         'finalizada' => 'bg-blue-100 text-blue-800',
+        'completada' => 'bg-teal-100 text-teal-800',
+        'continuada' => 'bg-sky-100 text-sky-800',
     ],
 
 ];

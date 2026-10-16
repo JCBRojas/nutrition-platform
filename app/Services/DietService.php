@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Diet;
+use App\Models\DietDay;
 use App\Models\DietHistory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -26,6 +27,15 @@ class DietService
 
             // 2️⃣ Crear versión 1
             $this->createInternalVersionOfDiet($diet, $data, $userId, 1, $modify = 'no');
+
+            // 3️⃣ Crearla autoriza el despacho del día; los siguientes requieren «Continuar dieta»
+            DietDay::create([
+                'diet_id' => $diet->id,
+                'service_date' => now()->toDateString(),
+                'authorized_via' => DietDay::VIA_CREATION,
+                'authorized_by' => $userId,
+                'authorized_at' => now(),
+            ]);
 
             return $diet;
         });
@@ -93,7 +103,12 @@ class DietService
      */
     public function finishDiet(Diet $diet, int $userId): DietHistory
     {
-        return $this->closeDiet($diet, $userId, 'finalizada', Diet::FINISHED);
+        $history = $this->closeDiet($diet, $userId, 'finalizada', Diet::FINISHED);
+
+        // Si ya se recibió todo lo servido antes del alta, el día queda completado (y se factura)
+        app(DietDayService::class)->evaluate($diet->fresh(), now(), $userId);
+
+        return $history;
     }
 
     private function closeDiet(Diet $diet, int $userId, string $changes, int $status): DietHistory
@@ -120,6 +135,30 @@ class DietService
             $diet->update(['status' => $status]);
 
             return $history;
+        });
+    }
+
+    /**
+     * Versión que registra el sistema para el día (Diet::DAY_CHANGES: completada, continuada):
+     * copia de la actual, sin cambio clínico. No alerta al despachador; si ya había cambios
+     * sin confirmar, queda pendiente con ellos para que la comparación siga mostrándolos.
+     */
+    public function recordDayVersion(Diet $diet, string $changes, int $userId): DietHistory
+    {
+        return DB::transaction(function () use ($diet, $changes, $userId) {
+            $lastVersion = $diet->history()->lockForUpdate()->max('version') ?? 0;
+            $current = $diet->history()->where('version', $lastVersion)->first();
+            $pending = $diet->history()->where('modify', 'si')->exists();
+
+            return $this->createInternalVersionOfDiet($diet, [
+                'timeFood' => $current?->timeFood,
+                'consistency' => $current?->consistency,
+                'specifications' => $current?->specifications,
+                'billing_type' => $current?->billing_type,
+                'observations' => $current?->observations,
+                'isolation' => $current?->isolation ?? 'No',
+                'changes' => $changes,
+            ], $userId, $lastVersion + 1, $pending ? 'si' : 'no');
         });
     }
 

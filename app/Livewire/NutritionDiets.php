@@ -3,9 +3,11 @@
 namespace App\Livewire;
 
 use App\Models\Diet;
+use App\Services\DietDayService;
 use App\Services\DispatchService;
 use App\Support\Pagination;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -20,11 +22,11 @@ class NutritionDiets extends Component
 {
     use WithPagination;
 
-    /** Pestañas => estado de la dieta */
+    /** Pestañas => estados de la dieta (activas incluye las completadas hoy) */
     public const TABS = [
-        'active' => Diet::ACTIVE,
-        'cancelled' => Diet::CANCELLED,
-        'finished' => Diet::FINISHED,
+        'active' => Diet::OPEN_STATUSES,
+        'cancelled' => [Diet::CANCELLED],
+        'finished' => [Diet::FINISHED],
     ];
 
     #[Url(except: 'active')]
@@ -35,6 +37,11 @@ class NutritionDiets extends Component
 
     #[Url(as: 'per_page', except: Pagination::PER_PAGE)]
     public int $perPage = Pagination::PER_PAGE;
+
+    /** Resultado de «Continuar dieta» */
+    public ?string $notice = null;
+
+    public bool $noticeError = false;
 
     public function mount(): void
     {
@@ -61,18 +68,35 @@ class NutritionDiets extends Component
         $this->resetPage();
     }
 
+    /** «Continuar dieta»: autoriza el despacho de mañana (nutrición y enfermería) */
+    public function continueDiet(int $dietId, DietDayService $days): void
+    {
+        abort_unless(auth()->user()?->can('continueDiets'), 403);
+
+        $diet = Diet::findOrFail($dietId);
+
+        try {
+            $days->continueDiet($diet, auth()->id());
+            $this->notice = "Dieta de la habitación {$diet->habitation} autorizada para mañana.";
+            $this->noticeError = false;
+        } catch (ValidationException $e) {
+            $this->notice = collect($e->errors())->flatten()->first();
+            $this->noticeError = true;
+        }
+    }
+
     /** Un despacho recibido o nuevo cambia el estado de la columna Tiempo */
     #[On('dispatch-received')]
     #[On('dispatch-arrived')]
     public function refreshTable(): void {}
 
-    public function render(DispatchService $dispatches)
+    public function render(DispatchService $dispatches, DietDayService $days)
     {
         $search = trim($this->search);
 
         // La búsqueda aplica a la pestaña abierta (habitación o paciente)
         $diets = Diet::with('currentVersion.updatedBy')
-            ->where('status', self::TABS[$this->tab])
+            ->whereIn('status', self::TABS[$this->tab])
             ->when($search !== '', fn (Builder $q) => $q->where(fn (Builder $q) => $q
                 ->where('habitation', 'like', "%{$search}%")
                 ->orWhere('name_patient', 'like', "%{$search}%")))
@@ -82,16 +106,18 @@ class NutritionDiets extends Component
 
         // Indicadores sobre todas las dietas, no solo la página visible
         $counts = Diet::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+        $pageIds = $diets->getCollection()->pluck('id')->all();
         $activeVersions = Diet::active()->with('currentVersion')->get()->pluck('currentVersion')->filter();
 
         return view('livewire.nutrition-diets', [
             'diets' => $diets,
-            'counts' => collect(self::TABS)->map(fn ($status) => (int) ($counts[$status] ?? 0))->all(),
+            'counts' => collect(self::TABS)->map(fn ($statuses) => (int) collect($statuses)->sum(fn ($s) => $counts[$s] ?? 0))->all(),
             'stats' => [
                 'isolated' => $activeVersions->where('isolation', 'Sí')->count(),
-                'changes' => $activeVersions->reject(fn ($v) => in_array($v->changes, [null, '', 'NA'], true))->count(),
+                'changes' => $activeVersions->reject(fn ($v) => in_array($v->changes, [null, '', 'NA', ...Diet::DAY_CHANGES], true))->count(),
             ],
-            'delivery' => $this->tab === 'active' ? $dispatches->statusByDiet($diets->getCollection()->pluck('id')->all()) : [],
+            'delivery' => $this->tab === 'active' ? $dispatches->statusByDiet($pageIds) : [],
+            'dayStatus' => $this->tab === 'active' ? $days->statusByDiet($pageIds) : [],
             'specLabels' => config('specifications.labels'),
             'consistencyLabels' => config('consistency.labels'),
             'foodLabels' => config('timeFood.labels'),

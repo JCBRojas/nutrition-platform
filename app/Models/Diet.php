@@ -18,11 +18,20 @@ class Diet extends Model
 
     public const FINISHED = 2; // alta: el paciente salió de la institución
 
+    public const COMPLETED = 3; // se recibieron todos los tiempos del día; sigue en curso
+
+    /** Dietas en curso (paciente hospitalizado): activas y completadas */
+    public const OPEN_STATUSES = [self::ACTIVE, self::COMPLETED];
+
     /** Valores de diet_histories.changes que cierran una dieta */
     public const CLOSING_CHANGES = ['cancelada', 'finalizada'];
 
+    /** Versiones que registra el sistema por día (copia de la anterior, sin cambio clínico) */
+    public const DAY_CHANGES = ['completada', 'continuada'];
+
     public const STATUS_LABELS = [
         self::ACTIVE => 'Activa',
+        self::COMPLETED => 'Completada',
         self::CANCELLED => 'Cancelada',
         self::FINISHED => 'Finalizada',
     ];
@@ -39,9 +48,10 @@ class Diet extends Model
         'confirmed' => 'boolean',
     ];
 
+    /** En curso: activas y completadas (no canceladas ni finalizadas) */
     public function scopeActive($query)
     {
-        return $query->where('status', self::ACTIVE);
+        return $query->whereIn('status', self::OPEN_STATUSES);
     }
 
     /**
@@ -53,9 +63,15 @@ class Diet extends Model
         return $query->orderByRaw('LENGTH(habitation)')->orderBy('habitation');
     }
 
+    /** En curso (activa o completada): se puede editar, despachar, cancelar o dar de alta */
     public function isActive(): bool
     {
-        return $this->status === self::ACTIVE;
+        return in_array($this->status, self::OPEN_STATUSES, true);
+    }
+
+    public function isCompleted(): bool
+    {
+        return $this->status === self::COMPLETED;
     }
 
     public function statusLabel(): string
@@ -71,6 +87,11 @@ class Diet extends Model
     public function dispatches()
     {
         return $this->hasMany(DietDispatch::class);
+    }
+
+    public function days()
+    {
+        return $this->hasMany(DietDay::class);
     }
 
     public function currentVersion()

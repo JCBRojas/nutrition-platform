@@ -44,7 +44,7 @@ class DietHistoryViewer extends Component
     {
         $diets = Diet::query()
             ->withCount('history')
-            ->when($this->status === 'active', fn ($q) => $q->where('status', Diet::ACTIVE))
+            ->when($this->status === 'active', fn ($q) => $q->active())
             ->when($this->status === 'cancelled', fn ($q) => $q->where('status', Diet::CANCELLED))
             ->when($this->status === 'finished', fn ($q) => $q->where('status', Diet::FINISHED))
             ->when($this->search !== '', fn ($q) => $q->where(fn ($q) => $q

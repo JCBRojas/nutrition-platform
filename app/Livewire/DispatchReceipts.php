@@ -9,7 +9,7 @@ use Livewire\Component;
 
 /**
  * Panel del nutricionista: despachos de cocina que esperan confirmación de recepción.
- * Solo los despachos recibidos se facturan (BillingService).
+ * Al recibirse todos los tiempos del día, la dieta queda Completada; solo esos días se facturan.
  */
 class DispatchReceipts extends Component
 {
@@ -49,14 +49,19 @@ class DispatchReceipts extends Component
     {
         abort_unless(auth()->user()?->can('confirmReception'), 403);
 
-        $count = $dispatches->confirmReceipt(array_map('intval', $this->selected), auth()->id());
+        $result = $dispatches->confirmReceipt(array_map('intval', $this->selected), auth()->id());
         $this->selected = [];
         $this->pendingCache = null;
         $this->known = $this->pending()->pluck('id')->all();
 
-        $this->dispatch('dispatch-received', message: $count
-            ? "Recepción confirmada: {$count} despacho(s)."
-            : 'No había despachos pendientes en la selección.');
+        $message = $result['received']
+            ? "Recepción confirmada: {$result['received']} despacho(s)."
+            : 'No había despachos pendientes en la selección.';
+        if ($result['completed'] !== []) {
+            $message .= ' Día completado: hab. '.implode(', ', $result['completed']).'.';
+        }
+
+        $this->dispatch('dispatch-received', message: $message);
     }
 
     public function render()

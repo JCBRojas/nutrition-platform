@@ -50,6 +50,23 @@
     .nd-search-info { font-size: 12.5px; color: var(--text-muted); }
     .nd-legend { margin: 0 0 0 auto; }
     @media (max-width: 640px) { .nd-search .filter-input { max-width: none; flex: 1 1 100%; } .nd-legend { margin-left: 0; } }
+    /* Estado del día y «Continuar dieta» */
+    .nd-day { display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; white-space: nowrap; }
+    .nd-day .tag { margin: 0; }
+    .tag-completed { background: #ccfbf1; color: #0f766e; font-weight: 600; }
+    .tag-in-progress { background: var(--surface2); color: var(--text); }
+    .tag-blocked { background: var(--amber-light); color: #92400e; font-weight: 600; }
+    .tag-continued { background: var(--blue-light); color: var(--blue); }
+    .nd-next { display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; line-height: 1; white-space: nowrap; }
+    .nd-next svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+    .nd-next-ok { background: var(--blue-light); color: var(--blue); }
+    .nd-next-off { color: var(--text-muted); font-weight: 500; }
+    .nd-continue { border: 1px solid var(--blue); background: var(--surface, #fff); color: var(--blue); cursor: pointer; transition: background .15s, color .15s; }
+    .nd-continue:hover { background: var(--blue); color: #fff; }
+    .nd-continue:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .nd-continue[disabled] { opacity: .5; cursor: wait; }
+    .nd-notice { margin: 0 0 14px; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13.5px; background: var(--accent-light); color: var(--accent); }
+    .nd-notice.error { background: var(--accent2-light); color: var(--accent2); }
 </style>
 <script>
     const SPEC_LABELS = @json($specLabels);

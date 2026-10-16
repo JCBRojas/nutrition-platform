@@ -16,4 +16,17 @@ return [
     */
     'required_from' => env('DISPATCH_REQUIRED_FROM', '2026-10-15'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Facturación solo de días completados
+    |--------------------------------------------------------------------------
+    |
+    | Desde esta fecha la facturación y el Excel del reporte solo cuentan los días
+    | en que la dieta quedó Completada (todos sus tiempos despachados y recibidos;
+    | tabla diet_days). Antes de la fecha se usa la regla de lo recibido.
+    | Vacío = no se exige.
+    |
+    */
+    'completion_required_from' => env('COMPLETION_REQUIRED_FROM', '2026-10-16'),
+
 ];
