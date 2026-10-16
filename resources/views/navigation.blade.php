@@ -10,12 +10,12 @@
   <nav class="nav">
     <div class="nav-section">Principal</div>
     {{-- Cada enlace se muestra solo si el usuario pasa el middleware de su ruta --}}
-    @role('nutricionista')
+    @can('viewActiveDiets')
     <a class="nav-item {{ request()->routeIs('dashboard.nutrition') ? 'active' : '' }}" href="{{ route('dashboard.nutrition')}}" id="nav-nutricional">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       Dietas Activas
     </a>
-    @endrole
+    @endcan
     @role('despachador')
     <a class="nav-item {{ request()->routeIs('dashboard.dispatch') ? 'active' : '' }}" href="{{ route('dashboard.dispatch')}}" id="nav-despacho">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/></svg>

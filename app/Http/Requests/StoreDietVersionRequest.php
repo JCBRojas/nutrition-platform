@@ -14,7 +14,7 @@ class StoreDietVersionRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()->hasRole('nutricionista');
+        return $this->user()->can('editDiets'); // por permiso, no por rol
     }
 
     /**

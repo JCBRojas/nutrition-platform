@@ -12,6 +12,13 @@ class UserService
     public const ADMIN_ROLE = 'admin';
 
     /**
+     * Guard de roles y permisos. Siempre explícito: las rutas usan auth:sanctum, que
+     * durante la petición cambia el guard por defecto a 'sanctum', y Spatie crearía
+     * el rol con ese guard (luego falla "There is no permission named … for guard sanctum").
+     */
+    public const GUARD = 'web';
+
+    /**
      * Crear usuario con sus roles
      */
     public function create(array $data): User

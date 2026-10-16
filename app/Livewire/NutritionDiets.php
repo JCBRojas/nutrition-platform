@@ -38,6 +38,8 @@ class NutritionDiets extends Component
 
     public function mount(): void
     {
+        abort_unless(auth()->user()?->can('viewActiveDiets'), 403);
+
         $this->tab = array_key_exists($this->tab, self::TABS) ? $this->tab : 'active';
         $this->perPage = Pagination::perPage($this->perPage);
     }

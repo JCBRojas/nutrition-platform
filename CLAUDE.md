@@ -38,7 +38,7 @@ php artisan permission:cache-reset  # tras cambiar roles/permisos
 ```
 Request → routes/web.php (auth:sanctum + jetstream + verified [+ role:*])
         → DietController ──→ DietService (transacciones, versionado)
-                          └→ FormRequest (StoreDietRequest: authorize = rol nutricionista)
+                          └→ FormRequest (StoreDietRequest: authorize por permiso — createDiets al registrar, editDiets al versionar)
         → Livewire\DietsManager (vista despachador, wire:poll.3s)
         → Blade views (dashboard, reports-diets*, components/modal-*-diets)
 ```
@@ -79,7 +79,7 @@ Nunca se edita un `DietHistory` existente (salvo el flag `modify`); todo cambio 
 
 | Rol | Permisos |
 |---|---|
-| `nutricionista` | `createDiets`, `editDiets`, `viewDiets`, `viewReports`, `confirmReception`, `viewDispatches` |
+| `nutricionista` | `createDiets`, `editDiets`, `viewDiets`, `viewReports`, `confirmReception`, `viewDispatches`, `viewActiveDiets` |
 | `despachador` | `viewDiets`, `confirmDelivery`, `viewDispatches`, `generateFiles` |
 
 Convención de permisos: **camelCase verbo+Recurso**. Middleware alias registrados: `role`, `permission`, `role_or_permission`.
@@ -137,6 +137,8 @@ Rol `admin` con CRUD de usuarios, asignación de roles y matriz de permisos. Sin
 | Autorización | `app/Policies/UserPolicy.php` + `Gate::before` para `admin` en `AuthServiceProvider` |
 | UI | `app/Livewire/Admin/UsersManager.php` (`/admin/usuarios`, `admin.users.index`) y `RolesManager.php` (`/admin/roles`, `admin.roles.index`), vistas en `resources/views/livewire/admin/` |
 | Tests | `tests/Feature/Admin/UsersManagementTest.php` |
+
+Guard: roles y permisos siempre con `guard_name` = `UserService::GUARD` (`web`), explícito al crearlos y al consultarlos. Las rutas usan `auth:sanctum`, que durante la petición cambia el guard por defecto a `sanctum`; sin guard explícito Spatie crea el rol en `sanctum` y falla al asignarle permisos (corregido con la migración `2026_10_20_000000_move_sanctum_roles_to_web_guard`).
 
 Permisos: `viewUsers`, `createUsers`, `editUsers`, `deleteUsers`, `manageRoles` (el rol `admin` siempre tiene todos; `RolesManager` no permite quitárselos).
 
@@ -258,6 +260,7 @@ Nombres de archivo con fecha local: `produccion_2026-10-15_0630.pdf` (`now('Amer
 ## 7c. Paginación de tablas
 
 Skill `.claude/skills/table-pagination`: 15 por página, parámetros `page` y `per_page` (`App\Support\Pagination::perPage()` acepta 15/30/50; cualquier otro → 15), control común `resources/views/pagination/table.blade.php` (Anterior/Siguiente, números, selector de página, "1–15 de N registros"; en Livewire `->links('pagination.table', ['livewire' => true])`). Los filtros se conservan (`withQueryString()` / `#[Url]`) y al cambiar un filtro se vuelve a la página 1.
+- Panel de dietas activas (`/dashboard/nutrition`, permiso `viewActiveDiets`, no rol; lo tiene el nutricionista y se asigna a otros roles como enfermería): sin `createDiets`/`editDiets` queda de solo lectura (sin botones ni modales). `User::homeUrl()` envía a los roles sin panel propio según su permiso (`viewActiveDiets` → panel, `viewDispatches` → despachos, `viewDiets` → historial).
 - Panel del nutricionista: `App\Livewire\NutritionDiets` (indicadores, pestañas `?tab=active|cancelled|finished`, búsqueda en vivo `?q=` de la pestaña abierta, `page`/`per_page`). Se refresca cada 5 s con `$wire.$refresh()` y se pausa si hay un `.overlay.open` o `.chip-select.open` (edición en curso). Los modales de edición llevan `wire:ignore` y la fila `wire:key` con la versión (si la dieta cambia, el modal se recrea con los datos nuevos); el modal de registro está fuera del componente. Cambiar de pestaña o de búsqueda vuelve a la página 1.
 - Despachador, historial (`DietHistoryViewer`) y usuarios: Livewire `WithPagination`.
 - Orden: las tablas de dietas y despachos van por habitación ascendente en orden natural (`Diet::orderByRoom()` / `DietDispatch::orderByRoom()`: `LENGTH(habitation)`, luego `habitation`; 12 < 101 < 1001). En el despachador las dietas con cambios sin confirmar siguen arriba.

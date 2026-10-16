@@ -8,6 +8,7 @@ use App\Services\DietService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class NutritionDashboardTest extends TestCase
@@ -137,5 +138,56 @@ class NutritionDashboardTest extends TestCase
 
         $this->assertStringContainsString('$wire.$refresh()', html_entity_decode($html));
         $this->assertStringContainsString('.overlay.open, .chip-select.open', html_entity_decode($html));
+    }
+
+    public function test_role_with_view_active_diets_sees_the_panel_read_only(): void
+    {
+        $this->createDiets(1);
+        $nurse = User::factory()->create();
+        Role::create(['name' => 'enfermeria', 'guard_name' => 'web'])->givePermissionTo('viewActiveDiets');
+        $nurse->assignRole('enfermeria');
+
+        $this->assertSame(route('dashboard.nutrition'), $nurse->homeUrl());
+
+        $this->actingAs($nurse)->get(route('dashboard.nutrition'))
+            ->assertOk()
+            ->assertSee('Paciente 1')
+            ->assertSee('Dietas Activas') // enlace del menú
+            ->assertDontSee('Registrar Dieta')
+            ->assertDontSee('title="Editar dieta"', false)
+            ->assertDontSee('id="modalEditOverlay', false)
+            ->assertDontSee('id="modalOverlay"', false);
+
+        $this->flushSession();
+        $this->actingAs($this->nutritionist)->get(route('dashboard.nutrition'))
+            ->assertSee('Registrar Dieta')
+            ->assertSee('title="Editar dieta"', false);
+    }
+
+    public function test_panel_requires_view_active_diets(): void
+    {
+        $this->actingAs(User::role('despachador')->firstOrFail())->get(route('dashboard.nutrition'))->assertForbidden();
+    }
+
+    public function test_any_role_with_edit_or_create_permission_can_save_diets(): void
+    {
+        $this->createDiets(1);
+        $diet = \App\Models\Diet::firstOrFail();
+        $nurse = User::factory()->create();
+        Role::create(['name' => 'enfermeria', 'guard_name' => 'web'])->givePermissionTo(['viewActiveDiets', 'editDiets']);
+        $nurse->assignRole('enfermeria');
+
+        $data = ['timeFood' => ['almuerzo'], 'billing_type' => 'normal', 'isolation' => 'No', 'changes' => 'con_cambios'];
+
+        $this->actingAs($nurse)->put(route('dietas.update', $diet), $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(2, $diet->history()->max('version'));
+
+        // Sin createDiets no puede registrar
+        $this->actingAs($nurse)->post(route('dietas.create'), $data + ['habitation' => '500', 'name_patient' => 'Nuevo'])->assertForbidden();
+
+        Role::findByName('enfermeria', 'web')->givePermissionTo('createDiets');
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->actingAs($nurse->fresh())->post(route('dietas.create'), $data + ['habitation' => '500', 'name_patient' => 'Nuevo'])->assertRedirect();
+        $this->assertDatabaseHas('diets', ['habitation' => '500']);
     }
 }

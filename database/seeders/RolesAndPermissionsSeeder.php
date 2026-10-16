@@ -24,6 +24,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'confirmDelivery',
             'confirmReception',
             'viewDispatches',
+            'viewActiveDiets',
             'generateFiles',
             'viewUsers',
             'createUsers',
@@ -34,14 +35,14 @@ class RolesAndPermissionsSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission]);
+            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
         // Roles
-        $nutricionista = Role::firstOrCreate(['name' => 'nutricionista']);
-        $despachador = Role::firstOrCreate(['name' => 'despachador']);
-        $admin = Role::firstOrCreate(['name' => 'admin']);
-        $jefe = Role::firstOrCreate(['name' => 'jefe_nutricion']);
+        $nutricionista = Role::firstOrCreate(['name' => 'nutricionista', 'guard_name' => 'web']);
+        $despachador = Role::firstOrCreate(['name' => 'despachador', 'guard_name' => 'web']);
+        $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $jefe = Role::firstOrCreate(['name' => 'jefe_nutricion', 'guard_name' => 'web']);
 
         // Admin: todos los permisos
         $admin->syncPermissions(Permission::all());
@@ -54,6 +55,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'viewReports',
             'confirmReception',
             'viewDispatches',
+            'viewActiveDiets',
         ]);
 
         // Asignar permisos a Jefe de nutrición

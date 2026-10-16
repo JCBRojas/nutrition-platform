@@ -14,10 +14,10 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasRoles;
     use HasApiTokens;
     use HasFactory;
     use HasProfilePhoto;
+    use HasRoles;
     use Notifiable;
     use SoftDeletes;
     use TwoFactorAuthenticatable;
@@ -78,6 +78,10 @@ class User extends Authenticatable
             $this->hasRole('despachador') => route('dashboard.dispatch'),
             $this->hasRole('jefe_nutricion') => route('prices.index'),
             $this->hasRole('admin') => route('admin.users.index'),
+            // Roles creados desde /admin/roles (p. ej. enfermería): según sus permisos
+            $this->can('viewActiveDiets') => route('dashboard.nutrition'),
+            $this->can('viewDispatches') => route('dispatches.index'),
+            $this->can('viewDiets') => route('diets.history'),
             default => route('profile.show'),
         };
     }
@@ -91,5 +95,4 @@ class User extends Authenticatable
     {
         return $this->hasMany(DietHistory::class, 'updated_by');
     }
-
 }

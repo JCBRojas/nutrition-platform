@@ -19,10 +19,12 @@
             <livewire:nutrition-diets />
 
             {{-- Modal de registro: fuera del componente para que el refresco no lo toque --}}
-            <div class="overlay" id="modalOverlay">
-                <x-modal-create-diets :specLabels="$specLabels" :consistencyLabels="$consistencyLabels"
-                    :foodLabels="$foodLabels"></x-modal-create-diets>
-            </div>
+            @can('createDiets')
+                <div class="overlay" id="modalOverlay">
+                    <x-modal-create-diets :specLabels="$specLabels" :consistencyLabels="$consistencyLabels"
+                        :foodLabels="$foodLabels"></x-modal-create-diets>
+                </div>
+            @endcan
 
         </div>
     </div>

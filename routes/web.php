@@ -36,8 +36,8 @@ Route::middleware([
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
-    // 🔵 NUTRICIONISTA
-    Route::middleware(['role:nutricionista'])->group(function () {
+    // 🔵 DIETAS ACTIVAS (nutricionista y quien tenga el permiso, p. ej. enfermería)
+    Route::middleware(['permission:viewActiveDiets'])->group(function () {
         Route::get('/dashboard/nutrition', [DietController::class, 'nutritionDashboard'])
             ->name('dashboard.nutrition');
     });

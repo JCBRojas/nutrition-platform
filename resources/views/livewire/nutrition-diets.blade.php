@@ -43,13 +43,15 @@
             </button>
         @endforeach
 
-        <button type="button" class="btn btn-primary float-right" id="btnRegistrar" onclick="openCreateModal()">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            Registrar Dieta
-        </button>
+        @can('createDiets')
+            <button type="button" class="btn btn-primary float-right" id="btnRegistrar" onclick="openCreateModal()">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Registrar Dieta
+            </button>
+        @endcan
     </div>
 
     <div class="card">
@@ -142,11 +144,14 @@
 
                                 <td class="text-right">
                                     <div class="row-actions">
-                                        <a href="{{ route('diets.history', ['dieta' => $diet->id]) }}"
-                                            class="btn btn-ghost btn-sm btn-icon" title="Ver historial"
-                                            aria-label="Ver historial de {{ $diet->name_patient }}">
-                                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
-                                        </a>
+                                        @can('viewDiets')
+                                            <a href="{{ route('diets.history', ['dieta' => $diet->id]) }}"
+                                                class="btn btn-ghost btn-sm btn-icon" title="Ver historial"
+                                                aria-label="Ver historial de {{ $diet->name_patient }}">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+                                            </a>
+                                        @endcan
+                                        @can('editDiets')
                                         <button type="button" class="btn btn-success btn-sm btn-icon" title="Editar dieta"
                                             aria-label="Editar dieta de {{ $diet->name_patient }}"
                                             onclick='openEditModal({{ $diet->id }}, @json($diet))'>
@@ -170,12 +175,15 @@
                                                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                                             </button>
                                         </form>
+                                        @endcan
                                     </div>
-                                    {{-- wire:ignore: el refresco no toca el modal; si la dieta cambia de versión, la fila (y el modal) se recrean --}}
-                                    <div class="overlay" id="modalEditOverlay{{ $diet->id }}" wire:ignore>
-                                        <x-modal-edit-diets :diet="$diet" :specLabels="$specLabels"
-                                            :consistencyLabels="$consistencyLabels" :foodLabels="$foodLabels" />
-                                    </div>
+                                    @can('editDiets')
+                                        {{-- wire:ignore: el refresco no toca el modal; si la dieta cambia de versión, la fila (y el modal) se recrean --}}
+                                        <div class="overlay" id="modalEditOverlay{{ $diet->id }}" wire:ignore>
+                                            <x-modal-edit-diets :diet="$diet" :specLabels="$specLabels"
+                                                :consistencyLabels="$consistencyLabels" :foodLabels="$foodLabels" />
+                                        </div>
+                                    @endcan
                                 </td>
 
                             </tr>
@@ -227,10 +235,12 @@
                                 <td class="text-right">
                                     <div class="row-actions">
                                         <span class="tag {{ $closedTab['tag'] }}">{{ $closedTab['label'] }}</span>
-                                        <a href="{{ route('diets.history', ['dieta' => $diet->id]) }}" class="btn btn-ghost btn-sm btn-icon"
-                                            title="Ver historial" aria-label="Ver historial de {{ $diet->name_patient }}">
-                                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
-                                        </a>
+                                        @can('viewDiets')
+                                            <a href="{{ route('diets.history', ['dieta' => $diet->id]) }}" class="btn btn-ghost btn-sm btn-icon"
+                                                title="Ver historial" aria-label="Ver historial de {{ $diet->name_patient }}">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+                                            </a>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>

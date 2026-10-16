@@ -12,9 +12,13 @@ class StoreDietRequest extends FormRequest
     /**
      * Determine if the user is authorized to make this request.
      */
+    /**
+     * Por permiso, no por rol (cualquier rol puede recibirlos desde /admin/roles):
+     * registrar (POST /dietas) → createDiets; nueva versión (PUT /dietas/{diet}/version) → editDiets.
+     */
     public function authorize(): bool
     {
-        return $this->user()->hasRole('nutricionista');
+        return $this->user()->can($this->route('diet') ? 'editDiets' : 'createDiets');
     }
 
     /**

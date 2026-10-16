@@ -29,14 +29,14 @@ class RolesManager extends Component
     {
         $this->authorize('manageRoles');
 
-        $valid = Permission::pluck('name')->all();
+        $valid = Permission::where('guard_name', UserService::GUARD)->pluck('name')->all();
 
-        foreach (Role::where('name', '!=', UserService::ADMIN_ROLE)->get() as $role) {
+        foreach (Role::where('guard_name', UserService::GUARD)->where('name', '!=', UserService::ADMIN_ROLE)->get() as $role) {
             $role->syncPermissions(array_values(array_intersect($this->matrix[$role->name] ?? [], $valid)));
         }
 
         // El rol admin conserva siempre todos los permisos
-        Role::where('name', UserService::ADMIN_ROLE)->first()?->syncPermissions($valid);
+        Role::where('guard_name', UserService::GUARD)->where('name', UserService::ADMIN_ROLE)->first()?->syncPermissions($valid);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $this->loadMatrix();
@@ -53,7 +53,7 @@ class RolesManager extends Component
             'newRole.regex' => 'Usa minúsculas y guion bajo, p. ej. auxiliar_cocina.',
         ]);
 
-        Role::create(['name' => $this->newRole]);
+        Role::create(['name' => $this->newRole, 'guard_name' => UserService::GUARD]);
         $this->reset('newRole');
         $this->loadMatrix();
         session()->flash('success', 'Rol creado');
@@ -63,10 +63,11 @@ class RolesManager extends Component
     {
         $this->authorize('manageRoles');
 
-        $role = Role::where('name', $name)->first();
+        $role = Role::where('guard_name', UserService::GUARD)->where('name', $name)->first();
 
         if (! $role || $role->name === UserService::ADMIN_ROLE || $this->usersCount($role) > 0) {
             session()->flash('error', 'No se puede eliminar el rol admin ni un rol con usuarios asignados.');
+
             return;
         }
 
@@ -84,7 +85,7 @@ class RolesManager extends Component
 
     private function loadMatrix(): void
     {
-        $this->matrix = Role::with('permissions')->get()
+        $this->matrix = Role::where('guard_name', UserService::GUARD)->with('permissions')->get()
             ->mapWithKeys(fn ($role) => [$role->name => $role->permissions->pluck('name')->all()])
             ->all();
     }
@@ -92,9 +93,9 @@ class RolesManager extends Component
     public function render()
     {
         return view('livewire.admin.roles-manager', [
-            'roles' => Role::orderBy('name')->get()
+            'roles' => Role::where('guard_name', UserService::GUARD)->orderBy('name')->get()
                 ->each(fn (Role $role) => $role->users_count = $this->usersCount($role)),
-            'permissions' => Permission::orderBy('name')->pluck('name'),
+            'permissions' => Permission::where('guard_name', UserService::GUARD)->orderBy('name')->pluck('name'),
             'adminRole' => UserService::ADMIN_ROLE,
         ]);
     }

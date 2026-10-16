@@ -158,7 +158,7 @@ class UsersManager extends Component
             'is_active' => ['boolean'],
             'whatsapp_opt_in' => ['boolean'],
             'roles' => ['array'],
-            'roles.*' => ['string', Rule::exists('roles', 'name')],
+            'roles.*' => ['string', Rule::exists('roles', 'name')->where('guard_name', UserService::GUARD)],
         ];
     }
 
@@ -180,7 +180,7 @@ class UsersManager extends Component
 
     public function render()
     {
-        $allRoles = Role::orderBy('name')->pluck('name');
+        $allRoles = Role::where('guard_name', UserService::GUARD)->orderBy('name')->pluck('name');
 
         $users = User::query()
             ->with('roles')

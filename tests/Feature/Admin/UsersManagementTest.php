@@ -155,6 +155,34 @@ class UsersManagementTest extends TestCase
         $this->assertTrue(Role::findByName('admin')->hasPermissionTo('manageRoles'));
     }
 
+    public function test_role_created_under_sanctum_guard_gets_permissions(): void
+    {
+        // En la app las rutas usan auth:sanctum: durante la petición el guard por defecto es 'sanctum'
+        auth()->shouldUse('sanctum');
+
+        Livewire::actingAs($this->admin)->test(RolesManager::class)
+            ->set('newRole', 'enfermeria')
+            ->call('createRole')
+            ->set('matrix.enfermeria', ['viewDiets', 'confirmReception'])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $role = Role::findByName('enfermeria', 'web');
+        $this->assertEqualsCanonicalizing(['viewDiets', 'confirmReception'], $role->permissions->pluck('name')->all());
+    }
+
+    public function test_migration_moves_sanctum_roles_to_web(): void
+    {
+        $roleId = \DB::table('roles')->insertGetId(['name' => 'enfermeria', 'guard_name' => 'sanctum', 'created_at' => now(), 'updated_at' => now()]);
+        $this->admin->roles()->attach($roleId);
+
+        (require database_path('migrations/2026_10_20_000000_move_sanctum_roles_to_web_guard.php'))->up();
+
+        $this->assertSame('web', \DB::table('roles')->where('id', $roleId)->value('guard_name'));
+        $this->assertTrue($this->admin->fresh()->hasRole('enfermeria'));
+        Role::findByName('enfermeria', 'web')->syncPermissions(['viewDiets']); // ya no falla
+    }
+
     public function test_cannot_delete_role_with_users(): void
     {
         Livewire::actingAs($this->admin)->test(RolesManager::class)
