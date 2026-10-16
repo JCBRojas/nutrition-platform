@@ -109,6 +109,15 @@
                 <label>Observaciones</label>
                 <textarea id="f-observaciones" name="observations" placeholder="Notas adicionales para cocina…"></textarea>
             </div>
+            <div class="form-group">
+                <label for="f-billing-type">Tipo de dieta (facturación) <span class="req">*</span></label>
+                <select id="f-billing-type" name="billing_type" required>
+                    <option value="">Selecciona el tipo</option>
+                    @foreach (\App\Services\BillingService::selectableTypes() as $key => $name)
+                        <option value="{{ $key }}" @selected(old('billing_type') === $key)>{{ $name }}</option>
+                    @endforeach
+                </select>
+            </div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Aislamiento</label>

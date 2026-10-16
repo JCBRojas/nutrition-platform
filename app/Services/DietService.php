@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Diet;
 use App\Models\DietHistory;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class DietService
 {
@@ -16,12 +17,11 @@ class DietService
         // dd($data['timeFood']);
         return DB::transaction(function () use ($data, $userId) {
 
-
             // 1️⃣ Crear cabecera
             $diet = Diet::create([
                 'habitation' => $data['habitation'],
                 'name_patient' => $data['name_patient'],
-                'status' => true, // Activa por defecto
+                'status' => Diet::ACTIVE,
             ]);
 
             // 2️⃣ Crear versión 1
@@ -39,8 +39,8 @@ class DietService
         return DB::transaction(function () use ($diet, $data, $userId) {
 
             $lastVersion = $diet->history()
-                                   ->lockForUpdate()
-                                   ->max('version') ?? 0;
+                ->lockForUpdate()
+                ->max('version') ?? 0;
 
             if (($data['changes'] ?? null) === 'cancelada') {
                 $this->setDietCanceled($diet);
@@ -53,14 +53,15 @@ class DietService
                 $lastVersion + 1,
                 $modify = 'si'
             );
-            
+
         });
     }
 
     /**
      * Método privado reutilizable
      */
-    private function createInternalVersionOfDiet( Diet $diet, array $data, int $userId, int $numeroVersion, string $modify): DietHistory {
+    private function createInternalVersionOfDiet(Diet $diet, array $data, int $userId, int $numeroVersion, string $modify): DietHistory
+    {
 
         return DietHistory::create([
             'diet_id' => $diet->id,
@@ -69,6 +70,7 @@ class DietService
             'timeFood' => $data['timeFood'] ?? null,
             'consistency' => $data['consistency'] ?? null,
             'specifications' => $data['specifications'] ?? null,
+            'billing_type' => $data['billing_type'] ?? null,
             'observations' => $data['observations'] ?? null,
             'isolation' => $data['isolation'] ?? 'No',
             'changes' => $data['changes'] ?? null,
@@ -82,22 +84,49 @@ class DietService
      */
     public function cancelDiet(Diet $diet, int $userId): DietHistory
     {
+        return $this->closeDiet($diet, $userId, 'cancelada', Diet::CANCELLED);
+    }
+
+    /**
+     * Finalizar dieta (alta del paciente): crea una versión con changes = 'finalizada'
+     * (copia de la actual) y pone status = FINISHED. No elimina registros.
+     */
+    public function finishDiet(Diet $diet, int $userId): DietHistory
+    {
+        return $this->closeDiet($diet, $userId, 'finalizada', Diet::FINISHED);
+    }
+
+    private function closeDiet(Diet $diet, int $userId, string $changes, int $status): DietHistory
+    {
+        if (! $diet->isActive()) {
+            throw ValidationException::withMessages([
+                'diet' => "La dieta de la habitación {$diet->habitation} ya está {$diet->statusLabel()} y no se puede modificar.",
+            ]);
+        }
+
         $current = $diet->currentVersion;
 
-        return $this->createNewVersion($diet, [
-            'timeFood' => $current?->timeFood,
-            'consistency' => $current?->consistency,
-            'specifications' => $current?->specifications,
-            'observations' => $current?->observations,
-            'isolation' => $current?->isolation ?? 'No',
-            'changes' => 'cancelada',
-        ], $userId);
+        return DB::transaction(function () use ($diet, $userId, $changes, $status, $current) {
+            $history = $this->createNewVersion($diet, [
+                'timeFood' => $current?->timeFood,
+                'consistency' => $current?->consistency,
+                'specifications' => $current?->specifications,
+                'billing_type' => $current?->billing_type,
+                'observations' => $current?->observations,
+                'isolation' => $current?->isolation ?? 'No',
+                'changes' => $changes,
+            ], $userId);
+
+            $diet->update(['status' => $status]);
+
+            return $history;
+        });
     }
 
     private function setDietCanceled(Diet $diet): bool
     {
         return $diet->update([
-            'status' => false,
+            'status' => Diet::CANCELLED,
         ]);
     }
 }

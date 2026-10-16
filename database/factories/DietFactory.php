@@ -20,12 +20,12 @@ class DietFactory extends Factory
             // Piso 1–4, cuarto 01–50
             'habitation' => fake()->numberBetween(1, 4).str_pad((string) fake()->numberBetween(1, 50), 2, '0', STR_PAD_LEFT),
             'name_patient' => fake()->name(),
-            'status' => true,
+            'status' => \App\Models\Diet::ACTIVE,
         ];
     }
 
     public function cancelled(): static
     {
-        return $this->state(fn () => ['status' => false]);
+        return $this->state(fn () => ['status' => \App\Models\Diet::CANCELLED]);
     }
 }

@@ -9,10 +9,19 @@
   </div>
   <nav class="nav">
     <div class="nav-section">Principal</div>
-    <a class="nav-item" href="{{ route('dashboard.nutrition')}}" id="nav-nutricional">
+    {{-- Cada enlace se muestra solo si el usuario pasa el middleware de su ruta --}}
+    @role('nutricionista')
+    <a class="nav-item {{ request()->routeIs('dashboard.nutrition') ? 'active' : '' }}" href="{{ route('dashboard.nutrition')}}" id="nav-nutricional">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       Dietas Activas
     </a>
+    @endrole
+    @role('despachador')
+    <a class="nav-item {{ request()->routeIs('dashboard.dispatch') ? 'active' : '' }}" href="{{ route('dashboard.dispatch')}}" id="nav-despacho">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/></svg>
+      Despacho
+    </a>
+    @endrole
     {{-- <a class="nav-item" href="{{ route('dashboard.nutrition')}}" id="nav-nutricional">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/></svg>
       Control de Entrega
@@ -26,10 +35,24 @@
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       Historial de Cambios
     </div> --}}
-    <a class="nav-item" href="{{ route('entrega.index')}}" id="nav-nutricional">
+    @can('viewDiets')
+    <a class="nav-item {{ request()->routeIs('diets.history') ? 'active' : '' }}" href="{{ route('diets.history') }}" id="nav-historial">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Historial de cambios
+    </a>
+    @endcan
+    @canany(['viewReports', 'generateFiles'])
+    <a class="nav-item {{ request()->routeIs('entrega.index', 'diet.reports') ? 'active' : '' }}" href="{{ route('entrega.index')}}" id="nav-reporte">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
       Reporte Nutricional
     </a>
+    @endcanany
+    @can('managePrices')
+    <a class="nav-item {{ request()->routeIs('prices.index') ? 'active' : '' }}" href="{{ route('prices.index') }}" id="nav-precios">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      Precios
+    </a>
+    @endcan
     @can('viewUsers')
     <div class="nav-section">Administración</div>
     <a class="nav-item" href="{{ route('admin.users.index') }}" id="nav-usuarios">

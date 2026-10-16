@@ -42,4 +42,22 @@ return [
         'merienda'     => 'Merienda',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Horario de servicio (HH:MM, America/Bogota)
+    |--------------------------------------------------------------------------
+    |
+    | Hora de entrega de cada tiempo de comida, en orden. Se usa en la línea
+    | de servicios del login. Ajustar al horario real de la cocina.
+    |
+    */
+    'schedule' => [
+        'desayuno'    => '06:30',
+        'mediamanana' => '09:30',
+        'almuerzo'    => '12:00',
+        'algo'        => '15:00',
+        'merienda'    => '16:30',
+        'cena'        => '18:00',
+    ],
+
 ];

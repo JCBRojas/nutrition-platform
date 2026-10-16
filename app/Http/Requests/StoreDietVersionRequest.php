@@ -30,7 +30,17 @@ class StoreDietVersionRequest extends FormRequest
             'specifications.*' => 'nullable|string',
             'observations' => 'nullable|string',
             'isolation' => $this->isolationRules(),
+            'billing_type' => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Services\BillingService::selectableTypes()))],
             'changes' => 'nullable|string',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'billing_type.required' => 'Elige el tipo de dieta (facturación).',
+            'billing_type.in' => 'El tipo de dieta elegido no es válido.',
+            'isolation.in' => 'El aislamiento debe ser Sí o No.',
         ];
     }
 }

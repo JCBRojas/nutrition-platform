@@ -28,6 +28,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'editUsers',
             'deleteUsers',
             'manageRoles',
+            'managePrices',
         ];
 
         foreach ($permissions as $permission) {
@@ -38,6 +39,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $nutricionista = Role::firstOrCreate(['name' => 'nutricionista']);
         $despachador   = Role::firstOrCreate(['name' => 'despachador']);
         $admin         = Role::firstOrCreate(['name' => 'admin']);
+        $jefe          = Role::firstOrCreate(['name' => 'jefe_nutricion']);
 
         // Admin: todos los permisos
         $admin->syncPermissions(Permission::all());
@@ -50,6 +52,14 @@ class RolesAndPermissionsSeeder extends Seeder
             'viewReports',
         ]);
 
+        // Asignar permisos a Jefe de nutrición
+        $jefe->syncPermissions([
+            'viewDiets',
+            'viewReports',
+            'generateFiles',
+            'managePrices',
+        ]);
+
         // Asignar permisos a Despachador
         $despachador->syncPermissions([
             'viewDiets',
@@ -57,10 +67,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'generateFiles',
         ]);
 
-        // Contraseña del administrador: SEED_USER_PASSWORD en .env, o aleatoria (se imprime una vez)
+        // Contraseña del jefe de nutrición: SEED_USER_PASSWORD en .env, o aleatoria (se imprime una vez)
         $password = env('SEED_USER_PASSWORD') ?: Str::password(16);
         if (! env('SEED_USER_PASSWORD')) {
-            $this->command?->warn("Contraseña generada para el administrador: {$password}");
+            $this->command?->warn("Contraseña generada para el jefe de nutrición (solo si el usuario es nuevo): {$password}");
         }
 
         // Crear usuario Nutricionista
@@ -95,5 +105,16 @@ class RolesAndPermissionsSeeder extends Seeder
         );
 
         $userAdmin->assignRole($admin);
+
+        // Crear usuario Jefe de nutrición (contraseña: SEED_USER_PASSWORD o la generada arriba)
+        $userJefe = User::firstOrCreate(
+            ['email' => env('SEED_JEFE_EMAIL', 'jefe@nutritrack.com')],
+            [
+                'name' => 'Jefe de Nutrición',
+                'password' => Hash::make($password)
+            ]
+        );
+
+        $userJefe->assignRole($jefe);
     }
 }

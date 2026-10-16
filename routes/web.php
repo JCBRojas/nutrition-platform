@@ -1,9 +1,12 @@
 <?php
 
+use App\Http\Controllers\BillingExportController;
 use App\Http\Controllers\DietController;
 use App\Http\Controllers\ReportExportController;
 use App\Livewire\Admin\RolesManager;
 use App\Livewire\Admin\UsersManager;
+use App\Livewire\DietHistoryViewer;
+use App\Livewire\PricesManager;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -50,6 +53,16 @@ Route::middleware([
         ->middleware('permission:editDiets')->name('dietas.update');
     Route::patch('/dietas/{diet}/cancel', [DietController::class, 'cancelDiet'])
         ->middleware('permission:editDiets')->name('diets.canceled');
+    Route::patch('/dietas/{diet}/finalizar', [DietController::class, 'finishDiet'])
+        ->middleware('permission:editDiets')->name('diets.finish');
+
+    Route::middleware('permission:managePrices')->group(function () {
+        Route::get('/precios', PricesManager::class)->name('prices.index');
+        Route::get('/facturacion/excel', [BillingExportController::class, 'excel'])->name('billing.excel');
+    });
+
+    Route::get('/historial', DietHistoryViewer::class)
+        ->middleware('permission:viewDiets')->name('diets.history');
 
     Route::middleware(['permission:viewReports|generateFiles'])->group(function () {
         Route::get('/diet-reports', [DietController::class, 'nutritionReport'])->name('diet.reports');

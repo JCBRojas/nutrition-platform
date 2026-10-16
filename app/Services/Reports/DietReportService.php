@@ -3,6 +3,7 @@
 namespace App\Services\Reports;
 
 use App\Models\Diet;
+use App\Models\DietHistory;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -11,23 +12,62 @@ use Illuminate\Support\Str;
 /**
  * Fuente única de datos para el reporte nutricional (vista web y Excel).
  *
- * Método de conteo ("censo diario"): para cada día del mes se toma, por dieta,
- * la versión vigente al cierre del día (23:59:59 America/Bogota). Si la dieta
- * está activa ese día, cada tiempo de comida de esa versión cuenta como una
- * bandeja. El total del mes es la suma de los días transcurridos.
+ * Método de conteo ("última versión × días"): cada dieta se cuenta con su
+ * ÚLTIMA versión registrada hasta el cierre del mes (sin la versión
+ * 'cancelada' o 'finalizada', que son copia de la anterior). Cada tiempo de comida de esa
+ * versión es una bandeja por cada día en que la dieta estuvo activa: desde su
+ * creación hasta su cancelación o alta, evaluado al cierre del día (23:59:59
+ * America/Bogota). Las versiones intermedias no se usan.
  */
 class DietReportService
 {
     /** Orden cronológico; claves normalizadas = claves de config/timeFood.php */
     public const MEALS = ['desayuno', 'mediamanana', 'almuerzo', 'algo', 'merienda', 'cena', 'fraccionada'];
 
-    public function monthlyCensus(CarbonInterface $month): array
+    /**
+     * Regla compartida por el reporte y la facturación: días transcurridos del mes y,
+     * por cada día, las dietas activas con su versión de referencia (última versión
+     * no cancelada hasta el cierre del mes).
+     *
+     * @return Collection<int, array{date: CarbonImmutable, diets: array<int, array{diet: Diet, version: DietHistory}>}>
+     */
+    public function activeDietsByDay(CarbonInterface $month): Collection
     {
         $start = CarbonImmutable::parse($month)->startOfMonth();
         $end = $start->endOfMonth();
         $lastDay = min($end, CarbonImmutable::now()->endOfDay());
 
-        $diets = $this->dietsForPeriod($start, $end);
+        $diets = $this->dietsForPeriod($start, $end)
+            ->map(fn (Diet $diet) => $this->lifecycle($diet, $end))
+            ->filter(fn ($d) => $d['reference'] !== null);
+
+        $days = collect();
+        for ($day = $start; $day <= $lastDay; $day = $day->addDay()) {
+            $dayEnd = $day->endOfDay();
+            $days->push([
+                'date' => $day,
+                'diets' => $diets
+                    ->filter(fn ($d) => $d['from'] <= $dayEnd && ($d['until'] === null || $d['until'] > $dayEnd))
+                    ->map(fn ($d) => ['diet' => $d['diet'], 'version' => $d['reference']])
+                    ->values()
+                    ->all(),
+            ]);
+        }
+
+        return $days;
+    }
+
+    /**
+     * Tiempos de comida de una versión normalizados a MEALS ('media_manana' → 'mediamanana')
+     */
+    public function mealsOf(DietHistory $version): array
+    {
+        return $this->normalizeMeals($version->timeFood);
+    }
+
+    public function monthlyCensus(CarbonInterface $month): array
+    {
+        $start = CarbonImmutable::parse($month)->startOfMonth();
         $emptyMeals = array_fill_keys(self::MEALS, 0);
 
         $days = collect();
@@ -36,17 +76,10 @@ class DietReportService
         $specifications = [];
         $isolationDays = 0;
 
-        for ($day = $start; $day <= $lastDay; $day = $day->addDay()) {
-            $dayEnd = $day->endOfDay();
-            $row = ['date' => $day, 'diets' => 0, 'meals' => $emptyMeals, 'total' => 0];
+        foreach ($this->activeDietsByDay($start) as $active) {
+            $row = ['date' => $active['date'], 'diets' => 0, 'meals' => $emptyMeals, 'total' => 0];
 
-            foreach ($diets as $diet) {
-                $version = $this->effectiveVersion($diet, $dayEnd);
-
-                if (! $version) {
-                    continue;
-                }
-
+            foreach ($active['diets'] as ['diet' => $diet, 'version' => $version]) {
                 $meals = $this->normalizeMeals($version->timeFood);
                 $row['diets']++;
 
@@ -130,7 +163,7 @@ class DietReportService
      */
     public function currentSnapshot(): array
     {
-        $diets = Diet::where('status', true)->with('currentVersion')->get();
+        $diets = Diet::active()->with('currentVersion')->get();
 
         return [
             'totalActiveDiets' => $diets->count(),
@@ -158,28 +191,33 @@ class DietReportService
     {
         return Diet::query()
             ->where('created_at', '<=', $end)
-            ->where(fn ($q) => $q->where('status', true)->orWhere('updated_at', '>=', $start))
+            ->where(fn ($q) => $q->active()->orWhere('updated_at', '>=', $start))
             ->with(['history' => fn ($q) => $q->orderBy('version')])
             ->get();
     }
 
     /**
-     * Versión vigente al cierre del día, o null si la dieta no existía o estaba cancelada
+     * Ciclo de vida de una dieta respecto al mes:
+     * reference = última versión no cancelada creada hasta el cierre del mes,
+     * from = creación (v1), until = momento de cancelación o null si sigue activa.
      */
-    private function effectiveVersion(Diet $diet, CarbonImmutable $dayEnd)
+    private function lifecycle(Diet $diet, CarbonImmutable $monthEnd): array
     {
-        $version = $diet->history->last(fn ($h) => $h->created_at <= $dayEnd);
+        $history = $diet->history;
+        $closing = $history->first(fn ($h) => in_array($h->changes, Diet::CLOSING_CHANGES, true));
 
-        if (! $version || $version->changes === 'cancelada') {
-            return null;
-        }
+        $until = match (true) {
+            $closing !== null => $closing->created_at,            // cancelación o alta
+            ! $diet->isActive() => $diet->updated_at,             // cancelaciones antiguas sin versión 'cancelada'
+            default => null,
+        };
 
-        // Dietas canceladas antes de existir la versión 'cancelada' (solo status=false)
-        if (! $diet->status && ! $diet->history->contains('changes', 'cancelada') && $diet->updated_at <= $dayEnd) {
-            return null;
-        }
-
-        return $version;
+        return [
+            'diet' => $diet,
+            'reference' => $history->last(fn ($h) => ! in_array($h->changes, Diet::CLOSING_CHANGES, true) && $h->created_at <= $monthEnd),
+            'from' => $history->first()?->created_at ?? $diet->created_at,
+            'until' => $until,
+        ];
     }
 
     /**

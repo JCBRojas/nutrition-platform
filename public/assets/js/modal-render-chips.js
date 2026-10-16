@@ -34,6 +34,10 @@ function openEditModal(id, diet) {
         diet.current_version.observations ?? "";
     document.getElementById("edit-changes-" + id).value =
         diet.current_version.changes ?? "NA";
+    // Tipo de dieta para facturación ("" si la versión no lo tiene)
+    const billing = document.getElementById("edit-billing-type-" + id);
+    if (billing) billing.value = diet.current_version.billing_type ?? "";
+
     // Valores del enum: "Sí" | "No" (los antiguos "Si" se muestran como "Sí")
     document.getElementById("edit-isolation-" + id).value =
         diet.current_version.isolation === "No" || !diet.current_version.isolation ? "No" : "Sí";

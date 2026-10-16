@@ -142,8 +142,8 @@
                             </div>
                         </div>
                         <p class="mt-4 text-xs text-slate-500">
-                            Censo diario: por cada día se cuentan las dietas vigentes al cierre del día (sin canceladas)
-                            y cada tiempo de comida asignado equivale a una bandeja.
+                            Cada dieta se cuenta con su última versión registrada hasta el cierre del mes: sus tiempos de
+                            comida se multiplican por los días en que estuvo activa (desde su creación hasta su cancelación).
                         </p>
                     </div>
                 </div>

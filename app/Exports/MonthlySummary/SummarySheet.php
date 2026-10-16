@@ -25,7 +25,7 @@ class SummarySheet implements FromArray, ShouldAutoSize, WithStrictNullCompariso
             ['Mes', ucfirst($c['month']->locale('es')->isoFormat('MMMM YYYY'))],
             ['Días contados', $c['daysCounted']],
             ['Generado', now()->format('d/m/Y h:i a')],
-            ['Método', 'Censo diario: dietas vigentes al cierre de cada día × tiempos de comida'],
+            ['Método', 'Última versión de cada dieta × días activa en el mes'],
             [''],
         ];
 

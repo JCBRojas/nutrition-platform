@@ -31,7 +31,7 @@ class DietIsolationTest extends TestCase
     private function update(array $data)
     {
         return $this->actingAs($this->nutritionist)
-            ->put(route('dietas.update', $this->diet), $data + ['timeFood' => ['desayuno'], 'changes' => 'aislado']);
+            ->put(route('dietas.update', $this->diet), $data + ['timeFood' => ['desayuno'], 'changes' => 'aislado', 'billing_type' => 'normal']);
     }
 
     /** @dataProvider accepted */

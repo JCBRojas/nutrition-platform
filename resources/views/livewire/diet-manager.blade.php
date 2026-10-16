@@ -10,14 +10,15 @@
 
         <button @click="tab='cancelled'" :class="tab === 'cancelled' ? 'bg-red-600 text-white' : 'bg-gray-200'"
             class="px-4 py-2 rounded text-sm font-medium">
-            Dietas Canceladas
+            Canceladas y finalizadas
         </button>
 
     </div>
 
     @php
-    $activeDiets = $diets->where('currentVersion.changes','!=','cancelada');
-    $cancelledDiets = $diets->where('currentVersion.changes','cancelada');
+    // Por estado de la dieta: las finalizadas (alta) salen de activas y se listan con las canceladas
+    $activeDiets = $diets->where('status', \App\Models\Diet::ACTIVE);
+    $cancelledDiets = $diets->whereIn('status', [\App\Models\Diet::CANCELLED, \App\Models\Diet::FINISHED]);
     @endphp
 
 
@@ -129,7 +130,7 @@
     <div x-show="tab === 'cancelled'" class="bg-white shadow rounded p-6">
 
         <h1 class="mb-4 font-semibold text-red-600">
-            Dietas Canceladas
+            Dietas canceladas y finalizadas (alta)
         </h1>
 
         <div class="overflow-x-auto">
@@ -174,9 +175,11 @@
 
                         <td class="px-3 py-2 text-xs">
 
-                            <span class="px-2 py-1 rounded text-xs bg-red-100 text-red-800">
-                                CANCELADA
-                            </span>
+                            @if ($diet->status === \App\Models\Diet::FINISHED)
+                                <span class="px-2 py-1 rounded text-xs bg-blue-100 text-blue-800">FINALIZADA (ALTA)</span>
+                            @else
+                                <span class="px-2 py-1 rounded text-xs bg-red-100 text-red-800">CANCELADA</span>
+                            @endif
 
                         </td>
 
@@ -186,7 +189,7 @@
 
                     <tr>
                         <td colspan="5" class="px-3 py-4 text-center text-gray-400 text-sm">
-                            No hay dietas canceladas
+                            No hay dietas canceladas ni finalizadas
                         </td>
                     </tr>
 

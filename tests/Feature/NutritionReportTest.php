@@ -48,7 +48,7 @@ class NutritionReportTest extends TestCase
         $h->forceFill(['created_at' => $at, 'updated_at' => $at])->save();
     }
 
-    public function test_monthly_census_counts_each_day_with_the_effective_version(): void
+    public function test_monthly_census_counts_last_version_times_active_days(): void
     {
         // Viene de septiembre: desayuno + almuerzo los días 1–15 → 15 + 15
         $this->diet('2026-09-20 08:00:00', ['desayuno', 'almuerzo']);
@@ -56,7 +56,7 @@ class NutritionReportTest extends TestCase
         // Creada el 10 con cena; el 12 cambia a cena + media_manana (clave del formulario)
         $changed = $this->diet('2026-10-10 15:00:00', ['cena']);
         $this->version($changed, 2, '2026-10-12 09:00:00', ['cena', 'media_manana']);
-        // cena: días 10–15 = 6 · media mañana: días 12–15 = 4
+        // Se usa solo la última versión (cena + media mañana) en los días 10–15 → 6 + 6
 
         // Cancelada el 5 a las 10:00 → cuenta días 1–4 (algo)
         $cancelled = $this->diet('2026-09-01 08:00:00', ['algo'], status: false);
@@ -72,12 +72,38 @@ class NutritionReportTest extends TestCase
         $this->assertSame(15, $census['totals']['desayuno']);
         $this->assertSame(15, $census['totals']['almuerzo']);
         $this->assertSame(6, $census['totals']['cena']);
-        $this->assertSame(4, $census['totals']['mediamanana']);
+        $this->assertSame(6, $census['totals']['mediamanana']);
         $this->assertSame(4, $census['totals']['algo']);
-        $this->assertSame(44, $census['totalTrays']);
+        $this->assertSame(46, $census['totalTrays']);
         $this->assertSame(3, $census['perDiet']->count());
         $this->assertSame(2, $census['days'][0]['diets']);  // día 1: base + la que luego se cancela
         $this->assertSame(2, $census['days'][14]['diets']); // día 15: base + la creada el 10
+    }
+
+    public function test_intermediate_versions_are_ignored(): void
+    {
+        $diet = $this->diet('2026-10-01 08:00:00', ['desayuno']);
+        $this->version($diet, 2, '2026-10-05 08:00:00', ['desayuno', 'cena']);
+        $this->version($diet, 3, '2026-10-12 08:00:00', ['almuerzo']);
+
+        $census = app(DietReportService::class)->monthlyCensus(CarbonImmutable::parse('2026-10-01'));
+
+        // Solo la v3 (almuerzo) × 15 días activos
+        $this->assertSame(15, $census['totals']['almuerzo']);
+        $this->assertSame(0, $census['totals']['desayuno']);
+        $this->assertSame(0, $census['totals']['cena']);
+        $this->assertSame(15, $census['totalTrays']);
+    }
+
+    public function test_past_month_uses_last_version_up_to_month_end(): void
+    {
+        $diet = $this->diet('2026-09-21 08:00:00', ['desayuno']);   // septiembre: días 21–30 = 10
+        $this->version($diet, 2, '2026-10-03 08:00:00', ['cena']); // posterior a septiembre
+
+        $september = app(DietReportService::class)->monthlyCensus(CarbonImmutable::parse('2026-09-01'));
+
+        $this->assertSame(10, $september['totals']['desayuno']);
+        $this->assertSame(0, $september['totals']['cena']);
     }
 
     public function test_legacy_cancellation_without_version_uses_updated_at(): void

@@ -30,9 +30,9 @@ class DietDemoSeederTest extends TestCase
             $versions->sliding(2)->each(fn ($pair) => $this->assertTrue($pair->first()->created_at < $pair->last()->created_at));
             $this->assertTrue($versions->last()->created_at <= now());
 
-            // status=false ⇔ v5 cancelada (y la cabecera guarda la fecha de cancelación)
+            // status CANCELLED ⇔ v5 cancelada (y la cabecera guarda la fecha de cancelación)
             $cancelled = $versions->last()->changes === 'cancelada';
-            $this->assertSame(! $cancelled, $diet->status);
+            $this->assertSame($cancelled ? Diet::CANCELLED : Diet::ACTIVE, $diet->status);
             if ($cancelled) {
                 $this->assertTrue($diet->updated_at->equalTo($versions->last()->created_at));
             }

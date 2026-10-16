@@ -55,7 +55,7 @@ Cada archivo expone `labels` (texto UI) y `colors` (clases Tailwind). Las claves
 
 | Modelo | Tabla | Campos clave | Relaciones |
 |---|---|---|---|
-| `Diet` | `diets` | `habitation`, `name_patient`, `status` (bool, activa) | `history()` hasMany, `currentVersion()` hasOne latestOfMany(`version`) |
+| `Diet` | `diets` | `habitation`, `name_patient`, `status` (tinyint: `Diet::ACTIVE`=1, `CANCELLED`=0, `FINISHED`=2 alta; cast `integer`, **nunca** `boolean`) | `history()` hasMany, `currentVersion()` hasOne latestOfMany(`version`) |
 | `DietHistory` | `diet_histories` | `diet_id`, `updated_by`, `version`, `timeFood`/`consistency`/`specifications` (JSON array), `observations`, `isolation` (`Sí`/`No`), `changes`, `modify` | `diet()`, `updatedBy()` → User |
 | `User` | `users` | Jetstream + `HasRoles` | — |
 | `App\Models\Role` | — | **No usar**: duplicado; el rol real es `Spatie\Permission\Models\Role` |
@@ -66,6 +66,8 @@ Cada archivo expone `labels` (texto UI) y `colors` (clases Tailwind). Las claves
 2. **Editar** `PUT /dietas/{diet}/version` → `createNewVersion`: `lockForUpdate` sobre max(version), inserta v+1 con `modify='si'`. Si `changes === 'cancelada'` → `diets.status = false`.
 3. **Despacho** `DietsManager`: compara versión actual vs anterior (`detectChanges`) y resalta; `confirmChanges($historyId)` pone `modify='no'`.
 4. **Reportes** `GET /diet-reports` y `/entrega/index` → `nutritionReport()` (totales diarios/mensuales por tiempo de comida sobre la última versión de dietas activas).
+
+5. **Finalizar (alta)** `PATCH /dietas/{diet}/finalizar` (`diets.finish`, permiso `editDiets`) → `DietService::finishDiet`: versión copia con `changes='finalizada'` y `status=FINISHED`. No borra nada. Sale de las dietas activas (pestaña "Finalizadas" del nutricionista; el despachador la ve en "Canceladas y finalizadas"). Cancelar y finalizar solo aplican a dietas activas (`closeDiet`). `Diet::CLOSING_CHANGES` (`cancelada`, `finalizada`) marca el fin del conteo en el reporte y la facturación. Para filtrar activas, usar `Diet::active()` / `isActive()`.
 
 Nunca se edita un `DietHistory` existente (salvo el flag `modify`); todo cambio clínico es una nueva versión.
 
@@ -98,7 +100,7 @@ Aplicado en `config/app.php` y `config/database.php`:
 'timezone'        => env('APP_TIMEZONE', 'America/Bogota'),
 'locale'          => env('APP_LOCALE', 'es'),
 'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
-'faker_locale'    => env('APP_FAKER_LOCALE', 'es_CO'),
+'faker_locale'    => env('APP_FAKER_LOCALE', 'es_ES'),   // Faker no incluye es_CO
 // mysql
 'timezone'        => env('DB_TIMEZONE', '-05:00'),   // Colombia no tiene horario de verano
 ```
@@ -107,7 +109,7 @@ Aplicado en `config/app.php` y `config/database.php`:
 ```
 APP_TIMEZONE=America/Bogota
 APP_LOCALE=es
-APP_FAKER_LOCALE=es_CO
+APP_FAKER_LOCALE=es_ES
 DB_TIMEZONE=-05:00
 ```
 
@@ -191,7 +193,7 @@ Requiere `QUEUE_CONNECTION=database` (+ `php artisan queue:table && migrate`) y 
 ### Implementado: reporte nutricional + Excel del mes
 
 - `app/Services/Reports/DietReportService.php` — fuente única de datos:
-  - `monthlyCensus($mes)`: **censo diario**. Por cada día transcurrido del mes toma, por dieta, la versión vigente al cierre del día (23:59:59 Bogotá). Si está activa (la versión no es `cancelada`; para cancelaciones antiguas sin versión, `diets.updated_at`), cada tiempo de comida cuenta como 1 bandeja. Devuelve `days`, `totals`, `totalTrays`, `dietDays`, `avgDailyDiets`, `consistency`, `specifications`, `isolationDays` y `perDiet`.
+  - `monthlyCensus($mes)`: **última versión × días**. Cada dieta usa su última versión registrada hasta el cierre del mes (sin la versión `cancelada`, que es copia). Sus tiempos de comida cuentan 1 bandeja por cada día activo: desde la creación (v1) hasta la cancelación (versión `cancelada` o, si es antigua, `diets.updated_at`), evaluado al cierre de cada día. Las versiones intermedias **no** se usan. Devuelve `days`, `totals`, `totalTrays`, `dietDays`, `avgDailyDiets`, `consistency`, `specifications`, `isolationDays` y `perDiet`.
   - `monthlyHistory($mes, 6)`, `currentSnapshot()` (dietas activas hoy) y `mealLabels()`/`label()` (etiquetas de `config`, con respaldo legible para claves fuera del catálogo).
   - `MEALS` en orden cronológico; normaliza `media_manana`/`mediamanana`/`Desayuno`.
 - Vista `reports-diets-nutricion` (rutas `diet.reports` y `entrega.index`, `?mes=YYYY-MM`): selector de mes, KPIs, barras apiladas diarias (Chart.js, paleta categórica validada en orden fijo), tabla diaria (alternativa accesible), totales por tiempo, últimos 6 meses con Excel por fila, especificaciones y aislamiento de hoy. Visible con `viewReports` o `generateFiles`.
@@ -234,6 +236,19 @@ Route::get('/reportes/{report}/excel', [ReportExportController::class, 'excel'])
 Nombres de archivo con fecha local: `produccion_2026-10-15_0630.pdf` (`now('America/Bogota')`). Las etiquetas visibles siempre desde `config('*.labels')`.
 
 ---
+
+## 7b. Historial, precios y menú
+
+- **Historial** `/historial?dieta=ID` (`diets.history`, permiso `viewDiets`): `App\Livewire\DietHistoryViewer` + `App\Services\DietHistoryService::timeline()`. Versiones de la más nueva a la más vieja, con el tipo (creación, edición o cancelación). En listas marca cada elemento como mantenido, agregado o quitado; en campos simples guarda el valor anterior. Enlazado desde la fila de la tabla del nutricionista.
+- **Facturación** (formato del hospital `Facturación 1 al 31 de Enero 2026 UCI.xlsx`):
+  - Catálogo en `config/billing.php`: 17 tipos de dieta con sus servicios (81 filas), `services` (Comida = cena; Fraccionada **no** se factura), `snack_type` = `entrecomidas`, `unit` = `BILLING_UNIT` (UCI).
+  - `diet_histories.billing_type`: obligatorio en los formularios (`StoreDietRequest`/`StoreDietVersionRequest`), lo elige el nutricionista y se copia al cancelar. Las versiones antiguas sin tipo aparecen como advertencia y no se facturan.
+  - Precios por tipo × servicio en `service_prices` (`billing_type`, `service`, `price`, `valid_from`; único por los tres). Los digita el jefe en `/precios` (`PricesManager`, permiso `managePrices`).
+  - `App\Services\BillingService::monthly()`: usa `DietReportService::activeDietsByDay()` (misma regla que el reporte). Los refrigerios de tipos sin esa fila van a Entrecomidas, y cada día se valora con su precio vigente.
+  - Excel `GET /facturacion/excel?mes=YYYY-MM` (`billing.excel`) → `App\Exports\BillingWorkbook` (PhpSpreadsheet directo). Hoja `{MES} {AÑO}`: días 1–31 (los inexistentes en gris), `AJ=SUM`, `AK=D*AJ`; si el precio cambió en el mes, `AK` lleva el valor calculado y un comentario. Incluye resumen AM:AN, subtotal, total del mes y la hoja `FACTURACIÓN MES A MES `.
+- Rol `jefe_nutricion`: `viewDiets`, `viewReports`, `generateFiles`, `managePrices`; al iniciar sesión va a `prices.index`.
+- `navigation.blade.php`: cada enlace se condiciona con el mismo rol o permiso que exige su ruta (`@role` / `@can`), para no mostrar enlaces que terminan en 403.
+- Login (`auth/login.blade.php`): página independiente con CSS propio (sin Tailwind ni Vite), tema claro/oscuro con tokens en `:root`, `localStorage('nt-theme')` y respeto de `prefers-color-scheme`. Muestra la línea de servicios del día según `config('timeFood.schedule')`.
 
 ## 8. Convenciones
 

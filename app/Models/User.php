@@ -76,6 +76,7 @@ class User extends Authenticatable
         return match (true) {
             $this->hasRole('nutricionista') => route('dashboard.nutrition'),
             $this->hasRole('despachador') => route('dashboard.dispatch'),
+            $this->hasRole('jefe_nutricion') => route('prices.index'),
             $this->hasRole('admin') => route('admin.users.index'),
             default => route('profile.show'),
         };

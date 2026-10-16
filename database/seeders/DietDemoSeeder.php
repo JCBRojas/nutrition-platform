@@ -91,7 +91,7 @@ class DietDemoSeeder extends Seeder
         }
 
         // Igual que DietService::cancelDiet: status=false y updated_at = fecha de cancelación
-        $diet->forceFill(['status' => ! $cancelled])->save();
+        $diet->forceFill(['status' => $cancelled ? Diet::CANCELLED : Diet::ACTIVE])->save();
         $this->stamp($diet, $createdAt, $at);
 
         return $cancelled;
@@ -124,6 +124,7 @@ class DietDemoSeeder extends Seeder
         }
 
         $state['changes'] = $changes;
+        $state['billing_type'] = $factory->billingTypeFor((array) $state['consistency'], (array) $state['specifications']);
 
         return $state;
     }

@@ -3,30 +3,26 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreDietRequest;
-use App\Http\Requests\StoreDietVersionRequest;
 use App\Models\Diet;
 use App\Models\DietHistory;
 use App\Services\DietService;
 use App\Services\Reports\DietReportService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class DietController extends Controller
 {
-
-
     public function __construct(private DietService $dietService) {}
-
 
     /**
      * Crea una nueva dieta para el usuario autenticado.
      *
-     * @param StoreDietRequest $request La solicitud validada con los datos de la dieta
+     * @param  StoreDietRequest  $request  La solicitud validada con los datos de la dieta
      * @return \Illuminate\Http\RedirectResponse Redirige a la página anterior con mensaje de éxito
      */
     public function createDiet(StoreDietRequest $request)
     {
         $diet = $this->dietService->createDiet($request->validated(), auth()->id());
+
         return redirect()->back()->with('success', 'Dieta creada');
     }
 
@@ -36,12 +32,12 @@ class DietController extends Controller
      * Este método permite editar una dieta existente o crear una nueva versión
      * de la misma, permitiendo mantener un historial de cambios en las dietas
      * de los usuarios.
-     *
      */
     public function createNewVersionDiet(StoreDietRequest $request, Diet $diet)
     {
         // dd($request->all());
         $this->dietService->createNewVersion($diet, $request->validated(), auth()->id());
+
         return redirect()->back()->with('success', 'Dieta actualizada');
     }
 
@@ -51,7 +47,8 @@ class DietController extends Controller
         $specLabels = config('specifications.labels');
         $consistencyLabels = config('consistency.labels');
         $foodLabels = config('timeFood.labels');
-        return view('dashboard', compact('diets','specLabels','foodLabels','consistencyLabels'));
+
+        return view('dashboard', compact('diets', 'specLabels', 'foodLabels', 'consistencyLabels'));
     }
 
     public function dispatcherDashboard()
@@ -62,7 +59,18 @@ class DietController extends Controller
     public function cancelDiet(Diet $diet)
     {
         $this->dietService->cancelDiet($diet, auth()->id());
-        return redirect()->back()->with('success', 'Dieta cancelada');
+
+        return redirect()->back()->with('success', "Dieta de la habitación {$diet->habitation} cancelada.");
+    }
+
+    /**
+     * Alta del paciente: la dieta pasa a Finalizada y sale de las dietas activas
+     */
+    public function finishDiet(Diet $diet)
+    {
+        $this->dietService->finishDiet($diet, auth()->id());
+
+        return redirect()->back()->with('success', "Dieta de {$diet->name_patient} (hab. {$diet->habitation}) finalizada por alta.");
     }
 
     public function index()
@@ -70,7 +78,7 @@ class DietController extends Controller
         $now = now();
 
         // Última versión de cada dieta activa, creada en el periodo
-        $latest = fn () => DietHistory::whereHas('diet', fn ($q) => $q->where('status', true))
+        $latest = fn () => DietHistory::whereHas('diet', fn ($q) => $q->active())
             ->whereRaw('version = (SELECT MAX(h2.version) FROM diet_histories h2 WHERE h2.diet_id = diet_histories.diet_id)');
 
         // PRODUCCIÓN DE COCINA HOY
@@ -100,7 +108,6 @@ class DietController extends Controller
             'monthly' => $monthly,
         ]);
     }
-
 
     public function nutritionReport(Request $request, DietReportService $reports)
     {
@@ -139,6 +146,5 @@ class DietController extends Controller
     }
 
     // end
-
 
 }
