@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Services\AuditLogger;
 use App\Services\BillingService;
 use Carbon\CarbonImmutable;
 use Illuminate\Validation\Rule;
@@ -71,6 +72,9 @@ class PricesManager extends Component
         $billing->setPrice($data['editType'], $data['editService'], (float) $data['price'], CarbonImmutable::parse($data['validFrom']), auth()->id());
 
         $label = BillingService::types()[$data['editType']]['name'].' / '.ucfirst(mb_strtolower(BillingService::services()[$data['editService']]));
+        AuditLogger::log('price_updated', "Precio de {$label}: {$data['price']} desde {$data['validFrom']}", null, [
+            'billing_type' => $data['editType'], 'service' => $data['editService'], 'price' => (float) $data['price'], 'valid_from' => $data['validFrom'],
+        ]);
         $this->cancel();
         session()->flash('success', "Precio de {$label} guardado.");
     }

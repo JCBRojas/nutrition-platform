@@ -302,6 +302,7 @@
         }
 
         footer { color: var(--muted); font-size: .8125rem; margin-top: 1.25rem; text-align: center; }
+        footer a { color: inherit; text-decoration: underline; }
 
         /* ---------- Móvil: marca compacta arriba, formulario después ---------- */
         @media (max-width: 860px) {
@@ -369,7 +370,7 @@
                 {{ $slot }}
             </div>
 
-            <footer>© {{ date('Y') }} NutriTrack. Gestión de dietas hospitalarias.</footer>
+            <footer>© {{ date('Y') }} NutriTrack. Gestión de dietas hospitalarias. · <a href="{{ route('privacy.policy') }}">Política de datos</a></footer>
         </section>
     </main>
 

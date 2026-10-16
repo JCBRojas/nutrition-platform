@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\BillingExportController;
 use App\Http\Controllers\DietController;
+use App\Http\Controllers\PrivacyController;
 use App\Http\Controllers\ReportExportController;
+use App\Livewire\Admin\AuditLogViewer;
 use App\Livewire\Admin\RolesManager;
 use App\Livewire\Admin\UsersManager;
 use App\Livewire\DietHistoryViewer;
@@ -31,10 +33,26 @@ Route::get('/', function () {
     return view('auth.login');
 });
 
+// Política de tratamiento de datos (pública; enlazada desde el inicio de sesión)
+Route::get('/politica-de-datos', [PrivacyController::class, 'show'])->name('privacy.policy');
+
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
+])->group(function () {
+    // Aceptación de la política: libre del middleware compliance (si no, no se podría aceptar)
+    Route::get('/politica-de-datos/aceptar', [PrivacyController::class, 'acceptForm'])->name('privacy.accept');
+    Route::post('/politica-de-datos/aceptar', [PrivacyController::class, 'accept'])->name('privacy.accept.store');
+});
+
+// Rutas de la aplicación: exigen política aceptada y 2FA en los roles que la requieren (EnsureAccountCompliance).
+// El perfil (/user/profile, donde se activa 2FA) lo registra Jetstream fuera de este grupo.
+Route::middleware([
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+    'compliance',
 ])->group(function () {
     // 🔵 DIETAS ACTIVAS (nutricionista y quien tenga el permiso, p. ej. enfermería)
     Route::middleware(['permission:viewActiveDiets'])->group(function () {
@@ -79,6 +97,7 @@ Route::middleware([
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/usuarios', UsersManager::class)->middleware('permission:viewUsers')->name('users.index');
         Route::get('/roles', RolesManager::class)->middleware('permission:manageRoles')->name('roles.index');
+        Route::get('/auditoria', AuditLogViewer::class)->middleware('permission:viewAuditLog')->name('audit.index');
     });
 
     // Route::get('/entrega/canceladas', [EntregaController::class, 'canceladas'])->name('dietas.canceladas');

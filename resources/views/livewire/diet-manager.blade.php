@@ -3,8 +3,10 @@
     $fmtTime = fn ($date) => $date?->locale('es')->isoFormat('D MMM, h:mm a');
     $changeLabel = fn ($v) => $changeLabels[$v?->changes ?? 'NA'] ?? ucfirst(str_replace('_', ' ', (string) $v?->changes));
 @endphp
-<div class="content" id="page-despacho" wire:poll.3s.keep-alive="checkPending"
+{{-- Tiempo real: se actualiza al llegar DietsChanged (resources/js/live.js); sin WebSocket, consulta cada 3 s --}}
+<div class="content" id="page-despacho"
     x-data="{ toast: null, flash: false }"
+    x-init="window.ntLive(() => $wire.checkPending(), { fallbackMs: 3000 })"
     x-on:diet-changes-arrived.window="toast = 'Nuevo cambio en hab. ' + $event.detail.rooms.join(', ') + '. Confírmalo antes de entregar.'; flash = true; setTimeout(() => flash = false, 2400)"
     x-on:diet-change-confirmed.window="toast = 'Cambio de la hab. ' + $event.detail.room + ' confirmado.'"
     x-on:diet-dispatched.window="toast = $event.detail.message">
@@ -350,8 +352,8 @@
 
 @script
 <script>
-    // Sonido corto con Web Audio (sin archivos); se habilita tras el primer clic del usuario
-    let audio = null;
+    let audio = null; // Sonido corto con Web Audio (sin archivos); se habilita tras el primer clic del usuario.
+    // El script debe empezar con let/const: Livewire lo evalúa con Alpine y, si empieza con un comentario, lo trata como expresión.
     window.dmUnlockAudio = () => {
         try { audio ??= new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {}
     };

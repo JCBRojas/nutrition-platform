@@ -2,7 +2,9 @@
     $totals = ['dispatched' => array_sum(array_column($summary, 'dispatched')), 'received' => array_sum(array_column($summary, 'received'))];
     $isToday = $day->isToday();
 @endphp
-<div class="content" id="page-despachos" wire:poll.10s.keep-alive>
+{{-- Tiempo real: se actualiza al llegar un aviso de despachos (resources/js/live.js); sin WebSocket, cada 10 s --}}
+<div class="content" id="page-despachos" x-data
+    x-init="window.ntLive(() => $wire.$refresh(), { kinds: ['dispatch'], fallbackMs: 10000 })">
     <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-4">
 
         <div class="dl-head">

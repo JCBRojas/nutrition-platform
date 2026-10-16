@@ -33,6 +33,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'deleteUsers',
             'manageRoles',
             'managePrices',
+            'viewAuditLog',
         ];
 
         foreach ($permissions as $permission) {
@@ -76,10 +77,11 @@ class RolesAndPermissionsSeeder extends Seeder
             'generateFiles',
         ]);
 
-        // Contraseña del jefe de nutrición: SEED_USER_PASSWORD en .env, o aleatoria (se imprime una vez)
+        // Contraseña de los usuarios demo: SEED_USER_PASSWORD en .env, o aleatoria (se imprime una vez).
+        // Nunca contraseñas fijas en el código.
         $password = env('SEED_USER_PASSWORD') ?: Str::password(16);
         if (! env('SEED_USER_PASSWORD')) {
-            $this->command?->warn("Contraseña generada para el jefe de nutrición (solo si el usuario es nuevo): {$password}");
+            $this->command?->warn("Contraseña generada para los usuarios demo nuevos: {$password}");
         }
 
         // Crear usuario Nutricionista
@@ -87,7 +89,7 @@ class RolesAndPermissionsSeeder extends Seeder
             ['email' => 'camilo@gmail.com'],
             [
                 'name' => 'Nutricionista Principal',
-                'password' => Hash::make('nutricionista'),
+                'password' => Hash::make($password),
             ]
         );
 
@@ -98,18 +100,18 @@ class RolesAndPermissionsSeeder extends Seeder
             ['email' => 'mariana@gmail.com'],
             [
                 'name' => 'Despachador Principal',
-                'password' => Hash::make('despachador'),
+                'password' => Hash::make($password),
             ]
         );
 
         $userDespachador->assignRole($despachador);
 
-        // Crear usuario Administrador (contraseña: admin1234 o la generada arriba)
+        // Crear usuario Administrador (contraseña: SEED_USER_PASSWORD o la generada arriba)
         $userAdmin = User::firstOrCreate(
             ['email' => env('SEED_ADMIN_EMAIL', 'admin@nutritrack.com')],
             [
                 'name' => 'Administrador',
-                'password' => Hash::make('admin1234'), // Cambia esto a $password si deseas usar la contraseña generada
+                'password' => Hash::make($password),
             ]
         );
 

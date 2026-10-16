@@ -6,6 +6,7 @@ use App\Models\Diet;
 use App\Models\DietDay;
 use App\Models\DietDispatch;
 use App\Services\Reports\DietReportService;
+use App\Support\LiveUpdates;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -193,10 +194,16 @@ class DietDayService
     {
         $date = self::day($date);
 
-        return Diet::where('status', Diet::COMPLETED)
+        $count = Diet::where('status', Diet::COMPLETED)
             ->whereHas('days', fn ($q) => $q->on($date)->authorized())
             ->whereDoesntHave('days', fn ($q) => $q->on($date)->completed())
             ->update(['status' => Diet::ACTIVE]);
+
+        if ($count > 0) {
+            LiveUpdates::touch(LiveUpdates::DAY);
+        }
+
+        return $count;
     }
 
     /* ===================== CONSULTAS PARA LA UI ===================== */

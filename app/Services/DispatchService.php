@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Diet;
 use App\Models\DietDispatch;
 use App\Services\Reports\DietReportService;
+use App\Support\LiveUpdates;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -172,6 +173,7 @@ class DispatchService
 
             DietDispatch::whereIn('id', $dispatches->pluck('id'))
                 ->update(['received_by' => $userId, 'received_at' => now()]);
+            LiveUpdates::touch(LiveUpdates::DISPATCH);
 
             return [
                 'received' => $dispatches->count(),

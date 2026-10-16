@@ -1,6 +1,7 @@
 @php $total = $pending->count(); @endphp
-<div wire:poll.5s.keep-alive="checkNew"
-    x-data="{ toast: null }"
+{{-- Tiempo real: se actualiza al llegar un aviso de despachos (resources/js/live.js); sin WebSocket, cada 5 s --}}
+<div x-data="{ toast: null }"
+    x-init="window.ntLive(() => $wire.checkNew(), { kinds: ['dispatch'], fallbackMs: 5000 })"
     x-on:dispatch-arrived.window="toast = 'Cocina despachó a hab. ' + $event.detail.rooms.join(', ') + '. Confirma la recepción.'"
     x-on:dispatch-received.window="toast = $event.detail.message">
 

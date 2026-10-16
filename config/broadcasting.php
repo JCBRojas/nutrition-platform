@@ -44,7 +44,9 @@ return [
                 'useTLS' => env('PUSHER_SCHEME', 'https') === 'https',
             ],
             'client_options' => [
-                // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html
+                // Si el servidor de WebSockets no responde, no demorar la petición del usuario
+                'timeout' => (float) env('PUSHER_TIMEOUT', 2),
+                'connect_timeout' => (float) env('PUSHER_TIMEOUT', 2),
             ],
         ],
 

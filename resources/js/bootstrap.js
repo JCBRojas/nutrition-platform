@@ -10,34 +10,28 @@ window.axios = axios;
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
 /**
- * Echo exposes an expressive API for subscribing to channels and listening
- * for events that are broadcast by Laravel. Echo and event broadcasting
- * allows your team to easily build robust real-time web applications.
+ * Tiempo real (protocolo Pusher: Soketi en local/servidor propio, Pusher o Reverb).
+ * Sin VITE_PUSHER_APP_KEY no se conecta y las pantallas usan el respaldo por consulta (live.js).
  */
+import Pusher from 'pusher-js';
+import Echo from 'laravel-echo';
+import './live';
 
-// import Echo from 'laravel-echo';
+const key = import.meta.env.VITE_PUSHER_APP_KEY;
 
-// import Pusher from 'pusher-js';
-// window.Pusher = Pusher;
+if (key) {
+    window.Pusher = Pusher;
 
-// window.Echo = new Echo({
-//     broadcaster: 'pusher',
-//     key: import.meta.env.VITE_PUSHER_APP_KEY,
-//     cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER ?? 'mt1',
-//     wsHost: import.meta.env.VITE_PUSHER_HOST ? import.meta.env.VITE_PUSHER_HOST : `ws-${import.meta.env.VITE_PUSHER_APP_CLUSTER}.pusher.com`,
-//     wsPort: import.meta.env.VITE_PUSHER_PORT ?? 80,
-//     wssPort: import.meta.env.VITE_PUSHER_PORT ?? 443,
-//     forceTLS: (import.meta.env.VITE_PUSHER_SCHEME ?? 'https') === 'https',
-//     enabledTransports: ['ws', 'wss'],
-// });
-import Pusher from "pusher-js";
-import Echo from "laravel-echo";
+    const scheme = import.meta.env.VITE_PUSHER_SCHEME || 'https';
+    const host = import.meta.env.VITE_PUSHER_HOST;
+    const port = Number(import.meta.env.VITE_PUSHER_PORT) || (scheme === 'https' ? 443 : 80);
 
-window.Pusher = Pusher;
-
-window.Echo = new Echo({
-    broadcaster: "pusher",
-    key: import.meta.env.VITE_PUSHER_APP_KEY,
-    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
-    forceTLS: true
-});
+    window.Echo = new Echo({
+        broadcaster: 'pusher',
+        key,
+        cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER || 'mt1',
+        ...(host ? { wsHost: host, wsPort: port, wssPort: port } : {}),
+        forceTLS: scheme === 'https',
+        enabledTransports: ['ws', 'wss'],
+    });
+}

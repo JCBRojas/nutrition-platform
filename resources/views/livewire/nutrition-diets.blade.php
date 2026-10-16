@@ -8,10 +8,11 @@
     $tabNames = ['active' => 'Activas', 'cancelled' => 'Canceladas', 'finished' => 'Finalizadas'];
 @endphp
 {{--
-    Se refresca cada 5 s sin recargar la página. Se pausa mientras hay un modal o un
-    selector de chips abierto (para no interrumpir una edición) o la pestaña está oculta.
+    Tiempo real: se refresca al llegar DietsChanged (resources/js/live.js); sin WebSocket, cada 5 s.
+    Se aplaza mientras hay un modal o un selector de chips abierto (para no interrumpir una
+    edición) o la pestaña está oculta, y se aplica al cerrarlo.
 --}}
-<div x-data x-init="setInterval(() => { if (! document.hidden && ! document.querySelector('.overlay.open, .chip-select.open')) $wire.$refresh() }, 5000)">
+<div x-data x-init="window.ntLive(() => $wire.$refresh(), { fallbackMs: 5000, canRun: () => ! document.querySelector('.overlay.open, .chip-select.open') })">
     <div class="stats-grid">
         <div class="stat-card green">
             <div class="stat-label">Dietas activas</div>

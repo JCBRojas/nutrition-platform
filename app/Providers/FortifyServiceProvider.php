@@ -6,7 +6,9 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
+use App\Http\Responses\LoginResponse;
 use App\Models\User;
+use App\Services\AuditLogger;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -15,7 +17,6 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
-use App\Http\Responses\LoginResponse;
 use Laravel\Fortify\Contracts\LockoutResponse as LockoutResponseContract;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
 use Laravel\Fortify\Contracts\TwoFactorLoginResponse as TwoFactorLoginResponseContract;
@@ -33,10 +34,9 @@ class FortifyServiceProvider extends ServiceProvider
         $this->app->singleton(TwoFactorLoginResponseContract::class, LoginResponse::class);
 
         $this->app->bind(LockoutResponseContract::class, function ($app) {
-            return new class($app->make(LoginRateLimiter::class)) implements LockoutResponseContract {
-                public function __construct(protected LoginRateLimiter $limiter)
-                {
-                }
+            return new class($app->make(LoginRateLimiter::class)) implements LockoutResponseContract
+            {
+                public function __construct(protected LoginRateLimiter $limiter) {}
 
                 public function toResponse($request)
                 {
@@ -54,8 +54,6 @@ class FortifyServiceProvider extends ServiceProvider
         });
     }
 
-
-
     /**
      * Bootstrap any application services.
      */
@@ -69,7 +67,7 @@ class FortifyServiceProvider extends ServiceProvider
 
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(
-                Str::lower($request->input(Fortify::username())) . '|' . $request->ip()
+                Str::lower($request->input(Fortify::username())).'|'.$request->ip()
             );
 
             return Limit::perMinute(3)->by($throttleKey);
@@ -83,10 +81,11 @@ class FortifyServiceProvider extends ServiceProvider
 
         Fortify::authenticateUsing(function (Request $request) {
             $username = $request->input(Fortify::username());
-            $throttleKey = Str::transliterate(Str::lower($username) . '|' . $request->ip());
+            $throttleKey = Str::transliterate(Str::lower($username).'|'.$request->ip());
 
             if (RateLimiter::tooManyAttempts($throttleKey, 3)) {
                 $seconds = RateLimiter::availableIn($throttleKey);
+                AuditLogger::log('lockout', "Bloqueo de inicio de sesión para {$username}", null, ['email' => $username, 'seconds' => $seconds]);
 
                 throw ValidationException::withMessages([
                     Fortify::username() => "Demasiados intentos de inicio de sesión. Inténtalo nuevamente en {$seconds} segundos.",
@@ -97,6 +96,7 @@ class FortifyServiceProvider extends ServiceProvider
 
             if (! $user || ! Hash::check($request->password, $user->password)) {
                 RateLimiter::hit($throttleKey);
+                AuditLogger::log('login_failed', "Intento fallido con {$username}", $user, ['email' => $username, 'reason' => $user ? 'contraseña' : 'usuario inexistente'], $user?->id);
 
                 throw ValidationException::withMessages([
                     Fortify::username() => 'Credenciales incorrectas.',
@@ -106,6 +106,7 @@ class FortifyServiceProvider extends ServiceProvider
             RateLimiter::clear($throttleKey);
 
             if (! $user->is_active) {
+                AuditLogger::log('login_failed', "Intento de usuario inactivo {$username}", $user, ['email' => $username, 'reason' => 'inactivo'], $user->id);
                 throw ValidationException::withMessages([
                     Fortify::username() => 'Tu usuario está inactivo. Contacta al administrador.',
                 ]);

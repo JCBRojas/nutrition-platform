@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\BillingWorkbook;
+use App\Services\AuditLogger;
 use App\Services\BillingService;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -22,6 +23,7 @@ class BillingExportController extends Controller
             config('billing.unit'),
         );
         $spreadsheet = $workbook->build();
+        AuditLogger::log('export', 'Descargó la facturación de '.$month->format('Y-m'), null, ['report' => 'facturacion', 'month' => $month->format('Y-m')]);
 
         return response()->streamDownload(function () use ($spreadsheet) {
             (new Xlsx($spreadsheet))->save('php://output');

@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Diet;
+use App\Services\AuditLogger;
 use App\Services\DietHistoryService;
 use App\Support\Pagination;
 use Livewire\Attributes\Layout;
@@ -27,6 +28,13 @@ class DietHistoryViewer extends Component
     #[Url(as: 'per_page', except: Pagination::PER_PAGE)]
     public int $perPage = Pagination::PER_PAGE;
 
+    public function mount(): void
+    {
+        if ($this->dietId) {
+            $this->auditView(); // abierto desde ?dieta=
+        }
+    }
+
     public function updated(string $property): void
     {
         if (in_array($property, ['search', 'status', 'perPage'], true)) {
@@ -38,6 +46,15 @@ class DietHistoryViewer extends Component
     public function select(int $id): void
     {
         $this->dietId = $id;
+        $this->auditView();
+    }
+
+    /** Ley 1581 / historia clínica: queda registro de quién consultó el historial de cada dieta */
+    private function auditView(): void
+    {
+        if ($diet = Diet::find($this->dietId)) {
+            AuditLogger::log('history_viewed', "Consultó el historial de la dieta de la hab. {$diet->habitation}", $diet);
+        }
     }
 
     public function render(DietHistoryService $history)

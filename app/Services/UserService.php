@@ -34,6 +34,7 @@ class UserService
             ]);
 
             $user->syncRoles($data['roles'] ?? []);
+            AuditLogger::log('user_created', "Creó el usuario {$user->email}", $user, ['roles' => $data['roles'] ?? []]);
 
             return $user;
         });
@@ -67,8 +68,17 @@ class UserService
                 $user->password = Hash::make($data['password']);
             }
 
+            $changed = array_keys($user->getDirty());
+            $passwordChanged = in_array('password', $changed, true);
             $user->save();
+            $previousRoles = $user->getRoleNames()->all();
             $user->syncRoles($roles);
+
+            AuditLogger::log('user_updated', "Modificó el usuario {$user->email}", $user, [
+                'fields' => array_values(array_diff($changed, ['password'])),
+                'password_changed' => $passwordChanged,
+                'roles' => ['before' => $previousRoles, 'after' => $roles],
+            ]);
 
             if (! $user->is_active) {
                 $this->endSessions($user);
@@ -85,6 +95,7 @@ class UserService
         }
 
         $user->update(['is_active' => ! $user->is_active]);
+        AuditLogger::log($user->is_active ? 'user_activated' : 'user_deactivated', ($user->is_active ? 'Activó' : 'Desactivó')." el usuario {$user->email}", $user);
 
         if (! $user->is_active) {
             $this->endSessions($user);
@@ -104,6 +115,7 @@ class UserService
             $user->update(['is_active' => false]);
             $user->delete();
             $this->endSessions($user);
+            AuditLogger::log('user_deleted', "Eliminó el usuario {$user->email}", $user);
         });
     }
 
@@ -111,6 +123,7 @@ class UserService
     {
         $user->restore();
         $user->update(['is_active' => true]);
+        AuditLogger::log('user_restored', "Restauró el usuario {$user->email}", $user);
 
         return $user;
     }

@@ -7,6 +7,12 @@
 
     <div>
         <div class="max-w-7xl mx-auto py-10 sm:px-6 lg:px-8">
+            @if (session('compliance'))
+                <div class="danger-banner mb-6" role="alert">{{ session('compliance') }}</div>
+            @elseif (auth()->user()->requiresTwoFactor() && ! auth()->user()->hasTwoFactorEnabled())
+                <div class="danger-banner mb-6" role="alert">Tu rol requiere la verificación en dos pasos. Actívala abajo para usar la plataforma.</div>
+            @endif
+
             @if (Laravel\Fortify\Features::canUpdateProfileInformation())
                 @livewire('profile.update-profile-information-form')
 
@@ -22,7 +28,7 @@
             @endif
 
             @if (Laravel\Fortify\Features::canManageTwoFactorAuthentication())
-                <div class="mt-10 sm:mt-0">
+                <div class="mt-10 sm:mt-0" id="two-factor">
                     @livewire('profile.two-factor-authentication-form')
                 </div>
 

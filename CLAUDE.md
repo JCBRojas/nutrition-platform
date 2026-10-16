@@ -14,7 +14,7 @@ Idioma del dominio y la UI: **español**. Mantén nombres de rutas/vistas en esp
 | UI | Blade + **Livewire 3** + Tailwind 3 (Vite) · Chart.js 4 (CDN) · assets de plantilla en `public/assets` |
 | Auth/ACL | `spatie/laravel-permission` ^6 (roles + permisos, guard `web`) |
 | BD | MySQL (`nutrition`), sesiones en BD |
-| Otros | `spatie/laravel-backup` (diario 01:00), Pusher/Echo instalados pero `BROADCAST_DRIVER=log` |
+| Otros | `spatie/laravel-backup` (diario 01:00) · Tiempo real con Echo + protocolo Pusher (Soketi en local; ver «Tiempo real») |
 | Entorno | Laravel Herd (`herd.yml`), cola `sync` |
 
 ## 2. Comandos
@@ -26,7 +26,8 @@ php artisan db:seed --class=DietDemoSeeder  # +50 dietas × 5 versiones de prueb
 npm run dev                         # Vite
 php artisan test                    # PHPUnit 10, SQLite :memory: (phpunit.xml). Requiere npm run build
 ./vendor/bin/pint                   # formato PSR-12
-php artisan schedule:work           # backups programados
+php artisan schedule:work           # backups programados y diets:start-day
+npx -p node@18 -p @soketi/soketi@1.6.1 soketi start  # WebSockets local (puerto 6001); Soketi no corre en Node 25
 php artisan queue:work              # requerido cuando QUEUE_CONNECTION != sync
 php artisan permission:cache-reset  # tras cambiar roles/permisos
 ```
@@ -39,7 +40,7 @@ php artisan permission:cache-reset  # tras cambiar roles/permisos
 Request → routes/web.php (auth:sanctum + jetstream + verified [+ role:*])
         → DietController ──→ DietService (transacciones, versionado)
                           └→ FormRequest (StoreDietRequest: authorize por permiso — createDiets al registrar, editDiets al versionar)
-        → Livewire\DietsManager (vista despachador, wire:poll.3s)
+        → Livewire\DietsManager (vista despachador, tiempo real)
         → Blade views (dashboard, reports-diets*, components/modal-*-diets)
 ```
 
@@ -65,12 +66,12 @@ Cada archivo expone `labels` (texto UI) y `colors` (clases Tailwind). Las claves
 
 1. **Crear** `POST /dietas` → `DietService::createDiet` → `Diet` + `DietHistory` v1 (`modify='no'`).
 2. **Editar** `PUT /dietas/{diet}/version` → `createNewVersion`: `lockForUpdate` sobre max(version), inserta v+1 con `modify='si'`. Si `changes === 'cancelada'` → `diets.status = false`.
-3. **Despacho** `DietsManager` (`wire:poll.3s.keep-alive`): toda versión nueva (edición, cancelación o alta) queda `modify='si'` = cambio sin confirmar. Se lista primero, con banner, contador en las pestañas y en el título del navegador; al llegar por el poll dispara `diet-changes-arrived` (sonido Web Audio + notificación del navegador si el despachador pulsó "Activar alertas"). Compara la versión actual contra la **última confirmada** (cambios acumulados). `confirmChanges($dietId)` (permiso `confirmDelivery`) → `DietService::confirmChanges` pone `modify='no'` en todas las versiones pendientes de la dieta. La v1 se crea con `modify='no'` (las dietas nuevas no alertan). La migración `2026_10_18_000000_confirm_old_closing_versions` confirma los cierres de más de un día para no alertar por históricos.
+3. **Despacho** `DietsManager` (tiempo real; respaldo cada 3 s): toda versión nueva (edición, cancelación o alta) queda `modify='si'` = cambio sin confirmar. Se lista primero, con banner, contador en las pestañas y en el título del navegador; al llegar un aviso (`checkPending`) dispara `diet-changes-arrived` (sonido Web Audio + notificación del navegador si el despachador pulsó "Activar alertas"). Compara la versión actual contra la **última confirmada** (cambios acumulados). `confirmChanges($dietId)` (permiso `confirmDelivery`) → `DietService::confirmChanges` pone `modify='no'` en todas las versiones pendientes de la dieta. La v1 se crea con `modify='no'` (las dietas nuevas no alertan). La migración `2026_10_18_000000_confirm_old_closing_versions` confirma los cierres de más de un día para no alertar por históricos.
 4. **Reportes** `GET /diet-reports` y `/entrega/index` → `nutritionReport()` (totales diarios/mensuales por tiempo de comida sobre la última versión de dietas activas).
 
 5. **Finalizar (alta)** `PATCH /dietas/{diet}/finalizar` (`diets.finish`, permiso `editDiets`) → `DietService::finishDiet`: versión copia con `changes='finalizada'` y `status=FINISHED`. No borra nada. Sale de las dietas activas (pestaña "Finalizadas" del nutricionista; el despachador la ve en "Canceladas y finalizadas"). Cancelar y finalizar solo aplican a dietas activas (`closeDiet`). `Diet::CLOSING_CHANGES` (`cancelada`, `finalizada`) marca el fin del conteo en el reporte y la facturación. Para filtrar activas, usar `Diet::active()` / `isActive()`.
 
-6. **Despacho y recepción** (`diet_dispatches`, `App\Services\DispatchService`): un registro por **dieta × día × tiempo de comida**. En `DietsManager` el despachador elige el servicio (`?servicio=`, por defecto el último cuya hora de `timeFood.schedule` ya pasó), marca las dietas listas (checkbox) y pulsa «Despachar» (permiso `confirmDelivery`). No se puede despachar una dieta con cambios sin confirmar, que no incluya ese tiempo o ya despachada. El nutricionista ve los pendientes en `App\Livewire\DispatchReceipts` (arriba de su panel, `wire:poll.5s`) y confirma la recepción (permiso `confirmReception` → `received_at`/`received_by`).
+6. **Despacho y recepción** (`diet_dispatches`, `App\Services\DispatchService`): un registro por **dieta × día × tiempo de comida**. En `DietsManager` el despachador elige el servicio (`?servicio=`, por defecto el último cuya hora de `timeFood.schedule` ya pasó), marca las dietas listas (checkbox) y pulsa «Despachar» (permiso `confirmDelivery`). No se puede despachar una dieta con cambios sin confirmar, que no incluya ese tiempo o ya despachada. El nutricionista ve los pendientes en `App\Livewire\DispatchReceipts` (arriba de su panel, tiempo real) y confirma la recepción (permiso `confirmReception` → `received_at`/`received_by`).
 7. **Excel solo de lo recibido**: desde `config('dispatch.required_from')` (`DISPATCH_REQUIRED_FROM`, por defecto `2026-10-15`; vacío = no se exige) `DietReportService::activeDietsByDay($mes, receivedOnly: true)` solo deja los tiempos con despacho recibido (los demás en `withheld`). Lo usan `BillingService::monthly()` (aviso `notReceived` en `/precios`) y el Excel del reporte (`monthlyCensus($mes, receivedOnly: true)`, fila «Tiempos sin recepción» en la hoja Resumen). Los días anteriores al corte conservan la regla previa. La vista web del reporte nutricional sigue mostrando lo programado.
 8. **Ciclo diario** (`App\Services\DietDayService`, tabla `diet_days`):
    - **Autorización:** crear la dieta autoriza el día de creación; cada día siguiente lo autoriza «Continuar dieta» (`NutritionDiets::continueDiet`, permiso `continueDiets`: nutricionista, enfermería, admin), en cualquier momento del día anterior. Crea la versión `continuada`. Sin autorización, `DispatchService::blockReason` impide el despacho.
@@ -79,6 +80,13 @@ Cada archivo expone `labels` (texto UI) y `colors` (clases Tailwind). Las claves
    - `diets:start-day` (programado 00:01; también se ejecuta al despachar) vuelve a Activa las Completadas que se continuaron para hoy.
    - **Facturación:** desde `config('dispatch.completion_required_from')` (`COMPLETION_REQUIRED_FROM`, por defecto `2026-10-16`) `activeDietsByDay($mes, receivedOnly: true)` solo cuenta los días completados (los demás en `withheld`). Excepción: el día del alta o de la cancelación cuenta lo recibido aunque el día no se haya completado (alta: los tiempos anteriores a la hora del alta y los despachados antes; cancelación: los despachados antes de cancelar). Aplica a `BillingService::monthly()` y al Excel del reporte. Tests: `tests/Feature/DietDayCompletionTest.php`.
 9. **Despachos del día** `/despachos` (`dispatches.index`, permiso `viewDispatches`: nutricionista y despachador): `App\Livewire\DispatchLog`, filtros `?fecha=`, `servicio`, `estado` (`pending`/`received`), `q`; resumen por tiempo (`DispatchService::daySummary`). La columna Tiempo de las tablas del despachador y del nutricionista marca el estado del día con `x-meal-tag` (`DispatchService::statusByDiet`): turquesa sólido con check = entregado (recibido), borde punteado con camión = despachado sin recibir; leyenda `x-meal-legend`.
+
+### Tiempo real (sin polling)
+
+- Servidor: `App\Support\LiveUpdates::touch($kind)` junta los cambios (`diet`, `dispatch`, `day`) y, al confirmar la transacción, emite **un** `App\Events\DietsChanged` (`ShouldBroadcastNow`, canal privado `diets`, evento `.diets.changed`, payload solo `kinds`: sin datos clínicos). Lo disparan los eventos de modelo registrados en `AppServiceProvider` (`DietHistory` created, `Diet`/`DietDispatch`/`DietDay` saved) y las actualizaciones por consulta (`confirmChanges`, `confirmReceipt`, `startDay`), que llaman a `touch` a mano. Si el servidor WebSocket falla, `rescue` registra el error y la operación sigue (timeout `PUSHER_TIMEOUT`, 2 s). `LiveUpdates::muted()` para seeders/cargas masivas.
+- Canal `diets` (`routes/channels.php`): usuarios activos con `viewActiveDiets`, `viewDiets`, `viewDispatches`, `confirmDelivery` o `confirmReception`.
+- Navegador: `resources/js/live.js` → `window.ntLive(callback, { kinds, canRun, fallbackMs, safetyMs })` en el `x-init` de `DietsManager` (3 s), `DispatchReceipts` y `DispatchLog` (`kinds: ['dispatch']`, 5 s / 10 s) y `NutritionDiets` (5 s, `canRun` = sin modal abierto). Sin conexión WebSocket consulta cada `fallbackMs` (como el antiguo poll); conectado, solo cada 60 s por seguridad. No consulta con la pestaña oculta. **No volver a usar `wire:poll`.** `ntLive` devuelve `{ stop() }` y nunca una función: Alpine ejecuta en el acto la función que devuelve una expresión de `x-init`. Los bloques `@script` deben empezar con `let`/`const` (no con un comentario): Livewire los evalúa con Alpine y, si no, los trata como expresión y fallan.
+- `.env`: `BROADCAST_DRIVER=pusher`, `PUSHER_APP_ID/KEY/SECRET`, `PUSHER_HOST`, `PUSHER_PORT`, `PUSHER_SCHEME` (local Soketi: `app-id`/`app-key`/`app-secret`, `127.0.0.1`, `6001`, `http`). Tras cambiar las `VITE_PUSHER_*`, `npm run build`. Sin `VITE_PUSHER_APP_KEY` no hay WebSocket y todo funciona con el respaldo. Tests: `tests/Feature/LiveUpdatesTest.php`.
 
 Nunca se edita un `DietHistory` existente (salvo el flag `modify`); todo cambio clínico es una nueva versión.
 
@@ -148,7 +156,7 @@ Rol `admin` con CRUD de usuarios, asignación de roles y matriz de permisos. Sin
 
 Guard: roles y permisos siempre con `guard_name` = `UserService::GUARD` (`web`), explícito al crearlos y al consultarlos. Las rutas usan `auth:sanctum`, que durante la petición cambia el guard por defecto a `sanctum`; sin guard explícito Spatie crea el rol en `sanctum` y falla al asignarle permisos (corregido con la migración `2026_10_20_000000_move_sanctum_roles_to_web_guard`).
 
-Permisos: `viewUsers`, `createUsers`, `editUsers`, `deleteUsers`, `manageRoles` (el rol `admin` siempre tiene todos; `RolesManager` no permite quitárselos).
+Permisos: `viewUsers`, `createUsers`, `editUsers`, `deleteUsers`, `manageRoles`, `viewAuditLog` (el rol `admin` siempre tiene todos; `RolesManager` no permite quitárselos).
 
 Reglas de negocio (en `UserService`, lanzan `ValidationException`):
 - No desactivarse ni eliminarse a sí mismo; debe quedar ≥ 1 admin activo.
@@ -160,7 +168,7 @@ Reglas de negocio (en `UserService`, lanzan `ValidationException`):
 
 `Gate::before` concede todo al admin **excepto** la habilidad `delete`, para que `UserPolicy::delete` impida la autoeliminación. Tras cambiar permisos se ejecuta `forgetCachedPermissions()`.
 
-Login: `App\Http\Responses\LoginResponse` (registrado en `FortifyServiceProvider::register`, también para 2FA) y `RedirectIfAuthenticated` usan `User::homeUrl()`: nutricionista → `dashboard.nutrition`, despachador → `dashboard.dispatch`, admin → `admin.users.index`, sin rol → `profile.show`. No usar `Fortify::redirects()` para esto (solo lee configuración). La ruta `/` cierra la sesión: nunca redirigir allí a un usuario autenticado. El seeder usa `firstOrCreate`, así que cambiar una contraseña en el seeder no modifica usuarios que ya existen. El seeder crea `admin@nutritrack.local` (`SEED_ADMIN_EMAIL`) con contraseña `SEED_USER_PASSWORD` o una aleatoria que se imprime.
+Login: `App\Http\Responses\LoginResponse` (registrado en `FortifyServiceProvider::register`, también para 2FA) y `RedirectIfAuthenticated` usan `User::homeUrl()`: nutricionista → `dashboard.nutrition`, despachador → `dashboard.dispatch`, admin → `admin.users.index`, sin rol → `profile.show`. No usar `Fortify::redirects()` para esto (solo lee configuración). La ruta `/` cierra la sesión: nunca redirigir allí a un usuario autenticado. El seeder usa `firstOrCreate`, así que cambiar una contraseña en el seeder no modifica usuarios que ya existen. El seeder crea los usuarios demo y `admin@nutritrack.com` (`SEED_ADMIN_EMAIL`) con contraseña `SEED_USER_PASSWORD` o una aleatoria que se imprime (nunca contraseñas fijas).
 
 Tests de Livewire/HTTP: usar `$this->withoutVite()` y `flushSession()` al cambiar de usuario en un mismo test (Jetstream `AuthenticateSession`).
 
@@ -266,11 +274,24 @@ Nombres de archivo con fecha local: `produccion_2026-10-15_0630.pdf` (`now('Amer
 - Acceso (`auth/login`, `auth/forgot-password`, `auth/reset-password`): comparten `<x-auth-shell>` (CSS propio, sin Tailwind ni Vite; tema claro/oscuro con tokens en `:root`, `localStorage('nt-theme')` y `prefers-color-scheme`; panel con la descripción de la plataforma y el ícono animado, que respeta `prefers-reduced-motion`) y `<x-auth-alerts>`.
 - Recuperar contraseña: correo en español (`ResetPassword::toMailUsing` en `AuthServiceProvider`), textos en `lang/es/passwords.php` y `lang/es/validation.php` (parcial; lo demás cae a `en`). Si el SMTP falla, `User::sendPasswordResetNotification` registra el error y muestra un mensaje en el formulario en lugar de un 500. En local `MAIL_MAILER=log` (el enlace queda en `storage/logs/laravel.log`); en producción hay que configurar un SMTP real.
 
+## 7d. Seguridad y cumplimiento
+
+Detalle y lista de tareas de cada institución: `docs/seguridad/cumplimiento.md`. Configuración en `config/security.php`.
+
+- **Política de datos (Ley 1581):** pública en `/politica-de-datos` (`privacy.policy`, enlazada en el login). Al ingresar, `EnsureAccountCompliance` (alias `compliance`, en el grupo de rutas de la app y como middleware persistente de Livewire) envía a `/politica-de-datos/aceptar` hasta que el usuario acepte la versión vigente (`users.privacy_accepted_at`/`privacy_version`, `PRIVACY_POLICY_VERSION`). El texto (`resources/views/legal/policy-text.blade.php`) es un borrador para revisión jurídica.
+- **2FA obligatorio** para los roles de `TWO_FACTOR_ROLES` (por defecto `admin,jefe_nutricion`): sin 2FA confirmada se redirige a `profile.show#two-factor`. En local se desactiva con `TWO_FACTOR_ROLES=`.
+- **HTTPS:** `FORCE_HTTPS` (por defecto en producción) → `SecurityHeaders` redirige a https y envía HSTS; `URL::forceScheme`; cookie de sesión `secure`. Detrás de un proxy: `TRUSTED_PROXIES`. `SecurityHeaders` envía además `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` y `no-store` en páginas con sesión.
+- **Perfil (`/user/profile`):** en español (`lang/es.json` traduce los textos de Jetstream/Fortify; `lang/es/validation.php`). Sin «Eliminar cuenta» (`Features::accountDeletion()` desactivado: solo el admin elimina usuarios). El correo no se edita: `UpdateUserProfileInformation` solo guarda el nombre y la vista lo muestra de solo lectura; lo cambia el admin en `/admin/usuarios`.
+- **Contraseñas:** `Password::defaults()` = mínimo 10, mayúsculas, minúsculas y números. El seeder ya no tiene contraseñas fijas (`SEED_USER_PASSWORD` o aleatoria).
+- **Auditoría:** `App\Services\AuditLogger::log($event, $descripcion, $subject, $meta)` → `audit_logs` (`App\Models\AuditLog`, inmutable; eventos en `AuditLog::EVENTS`). Accesos por `App\Listeners\AuditAuthEvents` y `FortifyServiceProvider::authenticateUsing` (intentos fallidos y bloqueos; el callback lanza la excepción sin el evento `Failed`). También `UserService`, `RolesManager`, `PricesManager`, exportaciones Excel y `DietHistoryViewer` (consulta de historial). **No poner datos clínicos ni nombres de pacientes en la descripción** (solo habitación o IDs). Visor `/admin/auditoria` (`admin.audit.index`, permiso `viewAuditLog`, solo admin).
+- **Respaldos:** cifrados con `BACKUP_ARCHIVE_PASSWORD`; programados `backup:run` 01:00, `backup:clean` 01:30, `backup:monitor` 02:00 y `backups:verify` los lunes 03:00 (último respaldo reciente, cifrado, legible y con las tablas de dietas). En local no hay `mysqldump`, así que no se generan respaldos.
+- Tests: `ComplianceTest`, `AuditLogTest`, `VerifyBackupTest`. `Tests\TestCase` desactiva la aceptación de la política, el 2FA obligatorio y el HTTPS forzado; `ComplianceTest` los activa.
+
 ## 7c. Paginación de tablas
 
 Skill `.claude/skills/table-pagination`: 15 por página, parámetros `page` y `per_page` (`App\Support\Pagination::perPage()` acepta 15/30/50; cualquier otro → 15), control común `resources/views/pagination/table.blade.php` (Anterior/Siguiente, números, selector de página, "1–15 de N registros"; en Livewire `->links('pagination.table', ['livewire' => true])`). Los filtros se conservan (`withQueryString()` / `#[Url]`) y al cambiar un filtro se vuelve a la página 1.
 - Panel de dietas activas (`/dashboard/nutrition`, permiso `viewActiveDiets`, no rol; lo tiene el nutricionista y se asigna a otros roles como enfermería): sin `createDiets`/`editDiets` queda de solo lectura (sin botones ni modales). `User::homeUrl()` envía a los roles sin panel propio según su permiso (`viewActiveDiets` → panel, `viewDispatches` → despachos, `viewDiets` → historial).
-- Panel del nutricionista: `App\Livewire\NutritionDiets` (indicadores, pestañas `?tab=active|cancelled|finished`, búsqueda en vivo `?q=` de la pestaña abierta, `page`/`per_page`). Se refresca cada 5 s con `$wire.$refresh()` y se pausa si hay un `.overlay.open` o `.chip-select.open` (edición en curso). Los modales de edición llevan `wire:ignore` y la fila `wire:key` con la versión (si la dieta cambia, el modal se recrea con los datos nuevos); el modal de registro está fuera del componente. Cambiar de pestaña o de búsqueda vuelve a la página 1.
+- Panel del nutricionista: `App\Livewire\NutritionDiets` (indicadores, pestañas `?tab=active|cancelled|finished`, búsqueda en vivo `?q=` de la pestaña abierta, `page`/`per_page`). Se refresca en tiempo real con `$wire.$refresh()` y lo aplaza si hay un `.overlay.open` o `.chip-select.open` (edición en curso). Los modales de edición llevan `wire:ignore` y la fila `wire:key` con la versión (si la dieta cambia, el modal se recrea con los datos nuevos); el modal de registro está fuera del componente. Cambiar de pestaña o de búsqueda vuelve a la página 1.
 - Despachador, historial (`DietHistoryViewer`) y usuarios: Livewire `WithPagination`.
 - Orden: las tablas de dietas y despachos van por habitación ascendente en orden natural (`Diet::orderByRoom()` / `DietDispatch::orderByRoom()`: `LENGTH(habitation)`, luego `habitation`; 12 < 101 < 1001). En el despachador las dietas con cambios sin confirmar siguen arriba.
 - Despachador, pestaña activas: por defecto solo lista las dietas cuya versión actual incluye el servicio elegido (`media_manana`/`mediamanana` equivalen) más las que tienen cambios sin confirmar; `?todas=1` («Mostrar todas las activas») quita el filtro.

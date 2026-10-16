@@ -6,6 +6,7 @@ use App\Models\Diet;
 use App\Models\DietDay;
 use App\Models\DietHistory;
 use App\Models\User;
+use App\Support\LiveUpdates;
 use Database\Factories\DietHistoryFactory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -23,6 +24,13 @@ class DietDemoSeeder extends Seeder
     private const VERSIONS = 5;
 
     public function run(): void
+    {
+        // Sin avisos en tiempo real por cada registro de prueba
+        LiveUpdates::muted(fn () => $this->seedDemo());
+        LiveUpdates::touch(LiveUpdates::DIET);
+    }
+
+    private function seedDemo(): void
     {
         if (app()->environment('production')) {
             $this->command?->error('DietDemoSeeder no se ejecuta en producción.');

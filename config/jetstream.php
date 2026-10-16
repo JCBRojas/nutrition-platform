@@ -62,7 +62,8 @@ return [
         // Features::profilePhotos(),
         // Features::api(),
         // Features::teams(['invitations' => true]),
-        Features::accountDeletion(),
+        // Sin «Eliminar cuenta» en el perfil: solo el admin elimina usuarios (UserService, soft delete)
+        // Features::accountDeletion(),
     ],
 
     /*

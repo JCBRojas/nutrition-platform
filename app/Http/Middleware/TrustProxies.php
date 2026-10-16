@@ -15,6 +15,16 @@ class TrustProxies extends Middleware
     protected $proxies;
 
     /**
+     * Detrás de un balanceador o Cloudflare: TRUSTED_PROXIES="*" o la lista de IP, para que
+     * la app reconozca HTTPS (X-Forwarded-Proto) y la IP real en la auditoría.
+     */
+    public function __construct()
+    {
+        $proxies = config('security.trusted_proxies');
+        $this->proxies = $proxies === '*' ? '*' : ($proxies ? array_map('trim', explode(',', $proxies)) : null);
+    }
+
+    /**
      * The headers that should be used to detect proxies.
      *
      * @var int

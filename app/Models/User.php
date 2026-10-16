@@ -59,6 +59,8 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'is_active' => 'boolean',
         'whatsapp_opt_in' => 'boolean',
+        'privacy_accepted_at' => 'datetime',
+        'two_factor_confirmed_at' => 'datetime',
     ];
 
     /**
@@ -86,6 +88,27 @@ class User extends Authenticatable
             $this->can('viewDiets') => route('diets.history'),
             default => route('profile.show'),
         };
+    }
+
+    /* ===================== SEGURIDAD Y CUMPLIMIENTO ===================== */
+
+    /** Aceptó la versión vigente de la política de tratamiento de datos (config security.privacy) */
+    public function hasAcceptedPrivacyPolicy(): bool
+    {
+        return $this->privacy_accepted_at !== null && $this->privacy_version === config('security.privacy.version');
+    }
+
+    /** Su rol exige verificación en dos pasos (config security.two_factor_roles) */
+    public function requiresTwoFactor(): bool
+    {
+        $roles = config('security.two_factor_roles', []);
+
+        return $roles !== [] && $this->hasAnyRole($roles);
+    }
+
+    public function hasTwoFactorEnabled(): bool
+    {
+        return $this->two_factor_secret !== null && $this->two_factor_confirmed_at !== null;
     }
 
     /**

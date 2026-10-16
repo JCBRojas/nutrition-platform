@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Diet;
 use App\Models\DietDay;
 use App\Models\DietHistory;
+use App\Support\LiveUpdates;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -169,7 +170,10 @@ class DietService
      */
     public function confirmChanges(Diet $diet): int
     {
-        return $diet->history()->where('modify', 'si')->update(['modify' => 'no']);
+        $count = $diet->history()->where('modify', 'si')->update(['modify' => 'no']);
+        LiveUpdates::touch(LiveUpdates::DIET);
+
+        return $count;
     }
 
     private function setDietCanceled(Diet $diet): bool

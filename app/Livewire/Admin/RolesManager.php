@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Services\UserService;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -30,6 +31,7 @@ class RolesManager extends Component
         $this->authorize('manageRoles');
 
         $valid = Permission::where('guard_name', UserService::GUARD)->pluck('name')->all();
+        $before = $this->currentMatrix();
 
         foreach (Role::where('guard_name', UserService::GUARD)->where('name', '!=', UserService::ADMIN_ROLE)->get() as $role) {
             $role->syncPermissions(array_values(array_intersect($this->matrix[$role->name] ?? [], $valid)));
@@ -40,6 +42,15 @@ class RolesManager extends Component
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $this->loadMatrix();
+
+        $changes = collect($this->matrix)->map(fn ($perms, $role) => array_filter([
+            'added' => array_values(array_diff($perms, $before[$role] ?? [])),
+            'removed' => array_values(array_diff($before[$role] ?? [], $perms)),
+        ]))->filter()->all();
+        if ($changes !== []) {
+            AuditLogger::log('permissions_updated', 'Cambió permisos de: '.implode(', ', array_keys($changes)), null, $changes);
+        }
+
         session()->flash('success', 'Permisos actualizados');
     }
 
@@ -53,7 +64,8 @@ class RolesManager extends Component
             'newRole.regex' => 'Usa minúsculas y guion bajo, p. ej. auxiliar_cocina.',
         ]);
 
-        Role::create(['name' => $this->newRole, 'guard_name' => UserService::GUARD]);
+        $role = Role::create(['name' => $this->newRole, 'guard_name' => UserService::GUARD]);
+        AuditLogger::log('role_created', "Creó el rol {$role->name}", $role);
         $this->reset('newRole');
         $this->loadMatrix();
         session()->flash('success', 'Rol creado');
@@ -71,6 +83,7 @@ class RolesManager extends Component
             return;
         }
 
+        AuditLogger::log('role_deleted', "Eliminó el rol {$role->name}", null, ['role' => $role->name]);
         $role->delete();
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $this->loadMatrix();
@@ -85,7 +98,13 @@ class RolesManager extends Component
 
     private function loadMatrix(): void
     {
-        $this->matrix = Role::where('guard_name', UserService::GUARD)->with('permissions')->get()
+        $this->matrix = $this->currentMatrix();
+    }
+
+    /** @return array<string, array<int, string>> rol => permisos guardados */
+    private function currentMatrix(): array
+    {
+        return Role::where('guard_name', UserService::GUARD)->with('permissions')->get()
             ->mapWithKeys(fn ($role) => [$role->name => $role->permissions->pluck('name')->all()])
             ->all();
     }

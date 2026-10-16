@@ -98,7 +98,7 @@ class UsersManagementTest extends TestCase
         $this->assertFalse($user->fresh()->is_active);
 
         auth()->logout();
-        $this->post('/login', ['email' => $user->email, 'password' => 'despachador'])
+        $this->post('/login', ['email' => $user->email, 'password' => env('SEED_USER_PASSWORD')])
             ->assertSessionHasErrors('email');
         $this->assertGuest();
     }

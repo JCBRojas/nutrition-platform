@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\MonthlySummaryExport;
+use App\Services\AuditLogger;
 use App\Services\Reports\DietReportService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ class ReportExportController extends Controller
     public function monthlyExcel(Request $request)
     {
         $month = self::monthFromRequest($request);
+        AuditLogger::log('export', 'Descargó el reporte nutricional de '.$month->format('Y-m'), null, ['report' => 'reporte_nutricional', 'month' => $month->format('Y-m')]);
 
         return Excel::download(
             new MonthlySummaryExport($this->reports->monthlyCensus($month, receivedOnly: true)), // solo lo despachado y recibido
