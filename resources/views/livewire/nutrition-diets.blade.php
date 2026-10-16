@@ -40,7 +40,8 @@
         <div @class(['nd-notice', 'error' => $noticeError]) role="status">{{ $notice }}</div>
     @endif
 
-    <div class="tabs-wrapper mb-4">
+    {{-- Pestañas y «Registrar Dieta» en una fila flexible (sin float): en móvil el botón ocupa su propia fila --}}
+    <div class="tabs-wrapper nd-tabs mb-4">
         @foreach ($tabNames as $key => $name)
             <button type="button" @class(['btn btn-ghost tab-btn', 'active' => $tab === $key])
                 aria-pressed="{{ $tab === $key ? 'true' : 'false' }}" wire:click="setTab('{{ $key }}')">
@@ -49,7 +50,7 @@
         @endforeach
 
         @can('createDiets')
-            <button type="button" class="btn btn-primary float-right" id="btnRegistrar" onclick="openCreateModal()">
+            <button type="button" class="btn btn-primary nd-register" id="btnRegistrar" onclick="openCreateModal()">
                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <line x1="12" y1="5" x2="12" y2="19" />
                     <line x1="5" y1="12" x2="19" y2="12" />

@@ -24,12 +24,13 @@
                         </p>
                     </div>
 
-                    <form method="GET" action="{{ url()->current() }}" class="flex items-center gap-4">
+                    {{-- En móvil el formulario baja a su propia fila y el botón de Excel ocupa todo el ancho --}}
+                    <form method="GET" action="{{ url()->current() }}" class="flex items-center gap-4 nr-month-form">
                         <label for="mes" class="text-sm text-slate-500">Mes</label>
                         <input type="month" id="mes" name="mes" value="{{ $selectedMonth }}"
                             max="{{ now()->format('Y-m') }}" onchange="this.form.submit()"
                             class="rounded-2xl border border-slate-200 text-sm">
-                        <a href="{{ route('reports.monthly.excel', ['mes' => $selectedMonth]) }}" class="btn btn-success">
+                        <a href="{{ route('reports.monthly.excel', ['mes' => $selectedMonth]) }}" class="btn btn-success nr-excel">
                             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
                                 <polyline points="7 10 12 15 17 10" />
@@ -305,4 +306,13 @@
             @endcanany
         </div>
     </div>
+    <style>
+        .nr-month-form { flex-wrap: wrap; }
+        .nr-excel { white-space: nowrap; }
+        @media (max-width: 640px) {
+            .nr-month-form { width: 100%; gap: 10px; }
+            .nr-month-form input[type="month"] { flex: 1 1 auto; min-width: 0; }
+            .nr-excel { flex: 1 1 100%; justify-content: center; }
+        }
+    </style>
 </x-app-layout>

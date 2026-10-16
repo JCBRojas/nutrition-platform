@@ -16,7 +16,8 @@
     <!-- new style -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <link rel="stylesheet" href="{{ asset('assets/css/styleTree.css') }}" class="css">
-    <link rel="stylesheet" href="{{ asset('assets/css/sidebar.css') }}">
+    {{-- ?v= con la fecha del archivo: al cambiar el CSS, el navegador no usa la copia en caché --}}
+    <link rel="stylesheet" href="{{ asset('assets/css/sidebar.css') }}?v={{ filemtime(public_path('assets/css/sidebar.css')) }}">
 
 
     <!-- Scripts -->

@@ -65,6 +65,12 @@
     .nd-continue:hover { background: var(--blue); color: #fff; }
     .nd-continue:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .nd-continue[disabled] { opacity: .5; cursor: wait; }
+    .nd-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .nd-tabs .nd-register { margin-left: auto; white-space: nowrap; }
+    @media (max-width: 640px) {
+        .nd-tabs .tab-btn { flex: 1 1 auto; justify-content: center; }
+        .nd-tabs .nd-register { order: -1; flex: 1 1 100%; margin-left: 0; justify-content: center; }
+    }
     .nd-notice { margin: 0 0 14px; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13.5px; background: var(--accent-light); color: var(--accent); }
     .nd-notice.error { background: var(--accent2-light); color: var(--accent2); }
 </style>

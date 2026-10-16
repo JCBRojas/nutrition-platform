@@ -19,6 +19,7 @@
 
                     <h4>Producción de cocina hoy</h4>
 
+                    <div class="table-responsive">
                     <table class="table table-bordered">
 
                         <thead>
@@ -55,6 +56,7 @@
                         </tbody>
 
                     </table>
+                    </div>
 
 
 
@@ -62,6 +64,7 @@
 
                     <h4 class="mt-5">Totales globales por tipo de dieta</h4>
 
+                    <div class="table-responsive">
                     <table class="table table-bordered">
 
                         <thead>
@@ -102,6 +105,7 @@
                         </tbody>
 
                     </table>
+                    </div>
 
 
 

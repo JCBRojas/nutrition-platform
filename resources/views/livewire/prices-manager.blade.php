@@ -143,6 +143,7 @@
                         <input type="month" wire:model.live="month" max="{{ now()->format('Y-m') }}"
                             class="filter-input" style="width:auto" aria-label="Mes">
                     </div>
+                    <div class="table-responsive">
                     <table class="vtable">
                         <thead>
                             <tr><th>Servicio</th><th style="text-align:right">Cantidad</th></tr>
@@ -155,6 +156,7 @@
                             <tr class="pm-total"><td>Valor del mes</td><td class="pm-money">{{ $cop($monthly['total']) }}</td></tr>
                         </tbody>
                     </table>
+                    </div>
                     <div style="padding:14px 18px">
                         <a href="{{ route('billing.excel', ['mes' => $monthValue]) }}" class="btn btn-success" style="width:100%;justify-content:center">
                             Descargar facturación en Excel

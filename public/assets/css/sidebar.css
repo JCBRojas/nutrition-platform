@@ -12,7 +12,10 @@
   left: 0;
   right: auto;
   width: var(--sidebar-w);
+  /* 100dvh = alto visible real: en el celular 100vh incluye la zona tapada por la barra del
+     navegador y el pie del menú (usuario y cerrar sesión) quedaba fuera de la pantalla */
   height: 100vh;
+  height: 100dvh;
   flex-direction: column;
   align-items: stretch;
   background: var(--surface);
@@ -43,6 +46,7 @@
   gap: 2px;
   padding: 12px 10px;
   overflow-y: auto;
+  min-height: 0; /* permite que solo los enlaces se desplacen y el pie quede siempre visible */
 }
 
 .nav-section {
@@ -91,9 +95,11 @@
 
 /* Usuario que inició sesión */
 .sidebar-footer {
+  flex-shrink: 0;
   display: block;
   margin-left: 0;
   padding: 12px 10px 14px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--border);
 }
 
@@ -182,6 +188,18 @@
   margin-left: var(--sidebar-w);
   margin-top: 0;
   min-height: 100vh;
+  min-width: 0;
+}
+
+/* Tablas anchas: desplazamiento horizontal dentro de su contenedor (en móvil, con el dedo).
+   Las tarjetas que las contienen tienen overflow: hidden y, sin esto, la tabla se recortaba. */
+.table-responsive {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 
 .content {
