@@ -7,10 +7,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class User extends Authenticatable
 {
@@ -84,6 +86,22 @@ class User extends Authenticatable
             $this->can('viewDiets') => route('diets.history'),
             default => route('profile.show'),
         };
+    }
+
+    /**
+     * Si el servidor de correo falla, muestra un error en el formulario en lugar de un 500
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        try {
+            parent::sendPasswordResetNotification($token);
+        } catch (TransportExceptionInterface $e) {
+            report($e);
+
+            throw ValidationException::withMessages([
+                'email' => 'No pudimos enviar el correo de recuperación. Inténtalo más tarde o contacta al administrador.',
+            ]);
+        }
     }
 
     public function routeNotificationForWhatsApp(): ?string

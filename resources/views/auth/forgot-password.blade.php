@@ -1,34 +1,21 @@
-<x-guest-layout>
-    <x-authentication-card>
-        <x-slot name="logo">
-            <x-authentication-card-logo />
-        </x-slot>
+<x-auth-shell title="Recuperar contraseña">
+    <h2>Recuperar contraseña</h2>
+    <p class="lead">Escribe el correo de tu cuenta y te enviaremos un enlace para crear una contraseña nueva.</p>
 
-        <div class="mb-4 text-sm text-gray-600">
-            {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
+    <x-auth-alerts />
+
+    <form method="POST" action="{{ route('password.email') }}" novalidate>
+        @csrf
+
+        <div class="field">
+            <label for="email">Correo electrónico</label>
+            <input id="email" type="email" name="email" value="{{ old('email') }}"
+                autocomplete="username" required autofocus
+                @error('email') aria-invalid="true" @enderror>
         </div>
 
-        @if (session('status'))
-            <div class="mb-4 font-medium text-sm text-green-600">
-                {{ session('status') }}
-            </div>
-        @endif
+        <button type="submit" class="submit">Enviar enlace</button>
+    </form>
 
-        <x-validation-errors class="mb-4" />
-
-        <form method="POST" action="{{ route('password.email') }}">
-            @csrf
-
-            <div class="block">
-                <x-label for="email" value="{{ __('Email') }}" />
-                <x-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-            </div>
-
-            <div class="flex items-center justify-end mt-4">
-                <x-button>
-                    {{ __('Email Password Reset Link') }}
-                </x-button>
-            </div>
-        </form>
-    </x-authentication-card>
-</x-guest-layout>
+    <a class="back" href="{{ route('login') }}">Volver a iniciar sesión</a>
+</x-auth-shell>

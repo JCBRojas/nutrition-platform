@@ -255,7 +255,8 @@ Nombres de archivo con fecha local: `produccion_2026-10-15_0630.pdf` (`now('Amer
   - Excel `GET /facturacion/excel?mes=YYYY-MM` (`billing.excel`) → `App\Exports\BillingWorkbook` (PhpSpreadsheet directo). Hoja `{MES} {AÑO}`: días 1–31 (los inexistentes en gris), `AJ=SUM`, `AK=D*AJ`; si el precio cambió en el mes, `AK` lleva el valor calculado y un comentario. Incluye resumen AM:AN, subtotal, total del mes y la hoja `FACTURACIÓN MES A MES `.
 - Rol `jefe_nutricion`: `viewDiets`, `viewReports`, `generateFiles`, `managePrices`; al iniciar sesión va a `prices.index`.
 - `navigation.blade.php`: cada enlace se condiciona con el mismo rol o permiso que exige su ruta (`@role` / `@can`), para no mostrar enlaces que terminan en 403.
-- Login (`auth/login.blade.php`): página independiente con CSS propio (sin Tailwind ni Vite), tema claro/oscuro con tokens en `:root`, `localStorage('nt-theme')` y respeto de `prefers-color-scheme`. Muestra la línea de servicios del día según `config('timeFood.schedule')`.
+- Acceso (`auth/login`, `auth/forgot-password`, `auth/reset-password`): comparten `<x-auth-shell>` (CSS propio, sin Tailwind ni Vite; tema claro/oscuro con tokens en `:root`, `localStorage('nt-theme')` y `prefers-color-scheme`; panel con la descripción de la plataforma y el ícono animado, que respeta `prefers-reduced-motion`) y `<x-auth-alerts>`.
+- Recuperar contraseña: correo en español (`ResetPassword::toMailUsing` en `AuthServiceProvider`), textos en `lang/es/passwords.php` y `lang/es/validation.php` (parcial; lo demás cae a `en`). Si el SMTP falla, `User::sendPasswordResetNotification` registra el error y muestra un mensaje en el formulario en lugar de un 500. En local `MAIL_MAILER=log` (el enlace queda en `storage/logs/laravel.log`); en producción hay que configurar un SMTP real.
 
 ## 7c. Paginación de tablas
 
