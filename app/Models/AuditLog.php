@@ -38,6 +38,11 @@ class AuditLog extends Model
         'export' => 'Exportación de datos',
         'history_viewed' => 'Consulta de historial de dieta',
         'backup_verified' => 'Verificación de respaldo',
+        'plan_price_updated' => 'Precio del plan modificado',
+        'payment_submitted' => 'Pago de suscripción reportado',
+        'payment_approved' => 'Pago de suscripción aprobado',
+        'payment_rejected' => 'Pago de suscripción rechazado',
+        'subscription_granted' => 'Premium activado manualmente',
     ];
 
     protected $fillable = ['user_id', 'event', 'description', 'subject_type', 'subject_id', 'meta', 'ip', 'user_agent'];

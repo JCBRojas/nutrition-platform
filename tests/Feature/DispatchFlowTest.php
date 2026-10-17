@@ -31,6 +31,7 @@ class DispatchFlowTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->activatePremium(); // usa pantallas del plan Premium (precios, despachos del día, historial)
         $this->withoutVite();
         $this->seed(RolesAndPermissionsSeeder::class);
         $this->nutritionist = User::role('nutricionista')->firstOrFail();

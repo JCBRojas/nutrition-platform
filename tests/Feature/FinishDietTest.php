@@ -24,6 +24,7 @@ class FinishDietTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->activatePremium(); // usa pantallas del plan Premium (precios, despachos del día, historial)
         // Estas pruebas cubren el conteo sin exigir despacho; el despacho se prueba en DispatchFlowTest
         config(['dispatch.required_from' => null]);
         $this->withoutVite();

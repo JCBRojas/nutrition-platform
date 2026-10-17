@@ -3,6 +3,7 @@
 use App\Http\Controllers\BillingExportController;
 use App\Http\Controllers\DietController;
 use App\Http\Controllers\PrivacyController;
+use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\ReportExportController;
 use App\Livewire\Admin\AuditLogViewer;
 use App\Livewire\Admin\RolesManager;
@@ -10,6 +11,7 @@ use App\Livewire\Admin\UsersManager;
 use App\Livewire\DietHistoryViewer;
 use App\Livewire\DispatchLog;
 use App\Livewire\PricesManager;
+use App\Livewire\SubscriptionManager;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -75,17 +77,23 @@ Route::middleware([
     Route::patch('/dietas/{diet}/finalizar', [DietController::class, 'finishDiet'])
         ->middleware('permission:editDiets')->name('diets.finish');
 
-    Route::middleware('permission:managePrices')->group(function () {
+    // Funciones del plan Premium (EnsurePremiumFeature; el admin entra siempre)
+    Route::middleware(['permission:managePrices', 'premium:prices'])->group(function () {
         Route::get('/precios', PricesManager::class)->name('prices.index');
         Route::get('/facturacion/excel', [BillingExportController::class, 'excel'])->name('billing.excel');
     });
 
     Route::get('/despachos', DispatchLog::class)
-        ->middleware('permission:viewDispatches')
+        ->middleware(['permission:viewDispatches', 'premium:dispatch_log'])
         ->name('dispatches.index');
 
     Route::get('/historial', DietHistoryViewer::class)
-        ->middleware('permission:viewDiets')->name('diets.history');
+        ->middleware(['permission:viewDiets', 'premium:history'])->name('diets.history');
+
+    // Suscripción de la institución: todos ven el plan; reportar pagos y aprobarlos según permiso
+    Route::get('/suscripcion', SubscriptionManager::class)->name('subscription.index');
+    Route::get('/suscripcion/pagos/{payment}/comprobante', [SubscriptionController::class, 'receipt'])
+        ->middleware('permission:manageSubscription|approvePayments')->name('subscription.receipt');
 
     Route::middleware(['permission:viewReports|generateFiles'])->group(function () {
         Route::get('/diet-reports', [DietController::class, 'nutritionReport'])->name('diet.reports');

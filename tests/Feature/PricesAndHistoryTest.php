@@ -26,6 +26,7 @@ class PricesAndHistoryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->activatePremium(); // usa pantallas del plan Premium (precios, despachos del día, historial)
         $this->withoutVite();
         $this->seed(RolesAndPermissionsSeeder::class);
         $this->jefe = User::role('jefe_nutricion')->firstOrFail();

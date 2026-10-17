@@ -3,11 +3,14 @@
 namespace App\Providers;
 
 use App\Http\Middleware\EnsureAccountCompliance;
+use App\Http\Middleware\EnsurePremiumFeature;
 use App\Models\Diet;
 use App\Models\DietDay;
 use App\Models\DietDispatch;
 use App\Models\DietHistory;
+use App\Services\SubscriptionService;
 use App\Support\LiveUpdates;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -20,7 +23,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Una instancia por petición: memoriza el plan vigente (el menú lo consulta varias veces)
+        $this->app->scoped(SubscriptionService::class);
     }
 
     /**
@@ -34,7 +38,10 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // Las acciones de Livewire (/livewire/update) también exigen política aceptada y 2FA
-        Livewire::addPersistentMiddleware([EnsureAccountCompliance::class]);
+        Livewire::addPersistentMiddleware([EnsureAccountCompliance::class, EnsurePremiumFeature::class]);
+
+        // @premium('history') … @endpremium: la función está en el plan de la institución (admin siempre)
+        Blade::if('premium', fn (string $feature) => app(SubscriptionService::class)->hasFeature($feature));
 
         // Contraseñas: mínimo 10 caracteres con mayúsculas, minúsculas y números
         Password::defaults(fn () => Password::min(10)->letters()->mixedCase()->numbers());

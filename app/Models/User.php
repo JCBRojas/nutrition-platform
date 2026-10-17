@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Services\SubscriptionService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -77,15 +78,19 @@ class User extends Authenticatable
      */
     public function homeUrl(): string
     {
+        // Las pantallas del plan Premium solo son inicio si la institución lo tiene
+        $premium = fn (string $feature) => app(SubscriptionService::class)->hasFeature($feature, $this);
+
         return match (true) {
             $this->hasRole('nutricionista') => route('dashboard.nutrition'),
             $this->hasRole('despachador') => route('dashboard.dispatch'),
-            $this->hasRole('jefe_nutricion') => route('prices.index'),
+            $this->hasRole('jefe_nutricion') => $premium('prices') ? route('prices.index') : route('diet.reports'),
             $this->hasRole('admin') => route('admin.users.index'),
             // Roles creados desde /admin/roles (p. ej. enfermería): según sus permisos
             $this->can('viewActiveDiets') => route('dashboard.nutrition'),
-            $this->can('viewDispatches') => route('dispatches.index'),
-            $this->can('viewDiets') => route('diets.history'),
+            $this->can('viewDispatches') && $premium('dispatch_log') => route('dispatches.index'),
+            $this->can('viewDiets') && $premium('history') => route('diets.history'),
+            $this->can('viewDispatches') || $this->can('viewDiets') => route('subscription.index'),
             default => route('profile.show'),
         };
     }

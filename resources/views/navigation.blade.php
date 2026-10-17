@@ -8,6 +8,8 @@
   ];
   $roleName = $authUser?->getRoleNames()->first();
   $roleLabel = $roleName ? ($roleLabels[$roleName] ?? \Illuminate\Support\Str::of($roleName)->replace('_', ' ')->ucfirst()) : 'Sin rol';
+  // Funciones del plan Premium: sin plan, el enlace lleva a /suscripcion con un candado
+  $hasPremium = fn (string $feature) => app(\App\Services\SubscriptionService::class)->hasFeature($feature);
   $initials = collect(preg_split('/\s+/', trim($authUser?->name ?? '')))
     ->filter()->take(2)
     ->map(fn ($part) => mb_strtoupper(mb_substr($part, 0, 1)))
@@ -66,15 +68,17 @@
     <div class="nav-section">Seguimiento</div>
     @endcanany
     @can('viewDispatches')
-    <a class="nav-item {{ request()->routeIs('dispatches.index') ? 'active' : '' }}" href="{{ route('dispatches.index') }}" id="nav-despachos">
+    <a @class(['nav-item', 'active' => request()->routeIs('dispatches.index'), 'is-locked' => ! $hasPremium('dispatch_log')]) href="{{ $hasPremium('dispatch_log') ? route('dispatches.index') : route('subscription.index') }}" id="nav-despachos">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
       Despachos del día
+      @unless ($hasPremium('dispatch_log'))<span class="nav-lock" title="Plan Premium"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Premium</span>@endunless
     </a>
     @endcan
     @can('viewDiets')
-    <a class="nav-item {{ request()->routeIs('diets.history') ? 'active' : '' }}" href="{{ route('diets.history') }}" id="nav-historial">
+    <a @class(['nav-item', 'active' => request()->routeIs('diets.history'), 'is-locked' => ! $hasPremium('history')]) href="{{ $hasPremium('history') ? route('diets.history') : route('subscription.index') }}" id="nav-historial">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       Historial de cambios
+      @unless ($hasPremium('history'))<span class="nav-lock" title="Plan Premium"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Premium</span>@endunless
     </a>
     @endcan
     @canany(['viewReports', 'generateFiles'])
@@ -84,11 +88,18 @@
     </a>
     @endcanany
     @can('managePrices')
-    <a class="nav-item {{ request()->routeIs('prices.index') ? 'active' : '' }}" href="{{ route('prices.index') }}" id="nav-precios">
+    <a @class(['nav-item', 'active' => request()->routeIs('prices.index'), 'is-locked' => ! $hasPremium('prices')]) href="{{ $hasPremium('prices') ? route('prices.index') : route('subscription.index') }}" id="nav-precios">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
       Precios
+      @unless ($hasPremium('prices'))<span class="nav-lock" title="Plan Premium"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Premium</span>@endunless
     </a>
     @endcan
+    @canany(['manageSubscription', 'approvePayments'])
+    <a class="nav-item {{ request()->routeIs('subscription.*') ? 'active' : '' }}" href="{{ route('subscription.index') }}" id="nav-suscripcion">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      Suscripción
+    </a>
+    @endcanany
     @canany(['viewUsers', 'manageRoles', 'viewAuditLog'])
     <div class="nav-section">Administración</div>
     @endcanany

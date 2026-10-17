@@ -156,7 +156,7 @@ Rol `admin` con CRUD de usuarios, asignación de roles y matriz de permisos. Sin
 
 Guard: roles y permisos siempre con `guard_name` = `UserService::GUARD` (`web`), explícito al crearlos y al consultarlos. Las rutas usan `auth:sanctum`, que durante la petición cambia el guard por defecto a `sanctum`; sin guard explícito Spatie crea el rol en `sanctum` y falla al asignarle permisos (corregido con la migración `2026_10_20_000000_move_sanctum_roles_to_web_guard`).
 
-Permisos: `viewUsers`, `createUsers`, `editUsers`, `deleteUsers`, `manageRoles`, `viewAuditLog` (el rol `admin` siempre tiene todos; `RolesManager` no permite quitárselos).
+Permisos: `viewUsers`, `createUsers`, `editUsers`, `deleteUsers`, `manageRoles`, `viewAuditLog`, `manageSubscription`, `approvePayments` (el rol `admin` siempre tiene todos; `RolesManager` no permite quitárselos).
 
 Reglas de negocio (en `UserService`, lanzan `ValidationException`):
 - No desactivarse ni eliminarse a sí mismo; debe quedar ≥ 1 admin activo.
@@ -286,6 +286,14 @@ Detalle y lista de tareas de cada institución: `docs/seguridad/cumplimiento.md`
 - **Auditoría:** `App\Services\AuditLogger::log($event, $descripcion, $subject, $meta)` → `audit_logs` (`App\Models\AuditLog`, inmutable; eventos en `AuditLog::EVENTS`). Accesos por `App\Listeners\AuditAuthEvents` y `FortifyServiceProvider::authenticateUsing` (intentos fallidos y bloqueos; el callback lanza la excepción sin el evento `Failed`). También `UserService`, `RolesManager`, `PricesManager`, exportaciones Excel y `DietHistoryViewer` (consulta de historial). **No poner datos clínicos ni nombres de pacientes en la descripción** (solo habitación o IDs). Visor `/admin/auditoria` (`admin.audit.index`, permiso `viewAuditLog`, solo admin).
 - **Respaldos:** cifrados con `BACKUP_ARCHIVE_PASSWORD`; programados `backup:run` 01:00, `backup:clean` 01:30, `backup:monitor` 02:00 y `backups:verify` los lunes 03:00 (último respaldo reciente, cifrado, legible y con las tablas de dietas). En local no hay `mysqldump`, así que no se generan respaldos.
 - Tests: `ComplianceTest`, `AuditLogTest`, `VerifyBackupTest`. `Tests\TestCase` desactiva la aceptación de la política, el 2FA obligatorio y el HTTPS forzado; `ComplianceTest` los activa.
+
+## 7e. Suscripción (plan Básico / Premium)
+
+- Una suscripción por **institución** (no por usuario). Básico = gratis, sin fila. Premium = existe un periodo vigente en `subscriptions` (`starts_at <= now < ends_at`); al vencer vuelve solo al básico.
+- Funciones premium en `config/subscriptions.php` → `premium_features`: `prices` (`/precios` y Excel de facturación), `dispatch_log` (`/despachos`) y `history` (`/historial`). Rutas con middleware `premium:{función}` (`EnsurePremiumFeature`, también persistente de Livewire): sin plan redirige a `/suscripcion` con aviso. En vistas, `@premium('history') … @endpremium`. **El rol admin accede a todo** (`SubscriptionService::hasFeature`). El menú muestra esas entradas con candado «Premium» y `User::homeUrl()` evita mandar al inicio a una pantalla bloqueada.
+- Pago **manual** (sin pasarela): transferencia, consignación, Nequi o Daviplata (datos para pagar en `.env`: `PAYMENT_BANK_DETAILS`, `PAYMENT_DEPOSIT_DETAILS`, `PAYMENT_NEQUI_DETAILS`, `PAYMENT_DAVIPLATA_DETAILS`). Quien tiene `manageSubscription` (admin y jefe de nutrición) reporta el pago con referencia y comprobante (JPG/PNG/PDF ≤ 5 MB, disco privado `local`, `subscription-receipts/`); solo uno pendiente a la vez. `approvePayments` (admin) aprueba (crea el periodo, que empieza cuando termina el vigente: renovar antes no pierde días) o rechaza con motivo, edita precios (`plan_prices`; iniciales `SUBSCRIPTION_MONTHLY_PRICE`/`SUBSCRIPTION_ANNUAL_PRICE`) y puede activar premium sin pago con un motivo.
+- Pantalla `/suscripcion` (`subscription.index`, `App\Livewire\SubscriptionManager`); comprobante `subscription.receipt`. Todo queda en la auditoría (`payment_*`, `plan_price_updated`, `subscription_granted`).
+- Tests: `tests/Feature/SubscriptionTest.php`. Las pruebas que usan pantallas premium llaman `$this->activatePremium()` (`Tests\TestCase`).
 
 ## 7c. Paginación de tablas
 

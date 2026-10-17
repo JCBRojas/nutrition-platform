@@ -187,11 +187,13 @@ Cocina podrá despacharla el día siguiente." }}"
                                 <td class="text-right">
                                     <div class="row-actions">
                                         @can('viewDiets')
-                                            <a href="{{ route('diets.history', ['dieta' => $diet->id]) }}"
-                                                class="btn btn-ghost btn-sm btn-icon" title="Ver historial"
-                                                aria-label="Ver historial de {{ $diet->name_patient }}">
-                                                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
-                                            </a>
+                                            @premium('history')
+                                                <a href="{{ route('diets.history', ['dieta' => $diet->id]) }}"
+                                                    class="btn btn-ghost btn-sm btn-icon" title="Ver historial"
+                                                    aria-label="Ver historial de {{ $diet->name_patient }}">
+                                                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+                                                </a>
+                                            @endpremium
                                         @endcan
                                         @can('editDiets')
                                         <button type="button" class="btn btn-success btn-sm btn-icon" title="Editar dieta"
@@ -278,10 +280,12 @@ Cocina podrá despacharla el día siguiente." }}"
                                     <div class="row-actions">
                                         <span class="tag {{ $closedTab['tag'] }}">{{ $closedTab['label'] }}</span>
                                         @can('viewDiets')
-                                            <a href="{{ route('diets.history', ['dieta' => $diet->id]) }}" class="btn btn-ghost btn-sm btn-icon"
-                                                title="Ver historial" aria-label="Ver historial de {{ $diet->name_patient }}">
-                                                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
-                                            </a>
+                                            @premium('history')
+                                                <a href="{{ route('diets.history', ['dieta' => $diet->id]) }}" class="btn btn-ghost btn-sm btn-icon"
+                                                    title="Ver historial" aria-label="Ver historial de {{ $diet->name_patient }}">
+                                                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+                                                </a>
+                                            @endpremium
                                         @endcan
                                     </div>
                                 </td>

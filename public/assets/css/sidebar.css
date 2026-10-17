@@ -286,3 +286,18 @@
     padding-top: 0 !important;
   }
 }
+
+/* Funciones del plan Premium sin suscripción: el enlace lleva a /suscripcion */
+.nav-item.is-locked { color: var(--text-muted); }
+.nav-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 10.5px;
+  font-weight: 700;
+}
