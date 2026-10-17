@@ -69,6 +69,31 @@
             </section>
         </div>
 
+        {{-- ===================== ASÍ SE VE EL PREMIUM ===================== --}}
+        @php
+            $previews = [
+                ['img' => 'facturacion.png', 'title' => 'Facturación y precios', 'text' => 'Precios por tipo de dieta y servicio, con su historial, y la facturación del mes lista para descargar en Excel.'],
+                ['img' => 'despachos.png', 'title' => 'Despachos del día', 'text' => 'Lo que salió de cocina y lo que recibió nutrición, por tiempo de comida, con filtros por estado y habitación.'],
+                ['img' => 'historial.png', 'title' => 'Historial de cambios', 'text' => 'Cada versión de la dieta del paciente: quién la cambió, cuándo y qué cambió.'],
+            ];
+        @endphp
+        <section class="mb-6" aria-labelledby="preview-title">
+            <h3 id="preview-title" class="sb-title">Así se ve el plan Premium</h3>
+            <div class="sb-previews">
+                @foreach ($previews as $p)
+                    <figure class="sb-preview">
+                        <figcaption>
+                            <strong>{{ $p['title'] }}</strong>
+                            <span>{{ $p['text'] }}</span>
+                        </figcaption>
+                        <a href="{{ asset('images/premium/'.$p['img']) }}" target="_blank" rel="noopener" class="sb-shot" aria-label="Ver captura completa: {{ $p['title'] }}">
+                            <img src="{{ asset('images/premium/'.$p['img']) }}" alt="Captura de la pantalla {{ $p['title'] }} en NutriTrack" loading="lazy">
+                        </a>
+                    </figure>
+                @endforeach
+            </div>
+        </section>
+
         {{-- ===================== PAGAR ===================== --}}
         @if ($canManage)
             <section class="card sb-section mb-6" aria-labelledby="pay-title">
@@ -283,6 +308,15 @@
         .sb-link { font-size: 12.5px; color: var(--blue, #2563eb); text-decoration: underline; }
         .sb-admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
         .sb-nowrap { white-space: nowrap; }
+        .sb-previews { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+        .sb-preview { margin: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--surface2, #f6f4f1); padding: 16px 16px 0; overflow: hidden; }
+        .sb-preview figcaption { display: grid; gap: 4px; margin-bottom: 12px; }
+        .sb-preview figcaption strong { font-size: 15px; }
+        .sb-preview figcaption span { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+        .sb-shot { display: block; margin-top: auto; border-radius: 10px 10px 0 0; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,.08); background: #fff; height: 230px; }
+        .sb-shot img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; transition: transform .25s ease; }
+        .sb-shot:hover img { transform: scale(1.02); }
+        @media (prefers-reduced-motion: reduce) { .sb-shot img { transition: none; } }
         .sb-st-pending { background: #fef3c7; color: #92400e; }
         .sb-st-approved { background: #ccfbf1; color: #0f766e; }
         .sb-st-rejected { background: #fee2e2; color: #b42318; }

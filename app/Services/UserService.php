@@ -19,6 +19,21 @@ class UserService
     public const GUARD = 'web';
 
     /**
+     * Roles que $actor puede asignar: el admin todos; los demás, los de config security.assignable_roles
+     * según su rol (el jefe de nutrición solo crea despachadores). null = sin restricción.
+     */
+    public static function assignableRoles(User $actor): ?array
+    {
+        if ($actor->hasRole(self::ADMIN_ROLE)) {
+            return null;
+        }
+
+        return collect(config('security.assignable_roles', []))
+            ->only($actor->getRoleNames()->all())
+            ->flatten()->unique()->values()->all();
+    }
+
+    /**
      * Crear usuario con sus roles
      */
     public function create(array $data): User

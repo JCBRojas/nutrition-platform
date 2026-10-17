@@ -68,7 +68,8 @@ class SubscriptionTest extends TestCase
 
         $this->get(route('diets.history'))->assertRedirect(route('subscription.index'));
         $this->get(route('dispatches.index'))->assertRedirect(route('subscription.index'));
-        $this->get(route('subscription.index'))->assertOk()->assertSee('Plan Básico')->assertSee('Historial de cambios');
+        $this->get(route('subscription.index'))->assertOk()->assertSee('Plan Básico')->assertSee('Historial de cambios')
+            ->assertSee('Así se ve el plan Premium')->assertSee('images/premium/facturacion.png');
 
         $this->flushSession();
         $this->actingAs($this->jefe)->get(route('prices.index'))->assertRedirect(route('subscription.index'));
@@ -89,6 +90,11 @@ class SubscriptionTest extends TestCase
             ->assertOk()
             ->assertSee('nav-lock', false)
             ->assertDontSee('title="Ver historial"', false);
+    }
+
+    public function test_menu_names_the_prices_item_billing_and_prices(): void
+    {
+        $this->actingAs($this->jefe)->get(route('diet.reports'))->assertOk()->assertSee('Facturación y precios');
     }
 
     public function test_payment_is_reported_with_receipt_and_only_one_can_be_pending(): void

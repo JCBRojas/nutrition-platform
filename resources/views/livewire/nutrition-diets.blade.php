@@ -120,13 +120,13 @@
                                             </span>
                                         @else
                                             @can('continueDiets')
-                                                <button type="button" class="nd-next nd-continue" title="Continuar dieta: autoriza el despacho de mañana"
+                                            <button type="button" class="nd-next nd-continue" title="Continuar dieta: autoriza el despacho de mañana"
                                                     wire:click="continueDiet({{ $diet->id }})" wire:loading.attr="disabled" wire:target="continueDiet({{ $diet->id }})"
                                                     wire:confirm="{{ "¿Continuar la dieta de {$diet->name_patient} (hab. {$diet->habitation}) mañana?
 
 Cocina podrá despacharla el día siguiente." }}"
                                                     aria-label="Continuar dieta de {{ $diet->name_patient }} mañana">
-                                                    <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="13 6 19 12 13 18"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                                    <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="13 6 19 12 13 18"/><line x1="5" y1="12" x2="19" y2="12" style="display: block"/></svg>
                                                     Continuar
                                                 </button>
                                             @else

@@ -71,11 +71,11 @@ class DispatchFlowTest extends TestCase
 
         Livewire::actingAs($this->dispatcher)->test(DietsManager::class)
             ->assertSet('meal', 'almuerzo')
-            ->assertDontSee('Paciente 103') // no incluye almuerzo: oculta por defecto
-            ->assertSee('2 de 3')
-            ->set('showAll', true)
+            ->assertSet('showAll', true) // «Mostrar todas las activas» marcado por defecto
             ->assertSee('No incluye almuerzo.')
             ->set('showAll', false)
+            ->assertDontSee('Paciente 103') // no incluye almuerzo: oculta con el filtro
+            ->assertSee('2 de 3')
             ->call('togglePage', [$a->id, $b->id])
             ->assertSet('selected', [$a->id, $b->id])
             ->call('dispatchSelected')
@@ -281,6 +281,7 @@ class DispatchFlowTest extends TestCase
         app(DietService::class)->createNewVersion($changed, ['timeFood' => ['desayuno'], 'billing_type' => 'normal', 'changes' => 'con_cambios'], $this->nutritionist->id);
 
         Livewire::actingAs($this->dispatcher)->test(DietsManager::class)
+            ->set('showAll', false) // por defecto se muestran todas; el filtro se activa al desmarcar
             ->set('meal', 'cena')
             ->assertSee('Paciente 901')
             ->assertDontSee('Paciente 902')

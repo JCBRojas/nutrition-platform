@@ -1,4 +1,4 @@
-<x-auth-shell title="Iniciar sesión">
+<x-auth-shell title="Iniciar sesión" :showcase="true">
     <h2 id="login-title">Iniciar sesión</h2>
     <p class="lead">Usa el correo y la contraseña de tu cuenta.</p>
 
@@ -39,4 +39,6 @@
 
         <button type="submit" class="submit">Iniciar sesión</button>
     </form>
+
+    <p class="demo-hint">¿Tu institución aún no usa NutriTrack? <a href="{{ route('demo.create') }}">Solicita una demo</a></p>
 </x-auth-shell>

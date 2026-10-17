@@ -75,6 +75,9 @@ class UsersManager extends Component
     {
         $this->authorize('create', User::class);
         $this->resetForm();
+        if (count($this->assignable() ?? []) === 1) {
+            $this->roles = $this->assignable(); // jefe de nutrición: despachador marcado
+        }
         $this->showForm = true;
     }
 
@@ -100,6 +103,8 @@ class UsersManager extends Component
         $user ? $this->authorize('update', $user) : $this->authorize('create', User::class);
 
         $data = $this->validate($this->rules(), [
+            'roles.required' => 'Elige el rol del usuario.',
+            'roles.*.in' => 'No puedes asignar ese rol.',
             'email.unique' => 'Ya existe un usuario con este correo (puede estar eliminado: restáuralo).',
             'phone.regex' => 'Usa formato internacional, p. ej. +573001234567.',
         ]);
@@ -157,9 +162,17 @@ class UsersManager extends Component
                 : $this->passwordRules(),
             'is_active' => ['boolean'],
             'whatsapp_opt_in' => ['boolean'],
-            'roles' => ['array'],
-            'roles.*' => ['string', Rule::exists('roles', 'name')->where('guard_name', UserService::GUARD)],
+            // Sin ser admin solo se asignan los roles permitidos (jefe de nutrición → despachador) y al menos uno
+            'roles' => $this->assignable() === null ? ['array'] : ['required', 'array', 'min:1'],
+            'roles.*' => ['string', Rule::exists('roles', 'name')->where('guard_name', UserService::GUARD),
+                ...($this->assignable() === null ? [] : [Rule::in($this->assignable())])],
         ];
+    }
+
+    /** null = puede asignar cualquier rol (admin) */
+    private function assignable(): ?array
+    {
+        return UserService::assignableRoles(auth()->user());
     }
 
     private function runGuarded(callable $action, string $message): void
@@ -181,6 +194,10 @@ class UsersManager extends Component
     public function render()
     {
         $allRoles = Role::where('guard_name', UserService::GUARD)->orderBy('name')->pluck('name');
+        $assignable = $this->assignable();
+        if ($assignable !== null) {
+            $allRoles = $allRoles->intersect($assignable)->values(); // el jefe de nutrición solo ve y crea despachadores
+        }
 
         $users = User::query()
             ->with('roles')
@@ -193,6 +210,7 @@ class UsersManager extends Component
                 ->orWhere('email', 'like', "%{$this->search}%")
                 ->orWhere('phone', 'like', "%{$this->search}%")))
             ->when($allRoles->contains($this->role), fn ($q) => $q->role($this->role))
+            ->when($assignable !== null, fn ($q) => $assignable === [] ? $q->whereRaw('1 = 0') : $q->role($assignable))
             ->orderBy('name')
             ->paginate(Pagination::perPage($this->perPage));
 

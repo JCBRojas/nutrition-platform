@@ -36,6 +36,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'viewAuditLog',
             'manageSubscription',
             'approvePayments',
+            'viewDemoRequests',
         ];
 
         foreach ($permissions as $permission) {
@@ -70,6 +71,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'generateFiles',
             'managePrices',
             'manageSubscription',
+            'viewUsers',   // solo despachadores (config security.assignable_roles)
+            'createUsers',
         ]);
 
         // Asignar permisos a Despachador

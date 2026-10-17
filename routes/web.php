@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Controllers\BillingExportController;
+use App\Http\Controllers\DemoRequestController;
 use App\Http\Controllers\DietController;
 use App\Http\Controllers\PrivacyController;
-use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\ReportExportController;
+use App\Http\Controllers\SubscriptionController;
 use App\Livewire\Admin\AuditLogViewer;
+use App\Livewire\Admin\DemoRequestsViewer;
 use App\Livewire\Admin\RolesManager;
 use App\Livewire\Admin\UsersManager;
 use App\Livewire\DietHistoryViewer;
@@ -37,6 +39,10 @@ Route::get('/', function () {
 
 // Política de tratamiento de datos (pública; enlazada desde el inicio de sesión)
 Route::get('/politica-de-datos', [PrivacyController::class, 'show'])->name('privacy.policy');
+
+// Solicitar demo (público; 5 envíos por minuto por IP)
+Route::get('/solicitar-demo', [DemoRequestController::class, 'create'])->name('demo.create');
+Route::post('/solicitar-demo', [DemoRequestController::class, 'store'])->middleware('throttle:5,1')->name('demo.store');
 
 Route::middleware([
     'auth:sanctum',
@@ -106,6 +112,7 @@ Route::middleware([
         Route::get('/usuarios', UsersManager::class)->middleware('permission:viewUsers')->name('users.index');
         Route::get('/roles', RolesManager::class)->middleware('permission:manageRoles')->name('roles.index');
         Route::get('/auditoria', AuditLogViewer::class)->middleware('permission:viewAuditLog')->name('audit.index');
+        Route::get('/solicitudes-demo', DemoRequestsViewer::class)->middleware('permission:viewDemoRequests')->name('demo-requests.index');
     });
 
     // Route::get('/entrega/canceladas', [EntregaController::class, 'canceladas'])->name('dietas.canceladas');

@@ -51,7 +51,7 @@
     .nd-legend { margin: 0 0 0 auto; }
     @media (max-width: 640px) { .nd-search .filter-input { max-width: none; flex: 1 1 100%; } .nd-legend { margin-left: 0; } }
     /* Estado del día y «Continuar dieta» */
-    .nd-day { display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; white-space: nowrap; }
+    .nd-day { display:; align-items: center; gap: 4px; flex-wrap: nowrap; white-space: ; }
     .nd-day .tag { margin: 0; }
     .tag-completed { background: #ccfbf1; color: #0f766e; font-weight: 600; }
     .tag-in-progress { background: var(--surface2); color: var(--text); }

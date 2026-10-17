@@ -39,9 +39,9 @@ class DietsManager extends Component
     #[Url(as: 'servicio')]
     public string $meal = '';
 
-    /** false = en activas solo se listan las dietas que incluyen el servicio elegido */
-    #[Url(as: 'todas')]
-    public bool $showAll = false;
+    /** true (por defecto) = todas las activas; false = solo las que incluyen el servicio elegido (?todas=0) */
+    #[Url(as: 'todas', except: true)]
+    public bool $showAll = true;
 
     /** IDs de dietas marcadas como listas para despachar */
     public array $selected = [];

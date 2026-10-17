@@ -90,7 +90,7 @@
     @can('managePrices')
     <a @class(['nav-item', 'active' => request()->routeIs('prices.index'), 'is-locked' => ! $hasPremium('prices')]) href="{{ $hasPremium('prices') ? route('prices.index') : route('subscription.index') }}" id="nav-precios">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-      Precios
+      Facturación y precios
       @unless ($hasPremium('prices'))<span class="nav-lock" title="Plan Premium"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Premium</span>@endunless
     </a>
     @endcan
@@ -100,7 +100,7 @@
       Suscripción
     </a>
     @endcanany
-    @canany(['viewUsers', 'manageRoles', 'viewAuditLog'])
+    @canany(['viewUsers', 'manageRoles', 'viewAuditLog', 'viewDemoRequests'])
     <div class="nav-section">Administración</div>
     @endcanany
     @can('viewUsers')
@@ -113,6 +113,12 @@
     <a class="nav-item {{ request()->routeIs('admin.roles.*') ? 'active' : '' }}" href="{{ route('admin.roles.index') }}" id="nav-roles">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
       Roles y permisos
+    </a>
+    @endcan
+    @can('viewDemoRequests')
+    <a class="nav-item {{ request()->routeIs('admin.demo-requests.*') ? 'active' : '' }}" href="{{ route('admin.demo-requests.index') }}" id="nav-demos">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16v12H5.2L4 17.2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="13" y2="12"/></svg>
+      Solicitudes de demo
     </a>
     @endcan
     @can('viewAuditLog')

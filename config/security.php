@@ -14,6 +14,12 @@ return [
     // Proxies de confianza (balanceador, Cloudflare): "*" o lista de IP separadas por coma
     'trusted_proxies' => env('TRUSTED_PROXIES'),
 
+    // Roles que puede asignar quien administra usuarios sin ser admin (el admin asigna todos).
+    // El jefe de nutrición crea despachadores y solo ve a los usuarios con esos roles.
+    'assignable_roles' => [
+        'jefe_nutricion' => ['despachador'],
+    ],
+
     // Roles que deben tener la verificación en dos pasos (2FA) activa para usar la plataforma
     'two_factor_roles' => array_values(array_filter(array_map('trim', explode(',', env('TWO_FACTOR_ROLES', 'admin,jefe_nutricion'))))),
 
