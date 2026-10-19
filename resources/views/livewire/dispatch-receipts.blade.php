@@ -54,7 +54,12 @@
                                         aria-label="Confirmar recepción: habitación {{ $d->diet?->habitation }}, {{ $meals[$d->meal] ?? $d->meal }}">
                                 </td>
                                 <td><span class="room-badge">{{ $d->diet?->habitation }}</span></td>
-                                <td class="dr-patient">{{ $d->diet?->name_patient }}</td>
+                                <td class="dr-patient">
+                                    {{ $d->diet?->name_patient }}
+                                    @if ($d->diet && in_array($d->meal, $d->diet->transferMealsOn($d->service_date), true))
+                                        <div class="dr-transfer">Enviado a {{ $d->diet->transfer_destination }}</div>
+                                    @endif
+                                </td>
                                 <td><span class="tag tag-tiempo">{{ $meals[$d->meal] ?? $d->meal }}</span></td>
                                 <td class="dr-when">
                                     @unless ($d->service_date->isToday())
@@ -90,6 +95,7 @@
         .dr-table td { padding: 4px 8px; border-bottom: 1px solid #eef2f7; vertical-align: middle; }
         .dr-table .tag { margin: 0; }
         .dr-patient { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .dr-transfer { font-size: 11.5px; font-weight: 600; color: var(--blue); white-space: normal; }
         .dr-when { white-space: nowrap; font-size: 12px; color: var(--text-muted); }
         .dr-check { width: 32px; }
         .dr-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--blue); }

@@ -110,10 +110,11 @@ class DietDayService
             $meals = array_diff($meals, $this->reports->mealsServedBefore($meals, $created->subSecond()));
         }
 
-        // Día del cierre: alta → solo lo anterior a la hora del alta; cancelación → no se completa
+        // Día del cierre: alta → lo anterior a la hora del alta más lo que se envía a otro lugar;
+        // cancelación → no se completa
         if ($closedAt && $closedAt <= $dayEnd) {
             $meals = $closing->changes === 'finalizada'
-                ? array_intersect($meals, $this->reports->mealsServedBefore($meals, $closedAt))
+                ? array_unique([...array_intersect($meals, $this->reports->mealsServedBefore($meals, $closedAt)), ...array_intersect($meals, $diet->transferMealsOn($dayStart))])
                 : [];
         }
 

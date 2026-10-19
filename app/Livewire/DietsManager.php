@@ -175,7 +175,9 @@ class DietsManager extends Component
         $filterByMeal = $this->tab === 'active' && ! $this->showAll;
 
         $diets = Diet::query()
-            ->whereIn('status', $statuses)
+            // Activas: también las dadas de alta hoy con comida por enviar a otro lugar
+            ->where(fn (Builder $q) => $q->whereIn('status', $statuses)
+                ->when($this->tab === 'active', fn (Builder $q) => $q->orWhere(fn (Builder $q) => $q->transferOn())))
             ->when($filterByMeal, fn (Builder $q) => $this->appliesToMeal($q))
             ->when($this->search !== '', fn (Builder $q) => $q->where(fn (Builder $q) => $q
                 ->where('habitation', 'like', "%{$this->search}%")
@@ -223,8 +225,9 @@ class DietsManager extends Component
             'counts' => [
                 'active' => Diet::active()->count(),
                 'closed' => Diet::whereIn('status', [Diet::CANCELLED, Diet::FINISHED])->count(),
-                'pendingActive' => $pending->filter(fn (Diet $d) => $d->isActive())->count(),
-                'pendingClosed' => $pending->reject(fn (Diet $d) => $d->isActive())->count(),
+                'pendingActive' => $pending->filter(fn (Diet $d) => $d->isActive() || $d->transferMealsOn())->count(),
+                'pendingClosed' => $pending->reject(fn (Diet $d) => $d->isActive() || $d->transferMealsOn())->count(),
+                'transfers' => Diet::transferOn()->count(),
                 'applies' => $filterByMeal ? $this->appliesToMeal(Diet::active())->count() : null,
             ],
             'foodLabels' => config('timeFood.labels'),

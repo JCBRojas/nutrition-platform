@@ -102,9 +102,9 @@ class DietService
      * Finalizar dieta (alta del paciente): crea una versión con changes = 'finalizada'
      * (copia de la actual) y pone status = FINISHED. No elimina registros.
      */
-    public function finishDiet(Diet $diet, int $userId): DietHistory
+    public function finishDiet(Diet $diet, int $userId, ?array $transfer = null): DietHistory
     {
-        $history = $this->closeDiet($diet, $userId, 'finalizada', Diet::FINISHED);
+        $history = $this->closeDiet($diet, $userId, 'finalizada', Diet::FINISHED, $this->transferAttributes($diet, $transfer));
 
         // Si ya se recibió todo lo servido antes del alta, el día queda completado (y se factura)
         app(DietDayService::class)->evaluate($diet->fresh(), now(), $userId);
@@ -112,7 +112,37 @@ class DietService
         return $history;
     }
 
-    private function closeDiet(Diet $diet, int $userId, string $changes, int $status): DietHistory
+    /**
+     * Envío a otro lugar en el alta (p. ej. remitido a otra IPS): destino y tiempos de hoy
+     * que cocina aún no despacha. null o sin destino = no se envía nada.
+     *
+     * @param  array{destination?: ?string, meals?: array<int, string>}|null  $transfer
+     */
+    private function transferAttributes(Diet $diet, ?array $transfer): array
+    {
+        $destination = trim((string) ($transfer['destination'] ?? ''));
+        if ($destination === '') {
+            return [];
+        }
+
+        $meals = array_values(array_unique((array) ($transfer['meals'] ?? [])));
+        $allowed = array_keys(app(DispatchService::class)->transferCandidates($diet));
+
+        if (mb_strlen($destination) > 150) {
+            throw ValidationException::withMessages(['transfer.destination' => 'El destino admite máximo 150 caracteres.']);
+        }
+        if ($meals === [] || array_diff($meals, $allowed) !== []) {
+            throw ValidationException::withMessages(['transfer.meals' => 'Elige los tiempos de hoy que se deben enviar al destino (solo los que cocina aún no despacha).']);
+        }
+
+        return [
+            'transfer_destination' => $destination,
+            'transfer_meals' => array_values(array_intersect($allowed, $meals)), // orden cronológico
+            'transfer_date' => now()->toDateString(),
+        ];
+    }
+
+    private function closeDiet(Diet $diet, int $userId, string $changes, int $status, array $attributes = []): DietHistory
     {
         if (! $diet->isActive()) {
             throw ValidationException::withMessages([
@@ -122,7 +152,7 @@ class DietService
 
         $current = $diet->currentVersion;
 
-        return DB::transaction(function () use ($diet, $userId, $changes, $status, $current) {
+        return DB::transaction(function () use ($diet, $userId, $changes, $status, $current, $attributes) {
             $history = $this->createNewVersion($diet, [
                 'timeFood' => $current?->timeFood,
                 'consistency' => $current?->consistency,
@@ -133,7 +163,7 @@ class DietService
                 'changes' => $changes,
             ], $userId);
 
-            $diet->update(['status' => $status]);
+            $diet->update(['status' => $status] + $attributes);
 
             return $history;
         });

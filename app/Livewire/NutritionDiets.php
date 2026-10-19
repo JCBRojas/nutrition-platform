@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Diet;
 use App\Services\DietDayService;
+use App\Services\DietService;
 use App\Services\DispatchService;
 use App\Support\Pagination;
 use Illuminate\Database\Eloquent\Builder;
@@ -42,6 +43,18 @@ class NutritionDiets extends Component
     public ?string $notice = null;
 
     public bool $noticeError = false;
+
+    /** Modal de cierre: dieta y tipo ('finish' = alta, 'cancel' = cancelar) */
+    public ?int $closingId = null;
+
+    public string $closingType = '';
+
+    /** Alta con envío a otro lugar (p. ej. el paciente fue remitido a otra IPS cercana) */
+    public bool $transferEnabled = false;
+
+    public string $transferDestination = '';
+
+    public array $transferMeals = [];
 
     public function mount(): void
     {
@@ -85,6 +98,70 @@ class NutritionDiets extends Component
         }
     }
 
+    /* ===================== CANCELAR / DAR DE ALTA ===================== */
+
+    /** Abre la confirmación con lo despachado sin recibir (se cobra) y, en el alta, el envío a otro lugar */
+    public function startClose(int $dietId, string $type): void
+    {
+        abort_unless(auth()->user()?->can('editDiets'), 403);
+
+        $this->resetClose();
+        $this->closingId = Diet::active()->findOrFail($dietId)->id;
+        $this->closingType = $type === 'cancel' ? 'cancel' : 'finish';
+    }
+
+    public function cancelClose(): void
+    {
+        $this->resetClose();
+    }
+
+    public function confirmClose(DietService $diets): void
+    {
+        abort_unless(auth()->user()?->can('editDiets'), 403);
+
+        $diet = Diet::find($this->closingId);
+        if (! $diet) {
+            $this->resetClose();
+
+            return;
+        }
+
+        $transfer = null;
+        if ($this->closingType === 'finish' && $this->transferEnabled) {
+            $this->validate([
+                'transferDestination' => ['required', 'string', 'max:150'],
+                'transferMeals' => ['required', 'array', 'min:1'],
+            ], [
+                'transferDestination.required' => 'Indica a dónde se debe enviar la comida.',
+                'transferMeals.required' => 'Elige al menos un tiempo de comida para enviar.',
+            ]);
+            $transfer = ['destination' => $this->transferDestination, 'meals' => $this->transferMeals];
+        }
+
+        try {
+            if ($this->closingType === 'cancel') {
+                $diets->cancelDiet($diet, auth()->id());
+                $this->notice = "Dieta de la habitación {$diet->habitation} cancelada.";
+            } else {
+                $diets->finishDiet($diet, auth()->id(), $transfer);
+                $this->notice = "Dieta de la habitación {$diet->habitation} finalizada por alta."
+                    .($transfer ? ' Cocina verá el envío a '.trim($this->transferDestination).'.' : '');
+            }
+            $this->noticeError = false;
+            $this->resetClose();
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $field => $messages) {
+                $this->addError(str_replace(['transfer.destination', 'transfer.meals'], ['transferDestination', 'transferMeals'], $field), $messages[0]);
+            }
+        }
+    }
+
+    private function resetClose(): void
+    {
+        $this->reset('closingId', 'closingType', 'transferEnabled', 'transferDestination', 'transferMeals');
+        $this->resetErrorBag();
+    }
+
     /** Un despacho recibido o nuevo cambia el estado de la columna Tiempo */
     #[On('dispatch-received')]
     #[On('dispatch-arrived')]
@@ -109,6 +186,11 @@ class NutritionDiets extends Component
         $pageIds = $diets->getCollection()->pluck('id')->all();
         $activeVersions = Diet::active()->with('currentVersion')->get()->pluck('currentVersion')->filter();
 
+        $closingDiet = $this->closingId ? Diet::active()->with('currentVersion')->find($this->closingId) : null;
+        if ($this->closingId && ! $closingDiet) {
+            $this->resetClose(); // otro usuario la cerró mientras tanto
+        }
+
         return view('livewire.nutrition-diets', [
             'diets' => $diets,
             'counts' => collect(self::TABS)->map(fn ($statuses) => (int) collect($statuses)->sum(fn ($s) => $counts[$s] ?? 0))->all(),
@@ -118,6 +200,7 @@ class NutritionDiets extends Component
             ],
             'delivery' => $this->tab === 'active' ? $dispatches->statusByDiet($pageIds) : [],
             'dayStatus' => $this->tab === 'active' ? $days->statusByDiet($pageIds) : [],
+            'closing' => $closingDiet ? ['diet' => $closingDiet, 'summary' => $dispatches->closingSummary($closingDiet)] : null,
             'specLabels' => config('specifications.labels'),
             'consistencyLabels' => config('consistency.labels'),
             'foodLabels' => config('timeFood.labels'),

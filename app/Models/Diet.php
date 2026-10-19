@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -41,17 +42,30 @@ class Diet extends Model
         'name_patient',
         'status',
         'confirmed',
+        'transfer_destination',
+        'transfer_meals',
+        'transfer_date',
     ];
 
     protected $casts = [
         'status' => 'integer',
         'confirmed' => 'boolean',
+        'transfer_meals' => 'array',
+        'transfer_date' => 'date',
     ];
 
     /** En curso: activas y completadas (no canceladas ni finalizadas) */
     public function scopeActive($query)
     {
         return $query->whereIn('status', self::OPEN_STATUSES);
+    }
+
+    /** Dadas de alta con comida por enviar a otro lugar ese día (cocina aún las despacha) */
+    public function scopeTransferOn($query, $date = null)
+    {
+        return $query->where('status', self::FINISHED)
+            ->whereNotNull('transfer_destination')
+            ->whereDate('transfer_date', CarbonImmutable::parse($date ?? now())->toDateString());
     }
 
     /**
@@ -72,6 +86,17 @@ class Diet extends Model
     public function isCompleted(): bool
     {
         return $this->status === self::COMPLETED;
+    }
+
+    /** Tiempos que se envían a otro lugar ese día (alta con traslado), o [] */
+    public function transferMealsOn($date = null): array
+    {
+        if ($this->status !== self::FINISHED || ! $this->transfer_destination || ! $this->transfer_date
+            || ! $this->transfer_date->isSameDay(CarbonImmutable::parse($date ?? now()))) {
+            return [];
+        }
+
+        return array_values($this->transfer_meals ?? []);
     }
 
     public function statusLabel(): string

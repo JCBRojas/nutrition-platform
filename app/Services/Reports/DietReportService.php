@@ -80,12 +80,14 @@ class DietReportService
 
                     // Día del alta o de la cancelación: cuenta lo recibido aunque el día no se haya
                     // completado, incluido lo despachado antes del cierre aunque su hora fuera posterior
+                    // y lo que se envió a otro lugar por indicación del alta (Diet::transferMealsOn)
                     if ($entry['closedAt'] !== null) {
-                        $kept = array_values(array_filter($entry['allMeals'], function ($meal) use ($entry, $received, $id, $day) {
+                        $transfer = $entry['diet']->transferMealsOn($day);
+                        $kept = array_values(array_filter($entry['allMeals'], function ($meal) use ($entry, $received, $id, $day, $transfer) {
                             $dispatchedAt = $received[self::dispatchKey($id, $day, $meal)] ?? null;
 
                             return $dispatchedAt !== null
-                                && (in_array($meal, $entry['meals'], true) || $dispatchedAt <= $entry['closedAt']);
+                                && (in_array($meal, $entry['meals'], true) || $dispatchedAt <= $entry['closedAt'] || in_array($meal, $transfer, true));
                         }));
                         array_push($withheld, ...array_diff($entry['meals'], $kept));
 

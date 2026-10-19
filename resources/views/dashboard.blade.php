@@ -73,6 +73,22 @@
     }
     .nd-notice { margin: 0 0 14px; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13.5px; background: var(--accent-light); color: var(--accent); }
     .nd-notice.error { background: var(--accent2-light); color: var(--accent2); }
+    /* Modal de cancelación / alta */
+    .ncm-body p { margin: 0 0 12px; font-size: 13.5px; line-height: 1.55; }
+    .ncm-box { margin: 0 0 12px; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13.5px; line-height: 1.5; }
+    .ncm-box ul { margin: 6px 0; padding-left: 18px; list-style: disc; }
+    .ncm-box p { margin: 6px 0 0; }
+    .ncm-warn { background: var(--amber-light); color: #8a4b00; border-left: 4px solid var(--amber); }
+    .ncm-info { background: var(--blue-light); color: var(--blue); }
+    .ncm-body .ncm-muted { color: var(--text-muted); font-size: 12.5px; }
+    .ncm-transfer { margin-top: 6px; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); }
+    .ncm-transfer legend { padding: 0 6px; font-size: 13px; font-weight: 700; }
+    .ncm-check { display: flex; align-items: flex-start; gap: 8px; font-weight: 500; cursor: pointer; }
+    .ncm-check input { margin-top: 3px; }
+    .ncm-label { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; }
+    .ncm-meals { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+    .ncm-meal { margin: 0; }
+    .ncm-error { margin: 4px 0 0; color: var(--accent2); font-size: 12.5px; }
 </style>
 <script>
     const SPEC_LABELS = @json($specLabels);

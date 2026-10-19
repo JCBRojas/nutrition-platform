@@ -68,7 +68,7 @@ class FinishDietTest extends TestCase
 
         $this->assertStringContainsString('Activas (0)', $html);
         $this->assertStringContainsString('Finalizadas (1)', $html);
-        $this->assertStringNotContainsString(route('diets.finish', $this->diet), $html); // sin botón de alta
+        $this->assertStringNotContainsString("startClose({$this->diet->id}, 'finish')", html_entity_decode($html, ENT_QUOTES)); // sin botón de alta
         $this->assertStringContainsString("Ana O'Neil", html_entity_decode($html, ENT_QUOTES));
     }
 
@@ -76,12 +76,10 @@ class FinishDietTest extends TestCase
     {
         $html = $this->actingAs($this->nutritionist)->get(route('dashboard.nutrition'))->assertOk()->getContent();
 
-        $this->assertStringContainsString(route('diets.finish', $this->diet), $html);
+        $this->assertStringContainsString("startClose({$this->diet->id}, 'finish')", html_entity_decode($html, ENT_QUOTES));
         foreach (['Ver historial de', 'Editar dieta de', 'Finalizar dieta de', 'Cancelar dieta de'] as $label) {
             $this->assertStringContainsString('aria-label="'.$label, $html);
         }
-        // El apóstrofo del nombre no rompe el confirm() (Js::from lo escapa)
-        $this->assertStringNotContainsString("confirm('¿Dar de alta a Ana O'Neil", $html);
     }
 
     public function test_cannot_finish_or_cancel_a_closed_diet(): void

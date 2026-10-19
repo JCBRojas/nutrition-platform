@@ -201,24 +201,17 @@ Cocina podrá despacharla el día siguiente." }}"
                                             onclick='openEditModal({{ $diet->id }}, @json($diet))'>
                                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
                                         </button>
-                                        <form method="post" action="{{ route('diets.finish', $diet->id) }}">
-                                            @csrf
-                                            @method('PATCH')
-                                            <button type="submit" class="btn btn-info btn-sm btn-icon" title="Finalizar dieta (alta del paciente)"
-                                                aria-label="Finalizar dieta de {{ $diet->name_patient }} por alta"
-                                                onclick="return confirm({{ \Illuminate\Support\Js::from("¿Dar de alta a {$diet->name_patient} (hab. {$diet->habitation})?\n\nLa dieta pasa a Finalizadas y deja de verse en dietas activas. El registro y su historial se conservan.") }})">
-                                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                                            </button>
-                                        </form>
-                                        <form method="post" action="{{ route('diets.canceled', $diet->id) }}">
-                                            @csrf
-                                            @method('PATCH')
-                                            <button type="submit" class="btn btn-danger btn-sm btn-icon" title="Cancelar dieta"
-                                                aria-label="Cancelar dieta de {{ $diet->name_patient }}"
-                                                onclick="return confirm({{ \Illuminate\Support\Js::from("¿Cancelar la dieta de {$diet->name_patient} (hab. {$diet->habitation})?") }})">
-                                                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                                            </button>
-                                        </form>
+                                        {{-- Alta y cancelación: el modal informa lo despachado sin recibir y el envío a otro lugar --}}
+                                        <button type="button" class="btn btn-info btn-sm btn-icon" title="Finalizar dieta (alta del paciente)"
+                                            aria-label="Finalizar dieta de {{ $diet->name_patient }} por alta"
+                                            wire:click="startClose({{ $diet->id }}, 'finish')" wire:loading.attr="disabled" wire:target="startClose">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                                        </button>
+                                        <button type="button" class="btn btn-danger btn-sm btn-icon" title="Cancelar dieta"
+                                            aria-label="Cancelar dieta de {{ $diet->name_patient }}"
+                                            wire:click="startClose({{ $diet->id }}, 'cancel')" wire:loading.attr="disabled" wire:target="startClose">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                        </button>
                                         @endcan
                                     </div>
                                     @can('editDiets')
@@ -302,4 +295,105 @@ Cocina podrá despacharla el día siguiente." }}"
 
         {{ $diets->onEachSide(1)->links('pagination.table', ['livewire' => true]) }}
     </div>
+
+    {{-- Confirmar cancelación o alta. Mientras está abierto (.overlay.open) el panel no se refresca --}}
+    @if ($closing)
+        @php
+            $cd = $closing['diet'];
+            $sum = $closing['summary'];
+            $isFinish = $closingType === 'finish';
+        @endphp
+        <div class="overlay open" wire:key="close-modal-{{ $cd->id }}" x-on:keydown.escape.window="$wire.cancelClose()"
+            role="dialog" aria-modal="true" aria-labelledby="closeModalTitle">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2 id="closeModalTitle">{{ $isFinish ? 'Dar de alta' : 'Cancelar dieta' }} · Hab. {{ $cd->habitation }}</h2>
+                    <button type="button" class="close-btn" wire:click="cancelClose" aria-label="Cerrar">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </button>
+                </div>
+                <form wire:submit="confirmClose">
+                    <div class="modal-body ncm-body">
+                        <p class="ncm-lead">
+                            @if ($isFinish)
+                                ¿Dar de alta a <strong>{{ $cd->name_patient }}</strong>? La dieta pasa a Finalizadas y deja de verse en dietas activas. El registro y su historial se conservan.
+                            @else
+                                ¿Cancelar la dieta de <strong>{{ $cd->name_patient }}</strong>? Cocina deja de despacharla desde ahora.
+                            @endif
+                        </p>
+
+                        {{-- Despachos sin confirmar: salieron de cocina antes del cierre, así que se cobran --}}
+                        @if ($sum['pending'])
+                            <div class="ncm-box ncm-warn" role="alert">
+                                <strong>{{ count($sum['pending']) === 1 ? 'Tiene 1 despacho sin confirmar la recepción' : 'Tiene '.count($sum['pending']).' despachos sin confirmar la recepción' }}:</strong>
+                                <ul>
+                                    @foreach ($sum['pending'] as $p)
+                                        <li>{{ $p['meal'] }} — {{ $p['today'] ? 'hoy' : $p['date'] }}, despachado {{ $p['at'] }}</li>
+                                    @endforeach
+                                </ul>
+                                <p>Ya salió de cocina, así que <strong>se cobrará</strong>. Confirma la recepción en «Despachos por recibir» para que quede en la facturación.</p>
+                            </div>
+                        @endif
+
+                        @if ($sum['receivedToday'])
+                            <p class="ncm-box ncm-info">Hoy ya se recibió: {{ collect($sum['receivedToday'])->map(fn ($m) => mb_strtolower($m))->join(', ', ' y ') }}. Se cobra.</p>
+                        @endif
+
+                        @if (! $sum['pending'] && ! $sum['receivedToday'])
+                            <p class="ncm-muted">No tiene despachos de hoy ni recepciones pendientes.</p>
+                        @endif
+
+                        <p class="ncm-muted">
+                            {{ $isFinish
+                                ? 'Después de la hora del alta no se despachan ni se cobran más tiempos, salvo los que se envíen a otro lugar.'
+                                : 'El día de la cancelación solo se cobra lo despachado antes de cancelar y recibido.' }}
+                        </p>
+
+                        {{-- Alta con envío a otro lugar (p. ej. remitido a otra IPS cercana) --}}
+                        @if ($isFinish)
+                            <fieldset class="ncm-transfer">
+                                <legend>¿Se debe despachar la comida a otro lugar?</legend>
+                                @if ($sum['candidates'])
+                                    <label class="ncm-check">
+                                        <input type="checkbox" wire:model.live="transferEnabled">
+                                        <span>Sí, enviar a otro lugar (por ejemplo, el paciente fue remitido a otra IPS cercana)</span>
+                                    </label>
+
+                                    @if ($transferEnabled)
+                                        <div class="form-group">
+                                            <label for="transferDestination">Destino <span class="req">*</span></label>
+                                            <input type="text" id="transferDestination" wire:model="transferDestination" maxlength="150"
+                                                placeholder="Ej.: IPS San José, sede norte — piso 2" autocomplete="off">
+                                            @error('transferDestination') <p class="ncm-error">{{ $message }}</p> @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <span class="ncm-label">Tiempos que se envían hoy <span class="req">*</span></span>
+                                            <div class="ncm-meals">
+                                                @foreach ($sum['candidates'] as $key => $label)
+                                                    <label class="ncm-check ncm-meal">
+                                                        <input type="checkbox" value="{{ $key }}" wire:model="transferMeals">
+                                                        <span>{{ $label }}</span>
+                                                    </label>
+                                                @endforeach
+                                            </div>
+                                            @error('transferMeals') <p class="ncm-error">{{ $message }}</p> @enderror
+                                            <p class="ncm-muted">Cocina los verá en su lista con el destino; se cobran al confirmar la recepción.</p>
+                                        </div>
+                                    @endif
+                                @else
+                                    <p class="ncm-muted">No quedan tiempos de hoy por despachar.</p>
+                                @endif
+                            </fieldset>
+                        @endif
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-ghost" wire:click="cancelClose">Volver</button>
+                        <button type="submit" @class(['btn', 'btn-info' => $isFinish, 'btn-danger' => ! $isFinish]) wire:loading.attr="disabled" wire:target="confirmClose">
+                            {{ $isFinish ? 'Dar de alta' : 'Cancelar dieta' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
 </div>

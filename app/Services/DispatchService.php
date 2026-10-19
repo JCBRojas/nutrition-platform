@@ -60,6 +60,17 @@ class DispatchService
      */
     public function blockReason(Diet $diet, string $meal, ?CarbonInterface $date = null): ?string
     {
+        // Alta con envío a otro lugar: ese día solo se despachan los tiempos indicados
+        if ($transfer = $diet->transferMealsOn($date)) {
+            if (! in_array($meal, $transfer, true)) {
+                return 'Alta: no incluye '.mb_strtolower(self::meals()[$meal] ?? $meal).'.';
+            }
+
+            $pending = $diet->has_pending ?? $diet->history()->where('modify', 'si')->exists();
+
+            return $pending ? 'Confirma el alta antes de despachar.' : null;
+        }
+
         if (! $diet->isActive()) {
             return 'La dieta no está activa.';
         }
@@ -138,6 +149,59 @@ class DispatchService
         });
 
         return $result;
+    }
+
+    /**
+     * Tiempos de hoy que aún se pueden enviar a otro lugar al dar de alta: los de la versión
+     * actual que cocina todavía no despacha. [meal => etiqueta], en orden cronológico.
+     */
+    public function transferCandidates(Diet $diet, ?CarbonInterface $date = null): array
+    {
+        $version = $diet->currentVersion;
+        if (! $version) {
+            return [];
+        }
+
+        $dispatched = DietDispatch::where('diet_id', $diet->id)
+            ->whereDate('service_date', CarbonImmutable::parse($date ?? now())->toDateString())
+            ->pluck('meal')
+            ->all();
+
+        return collect(self::meals())
+            ->only(array_diff($this->reports->mealsOf($version), $dispatched))
+            ->all();
+    }
+
+    /**
+     * Lo que conviene saber antes de cancelar o dar de alta: despachos que aún no se
+     * confirman como recibidos (salieron de cocina antes del cierre, así que se cobran
+     * al confirmar la recepción) y lo ya recibido hoy.
+     *
+     * @return array{pending: array<int, array{date: string, today: bool, meal: string, at: string}>, receivedToday: array<int, string>, candidates: array<string, string>}
+     */
+    public function closingSummary(Diet $diet): array
+    {
+        $today = now()->toDateString();
+        $rows = DietDispatch::where('diet_id', $diet->id)
+            ->where(fn ($q) => $q->pendingReceipt()->orWhereDate('service_date', $today))
+            ->orderBy('service_date')
+            ->get();
+        $order = array_flip(array_keys(self::meals()));
+        $sorted = fn (Collection $c) => $c->sortBy(fn (DietDispatch $d) => [$d->service_date->toDateString(), $order[$d->meal] ?? 99])->values();
+
+        return [
+            'pending' => $sorted($rows->whereNull('received_at'))
+                ->map(fn (DietDispatch $d) => [
+                    'date' => $d->service_date->locale('es')->isoFormat('D [de] MMMM'),
+                    'today' => $d->service_date->toDateString() === $today,
+                    'meal' => self::meals()[$d->meal] ?? $d->meal,
+                    'at' => $d->dispatched_at->format('g:i a'),
+                ])->all(),
+            'receivedToday' => $sorted($rows->whereNotNull('received_at')->filter(fn (DietDispatch $d) => $d->service_date->toDateString() === $today))
+                ->map(fn (DietDispatch $d) => self::meals()[$d->meal] ?? $d->meal)
+                ->all(),
+            'candidates' => $this->transferCandidates($diet),
+        ];
     }
 
     /** Despachos de un día y tiempo, por diet_id */

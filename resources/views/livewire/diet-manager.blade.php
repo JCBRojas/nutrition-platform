@@ -2,6 +2,12 @@
     $total = $pending->count();
     $fmtTime = fn ($date) => $date?->locale('es')->isoFormat('D MMM, h:mm a');
     $changeLabel = fn ($v) => $changeLabels[$v?->changes ?? 'NA'] ?? ucfirst(str_replace('_', ' ', (string) $v?->changes));
+    // Alta con envío a otro lugar hoy: «almuerzo y cena a IPS San José»
+    $transferText = function ($d) use ($meals) {
+        $list = collect($d->transferMealsOn())->map(fn ($m) => mb_strtolower($meals[$m] ?? $m));
+
+        return $list->isEmpty() ? null : $list->join(', ', ' y ').' a '.$d->transfer_destination;
+    };
 @endphp
 {{-- Tiempo real: se actualiza al llegar DietsChanged (resources/js/live.js); sin WebSocket, consulta cada 3 s --}}
 <div class="content" id="page-despacho"
@@ -50,7 +56,7 @@
                                 <span class="room-badge">{{ $p->habitation }}</span>
                                 <span class="dm-alert-who">{{ $p->name_patient }}</span>
                                 <span @class(['tag', 'dm-type-closing' => $closing, 'dm-type' => ! $closing])>
-                                    {{ $p->isActive() ? $changeLabel($v) : ($p->status === \App\Models\Diet::FINISHED ? 'Alta: no despachar' : 'Cancelada: no despachar') }}
+                                    {{ $p->isActive() ? $changeLabel($v) : ($p->status === \App\Models\Diet::FINISHED ? ($transferText($p) ? 'Alta: enviar '.$transferText($p) : 'Alta: no despachar') : 'Cancelada: no despachar') }}
                                 </span>
                                 <span class="dm-meta">{{ $v?->created_at?->format('g:i a') }}</span>
                                 <button type="button" class="btn btn-sm dm-confirm" wire:click="confirmChanges({{ $p->id }})"
@@ -72,7 +78,7 @@
             <div class="tabs-wrapper" role="group" aria-label="Filtrar dietas">
                 <button type="button" @class(['btn btn-ghost tab-btn', 'active' => $tab === 'active']) aria-pressed="{{ $tab === 'active' ? 'true' : 'false' }}"
                     wire:click="setTab('active')">
-                    Dietas activas ({{ $counts['active'] }})
+                    Dietas activas ({{ $counts['active'] }}{{ $counts['transfers'] ? ' + '.$counts['transfers'].' alta(s) con envío' : '' }})
                     @if ($counts['pendingActive'])
                         <span class="dm-count" title="Cambios sin confirmar">{{ $counts['pendingActive'] }}</span>
                     @endif
@@ -217,7 +223,17 @@
                                 </td>
 
                                 <td><span class="room-badge">{{ $diet->habitation }}</span></td>
-                                <td>{{ $diet->name_patient }}</td>
+                                <td>
+                                    {{ $diet->name_patient }}
+                                    @if ($tab === 'active' && $transferText($diet))
+                                        <div class="dm-transfer" title="Paciente dado de alta: enviar la comida al destino indicado">
+                                            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                            Alta: enviar {{ $transferText($diet) }}
+                                        </div>
+                                    @elseif ($tab === 'closed' && $diet->transfer_destination)
+                                        <div class="dm-meta">Enviado a {{ $diet->transfer_destination }}</div>
+                                    @endif
+                                </td>
 
                                 @if ($tab === 'active')
                                     <x-dispatch-tags :items="$v?->timeFood ?? []" :labels="$foodLabels" :change="$chg['timeFood'] ?? null" :delivery="$delivery[$diet->id] ?? []" class="tag-tiempo" />
@@ -322,6 +338,7 @@
         .dm-type-closing { background: var(--accent2-light); color: var(--accent2); font-weight: 700; }
         .dm-tag-finished { background: var(--blue-light); color: var(--blue); font-weight: 600; }
         .dm-meta { font-size: 11.5px; color: var(--text-muted); }
+        .dm-transfer { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; padding: 2px 8px; border-radius: 6px; background: var(--blue-light); color: var(--blue); font-size: 11.5px; font-weight: 700; }
 
         .dm-toast { position: fixed; right: 20px; bottom: 20px; z-index: 300; max-width: min(360px, calc(100vw - 32px)); background: var(--text); color: #fff; padding: 12px 16px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.2); font-size: 13.5px; }
 
