@@ -232,6 +232,14 @@
   .grid2 { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
   .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
 
+  /* Empresa activa */
+  .cobar { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; padding: 8px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; font-size: 13px; }
+  .cobar b { color: var(--brand-text); }
+  .cobar select.input { width: auto; min-width: 0; max-width: 100%; flex: 0 1 260px; padding: 5px 10px; }
+  .opts { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+  .opts label { text-transform: none; letter-spacing: 0; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+  .nit { font: 600 12.5px var(--mono); white-space: nowrap; }
+
   .price { width: 100px; padding: 5px 8px; text-align: right; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font-variant-numeric: tabular-nums; }
 
   .toasts { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); display: grid; gap: 8px; z-index: 80; max-width: min(380px, calc(100vw - 32px)); }
@@ -286,7 +294,7 @@
   };
   var SERVICE_LABEL = { desayuno: 'DESAYUNO', mediamanana: 'M.MAÑANA', almuerzo: 'ALMUERZO', algo: 'ALGO', cena: 'COMIDA', merienda: 'MERIENDA' };
   var SNACKS = ['mediamanana', 'algo', 'merienda'];
-  var ROLE = { nutricionista: 'Nutricionista', enfermeria: 'Enfermería', despachador: 'Despachador', jefe_nutricion: 'Jefe de nutrición', admin: 'Administrador' };
+  var ROLE = { nutricionista: 'Nutricionista', enfermeria: 'Enfermería', despachador: 'Despachador', jefe_nutricion: 'Jefe de nutrición', jefe_despacho: 'Jefe de despacho', admin: 'Administrador' };
   var CHANGE = { creada: 'Creación', editada: 'Edición', cancelada: 'Cancelación', finalizada: 'Alta', continuada: 'Continuada', completada: 'Día completado' };
 
   // Qué ve y qué puede hacer cada rol (equivale a los permisos de la aplicación)
@@ -294,8 +302,11 @@
     nutricionista: { views: ['activas', 'despachos', 'historial', 'reporte'], edit: true, cont: true, receive: true },
     enfermeria: { views: ['activas'], edit: false, cont: true, receive: false },
     despachador: { views: ['despacho', 'despachos', 'historial', 'reporte'], dispatch: true },
-    jefe_nutricion: { views: ['reporte', 'facturacion', 'historial', 'usuarios'], usersOnly: 'despachador' },
-    admin: { views: ['activas', 'despachos', 'historial', 'reporte', 'facturacion', 'usuarios', 'auditoria'], edit: true, cont: true, receive: true }
+    // Trabaja como nutricionista; además factura y crea nutricionistas
+    jefe_nutricion: { views: ['activas', 'despachos', 'historial', 'reporte', 'facturacion', 'usuarios'], edit: true, cont: true, receive: true, usersOnly: 'nutricionista' },
+    // Administra sus empresas y los despachadores de ellas; su inicio es Empresas
+    jefe_despacho: { views: ['despachos', 'historial', 'reporte', 'empresas', 'usuarios'], home: 'empresas', usersOnly: 'despachador' },
+    admin: { views: ['activas', 'despachos', 'historial', 'reporte', 'facturacion', 'empresas', 'usuarios', 'auditoria'], edit: true, cont: true, receive: true }
   };
   var VIEWS = {
     activas: ['Dietas activas', 'Principal', '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'],
@@ -304,12 +315,13 @@
     historial: ['Historial de cambios', 'Seguimiento', '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'],
     reporte: ['Reporte nutricional', 'Seguimiento', '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'],
     facturacion: ['Facturación y precios', 'Seguimiento', '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'],
+    empresas: ['Empresas', 'Administración', '<rect x="4" y="2" width="16" height="20" rx="1"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/>'],
     usuarios: ['Usuarios', 'Administración', '<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/>'],
     auditoria: ['Auditoría', 'Administración', '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>']
   };
 
   // ════════════════ Utilidades ════════════════
-  var KEY = 'nutritrack-demo-v1', USER_KEY = 'nutritrack-demo-user';
+  var KEY = 'nutritrack-demo-v2', USER_KEY = 'nutritrack-demo-user', CO_KEY = 'nutritrack-demo-company';
   function pad(n) { return String(n).padStart(2, '0'); }
   function dkey(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
   function today() { return dkey(new Date()); }
@@ -327,18 +339,36 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function initials(name) { return name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (p) { return p[0].toUpperCase(); }).join(''); }
   function roomSort(a, b) { return a.room.length - b.room.length || a.room.localeCompare(b.room); }
+  function nitDv(base) {
+    var w = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71], sum = 0;
+    base.split('').reverse().forEach(function (c, i) { sum += +c * w[i]; });
+    var r = sum % 11; return r > 1 ? 11 - r : r;
+  }
+  function nit(base) { return base + '-' + nitDv(base); }
+  function validNit(v) { var m = /^(\d{6,15})-(\d)$/.exec(v); return !!m && nitDv(m[1]) === +m[2]; }
+  function slug(t) { return t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
   function uniq(a) { return a.filter(function (v, i) { return a.indexOf(v) === i; }); }
 
   // ════════════════ Datos de prueba ════════════════
   function seed() {
     var T = today(), nm = nowMins();
+    // Empresas atendidas por el despacho: cada una con su jefe de despacho
+    var companies = [
+      { id: 1, name: 'Clínica Central', nit: nit('900123456'), contact: 'Marta Gil', phone: '+573001234567', email: 'compras@clinicacentral.co', active: true, isDefault: true, managerId: 'u7' },
+      { id: 2, name: 'Clínica del Norte', nit: nit('901456789'), contact: 'Óscar Peña', phone: '+573104567890', email: 'nutricion@clinicanorte.co', active: true, isDefault: false, managerId: 'u7' },
+      { id: 3, name: 'IPS Sur Salud', nit: nit('800987654'), contact: 'Lina Vélez', phone: '+573157654321', email: 'admin@ipssur.co', active: true, isDefault: false, managerId: 'u8' }
+    ];
+    // companies: 'all' = «Todas» (incluye las futuras) o lista de empresas específicas
     var users = [
-      { id: 'u1', name: 'Camila Restrepo', email: 'camila@hospital-demo.co', role: 'nutricionista', active: true },
-      { id: 'u5', name: 'Sofía Pérez', email: 'sofia@hospital-demo.co', role: 'enfermeria', active: true },
-      { id: 'u2', name: 'Mariana López', email: 'mariana@hospital-demo.co', role: 'despachador', active: true },
-      { id: 'u6', name: 'Julián Torres', email: 'julian@hospital-demo.co', role: 'despachador', active: true },
-      { id: 'u3', name: 'Andrés Gómez', email: 'andres@hospital-demo.co', role: 'jefe_nutricion', active: true },
-      { id: 'u4', name: 'Laura Ortiz', email: 'laura@hospital-demo.co', role: 'admin', active: true }
+      { id: 'u1', name: 'Camila Restrepo', email: 'camila@hospital-demo.co', role: 'nutricionista', active: true, companies: 'all' },
+      { id: 'u5', name: 'Sofía Pérez', email: 'sofia@hospital-demo.co', role: 'enfermeria', active: true, companies: 'all' },
+      { id: 'u2', name: 'Mariana López', email: 'mariana@hospital-demo.co', role: 'despachador', active: true, companies: [1, 2] },
+      { id: 'u6', name: 'Julián Torres', email: 'julian@hospital-demo.co', role: 'despachador', active: true, companies: [1] },
+      { id: 'u9', name: 'Pedro Gil', email: 'pedro@hospital-demo.co', role: 'despachador', active: true, companies: [3] },
+      { id: 'u7', name: 'Ricardo Méndez', email: 'ricardo@hospital-demo.co', role: 'jefe_despacho', active: true, companies: [1, 2] },
+      { id: 'u8', name: 'Natalia Ruiz', email: 'natalia@hospital-demo.co', role: 'jefe_despacho', active: true, companies: [3] },
+      { id: 'u3', name: 'Andrés Gómez', email: 'andres@hospital-demo.co', role: 'jefe_nutricion', active: true, companies: 'all' },
+      { id: 'u4', name: 'Laura Ortiz', email: 'laura@hospital-demo.co', role: 'admin', active: true, companies: 'all' }
     ];
     var rows = [
       ['101', 'Ana María Gómez', 18, ['desayuno', 'almuerzo', 'cena'], ['normal'], [], 'No', 'normal', ''],
@@ -352,12 +382,19 @@
       ['204', 'Valentina Rojas', 2, ['desayuno', 'mediamanana', 'almuerzo', 'algo', 'cena', 'merienda'], ['liquida_clara'], ['astringente'], 'No', 'liquida_clara', 'Ofrecer líquidos cada 2 horas'],
       ['207', 'Hernán Bustos', 8, ['desayuno', 'almuerzo', 'cena'], ['normal'], ['hipercalorica'], 'No', 'hiperproteica', ''],
       ['215', 'Paula Andrea Silva', 1, ['desayuno', 'almuerzo', 'algo', 'cena'], ['normal'], [], 'No', 'normal', 'Ingreso reciente'],
-      ['301', 'Ricardo Salazar', 11, ['desayuno', 'almuerzo', 'cena'], ['blanda_mecanica'], ['sin_fibra'], 'Sí', 'blanda_mecanica', 'Aislamiento por contacto']
+      ['301', 'Ricardo Salazar', 11, ['desayuno', 'almuerzo', 'cena'], ['blanda_mecanica'], ['sin_fibra'], 'Sí', 'blanda_mecanica', 'Aislamiento por contacto'],
+      // Otras empresas (la habitación 101 se repite: cada empresa ve solo las suyas)
+      ['101', 'Beatriz Londoño', 5, ['desayuno', 'almuerzo', 'cena'], ['normal'], [], 'No', 'normal', '', 2],
+      ['103', 'Camilo Ospina', 2, ['desayuno', 'almuerzo', 'algo', 'cena'], ['blanda_mecanica'], ['hiposodica'], 'No', 'hiposodica', '', 2],
+      ['106', 'Elena Cárdenas', 7, ['desayuno', 'mediamanana', 'almuerzo', 'cena'], ['normal'], ['sin_gluten'], 'Sí', 'normal', 'Celíaca', 2],
+      ['110', 'Felipe Arias', 1, ['desayuno', 'almuerzo', 'algo', 'cena'], ['liquida_completa'], [], 'No', 'liquida_completa', '', 2],
+      ['201', 'Gustavo Peña', 3, ['desayuno', 'almuerzo', 'cena'], ['normal'], ['hipograsa'], 'No', 'hipograsa', '', 3],
+      ['202', 'Isabel Quintero', 6, ['desayuno', 'almuerzo', 'cena', 'merienda'], ['blanda_mecanica'], [], 'No', 'blanda_mecanica', '', 3]
     ];
     var diets = [], id = 1;
     rows.forEach(function (r) {
       var created = addDays(T, -r[2]);
-      var d = { id: id++, room: r[0], patient: r[1], status: 'active', createdAt: iso(created, 420 + (id * 23) % 240), closedAt: null, transfer: null, days: {}, dispatches: [], versions: [] };
+      var d = { id: id++, companyId: r[9] || 1, room: r[0], patient: r[1], status: 'active', createdAt: iso(created, 420 + (id * 23) % 240), closedAt: null, transfer: null, days: {}, dispatches: [], versions: [] };
       d.versions.push({ v: 1, at: d.createdAt, by: 'Camila Restrepo', time: r[3], cons: r[4], spec: r[5], obs: r[8], iso: r[6], billing: r[7], change: 'creada', pending: false });
       for (var k = created; k <= T; k = addDays(k, 1)) d.days[k] = { authorized: true, completedAt: k < T ? iso(k, 20 * 60) : null };
       diets.push(d);
@@ -369,6 +406,7 @@
     editSeed(diets[2], { time: ['desayuno', 'almuerzo', 'algo', 'cena', 'merienda'], spec: ['hipoglucida'] }, T, true);
     editSeed(diets[5], { cons: ['blanda_mecanica'], iso: 'Sí' }, T, true);
     editSeed(diets[9], { spec: ['hipercalorica', 'sin_lacteos'], obs: 'Doble porción de proteína' }, T, true);
+    editSeed(diets[13], { time: ['desayuno', 'almuerzo', 'cena'], obs: 'Sin sal agregada' }, T, true);
     // Una dieta sin autorización para hoy (nadie pulsó «Continuar» ayer)
     delete diets[7].days[T];
     // Despachos de hoy en los servicios cuya hora ya pasó
@@ -378,7 +416,7 @@
         if (!SCHEDULE[m] || minsOf(SCHEDULE[m]) > nm) return;
         var at = iso(T, minsOf(SCHEDULE[m]) - 20);
         var rec = (i + j) % 3 !== 0;
-        d.dispatches.push({ date: T, meal: m, at: at, by: 'Mariana López', receivedAt: rec ? iso(T, minsOf(SCHEDULE[m]) + 15) : null, receivedBy: rec ? 'Camila Restrepo' : null });
+        d.dispatches.push({ date: T, meal: m, at: at, by: d.companyId === 3 ? 'Pedro Gil' : 'Mariana López', receivedAt: rec ? iso(T, minsOf(SCHEDULE[m]) + 15) : null, receivedBy: rec ? 'Camila Restrepo' : null });
       });
     });
     // Ayer: todo despachado; en algunas dietas falta confirmar la recepción de la cena
@@ -390,15 +428,15 @@
       requiredMeals(d, Y).filter(function (m) { return v.time.indexOf(m) >= 0; }).forEach(function (m) {
         var mm = SCHEDULE[m] ? minsOf(SCHEDULE[m]) : 13 * 60;
         var rec = !(open && m === 'cena');
-        d.dispatches.push({ date: Y, meal: m, at: iso(Y, mm - 20), by: 'Julián Torres', receivedAt: rec ? iso(Y, mm + 15) : null, receivedBy: rec ? 'Camila Restrepo' : null });
+        d.dispatches.push({ date: Y, meal: m, at: iso(Y, mm - 20), by: d.companyId === 3 ? 'Pedro Gil' : 'Julián Torres', receivedAt: rec ? iso(Y, mm + 15) : null, receivedBy: rec ? 'Camila Restrepo' : null });
       });
       if (open && v.time.indexOf('cena') >= 0) d.days[Y].completedAt = null;
     });
     // Dietas cerradas
-    var c1 = { id: id++, room: '112', patient: 'Gloria Inés Vargas', status: 'cancelled', createdAt: iso(addDays(T, -14), 540), closedAt: iso(addDays(T, -5), 630), transfer: null, days: {}, dispatches: [], versions: [] };
+    var c1 = { id: id++, companyId: 1, room: '112', patient: 'Gloria Inés Vargas', status: 'cancelled', createdAt: iso(addDays(T, -14), 540), closedAt: iso(addDays(T, -5), 630), transfer: null, days: {}, dispatches: [], versions: [] };
     c1.versions.push({ v: 1, at: c1.createdAt, by: 'Camila Restrepo', time: ['desayuno', 'almuerzo', 'cena'], cons: ['normal'], spec: [], obs: '', iso: 'No', billing: 'normal', change: 'creada', pending: false });
     c1.versions.push(Object.assign({}, c1.versions[0], { v: 2, at: c1.closedAt, change: 'cancelada', pending: false }));
-    var f1 = { id: id++, room: '118', patient: 'Tomás Arango', status: 'finished', createdAt: iso(addDays(T, -10), 600), closedAt: iso(addDays(T, -1), 900), transfer: null, days: {}, dispatches: [], versions: [] };
+    var f1 = { id: id++, companyId: 1, room: '118', patient: 'Tomás Arango', status: 'finished', createdAt: iso(addDays(T, -10), 600), closedAt: iso(addDays(T, -1), 900), transfer: null, days: {}, dispatches: [], versions: [] };
     f1.versions.push({ v: 1, at: f1.createdAt, by: 'Camila Restrepo', time: ['desayuno', 'almuerzo', 'algo', 'cena'], cons: ['normal'], spec: ['hiposodica'], obs: '', iso: 'No', billing: 'hiposodica', change: 'creada', pending: false });
     f1.versions.push(Object.assign({}, f1.versions[0], { v: 2, at: f1.closedAt, change: 'finalizada', pending: false }));
     diets.push(c1, f1);
@@ -408,7 +446,7 @@
       prices[t] = {};
       BILLING[t][1].forEach(function (s) { prices[t][s] = Math.round(base[s] * (1 + (i % 5) * 0.06) / 100) * 100; });
     });
-    return { rev: 1, users: users, diets: diets, prices: prices, nextId: id, audit: [{ at: isoNow(), who: 'Sistema', what: 'Se cargaron los datos de demostración' }] };
+    return { rev: 1, companies: companies, nextCompanyId: 4, users: users, diets: diets, prices: prices, nextId: id, audit: [{ at: isoNow(), who: 'Sistema', co: null, what: 'Se cargaron los datos de demostración' }] };
   }
   function editSeed(d, patch, day, pending) {
     var c = cur(d);
@@ -423,16 +461,36 @@
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
     if (msg) audit(msg);
   }
-  function audit(what) { S.audit.unshift({ at: isoNow(), who: user ? user.name : 'Sistema', what: what }); S.audit = S.audit.slice(0, 200); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+  function audit(what) { S.audit.unshift({ at: isoNow(), who: user ? user.name : 'Sistema', co: user ? coId : null, what: what }); S.audit = S.audit.slice(0, 200); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
   S = load() || seed();
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
   try { var uid = sessionStorage.getItem(USER_KEY); if (uid) user = S.users.find(function (u) { return u.id === uid && u.active; }) || null; } catch (e) {}
+
+  // ════════════════ Empresa activa y aislamiento (CurrentCompany + CompanyScope) ════════════════
+  var coId = null;
+  try { coId = +sessionStorage.getItem(CO_KEY) || null; } catch (e) {}
+  function coById(id) { return S.companies.find(function (c) { return c.id === +id; }); }
+  function hasAll(u) { return u.role === 'admin' || u.companies === 'all'; }
+  // Empresas que el usuario puede elegir: asignadas y activas (el admin, todas)
+  function userCos(u) { return S.companies.filter(function (c) { return c.active && (hasAll(u) || u.companies.indexOf(c.id) >= 0); }); }
+  // Empresas que administra: el admin todas, el jefe de despacho las suyas
+  function managedCos() { return user.role === 'admin' ? S.companies : S.companies.filter(function (c) { return c.managerId === user.id; }); }
+  function resolveCo() {
+    var list = userCos(user);
+    if (!list.length) { coId = 0; return; }
+    if (!list.some(function (c) { return c.id === coId; })) {
+      coId = (list.find(function (c) { return c.isDefault; }) || list[0]).id;
+      try { sessionStorage.setItem(CO_KEY, coId); } catch (e) {}
+    }
+  }
+  // Toda consulta de dietas queda en la empresa activa
+  function D() { return S.diets.filter(function (d) { return d.companyId === coId; }); }
 
   // ════════════════ Reglas de negocio (equivalentes a los servicios) ════════════════
   function cur(d) { return d.versions[d.versions.length - 1]; }
   function confirmed(d) { for (var i = d.versions.length - 1; i >= 0; i--) if (!d.versions[i].pending) return d.versions[i]; return d.versions[0]; }
   function pendingOf(d) { return d.versions.some(function (v) { return v.pending; }); }
-  function byId(id) { return S.diets.find(function (d) { return d.id === +id; }); }
+  function byId(id) { return D().find(function (d) { return d.id === +id; }); }
   function addVersion(d, patch, change, pending) {
     var c = cur(d);
     d.versions.push(Object.assign({}, c, patch, { v: c.v + 1, at: isoNow(), by: user.name, change: change, pending: pending }));
@@ -476,7 +534,7 @@
     ['desayuno', 'mediamanana', 'almuerzo', 'algo', 'merienda', 'cena'].forEach(function (m) { if (minsOf(SCHEDULE[m]) <= nm) pick = m; });
     return pick;
   }
-  function activeDiets() { return S.diets.filter(function (d) { return d.status === 'active'; }); }
+  function activeDiets() { return D().filter(function (d) { return d.status === 'active'; }); }
 
   // Bandejas que cuentan por día (regla del alta: el día del alta solo los tiempos con hora ≤ hora del alta)
   function mealsCounted(d, date) {
@@ -505,28 +563,33 @@
   function render() {
     if (!user) { root.innerHTML = demoBar() + loginView(); return; }
     var acc = ACCESS[user.role];
-    if (!view || acc.views.indexOf(view) < 0) view = acc.views[0];
+    resolveCo();
+    if (!view || acc.views.indexOf(view) < 0) view = acc.home || acc.views[0];
     if (!ui.service) ui.service = defaultService();
-    root.innerHTML = demoBar() + shell(viewHtml());
+    // El despachador sin empresas activas no puede usar la plataforma (EnsureCompanyAssigned)
+    if (!coId && user.role === 'despachador') { root.innerHTML = demoBar() + shell(noCompany()); return; }
+    root.innerHTML = demoBar() + shell(coBar() + viewHtml());
   }
   function demoBar() {
     return '<div class="demo-bar">Demostración con datos ficticios. Los cambios se guardan solo en este navegador. <button type="button" data-a="reset">Reiniciar demo</button></div>';
   }
   function loginView() {
     var cards = S.users.filter(function (u) { return u.active; }).map(function (u) {
-      return '<button type="button" data-a="login" data-id="' + u.id + '"><span class="av">' + initials(u.name) + '</span><span><b>' + esc(u.name) + '</b><small>' + ROLE[u.role] + '</small></span></button>';
+      var cos = hasAll(u) ? 'Todas las empresas' : userCos(u).map(function (c) { return c.name; }).join(', ') || 'Sin empresa';
+      return '<button type="button" data-a="login" data-id="' + u.id + '"><span class="av">' + initials(u.name) + '</span><span><b>' + esc(u.name) + '</b><small>' + ROLE[u.role] + ' · ' + esc(cos) + '</small></span></button>';
     }).join('');
     return '<div class="login"><div class="login-hero"><div class="logo">NutriTrack</div>' +
       '<h1>Control de las dietas hospitalarias, en tiempo real.</h1>' +
       '<p>Desde la prescripción nutricional hasta la entrega al paciente: el nutricionista actualiza la dieta, la cocina recibe el cambio al instante y cada servicio queda despachado, recibido y listo para facturar.</p>' +
-      '<ul><li>Dietas por habitación con historial de versiones.</li><li>Despacho por tiempo de comida y confirmación de recepción.</li><li>Reporte nutricional y facturación del mes.</li></ul></div>' +
+      '<ul><li>Dietas por habitación con historial de versiones.</li><li>Despacho por tiempo de comida y confirmación de recepción.</li><li>Reporte nutricional y facturación del mes.</li><li>Varias empresas atendidas por el despacho, cada una con sus datos separados.</li></ul></div>' +
       '<div class="login-pick"><h2>Entrar a la demo</h2><p>Elige un usuario de prueba. Cada rol ve su propio menú y sus propias acciones.</p><div class="who">' + cards + '</div>' +
-      '<div class="tip"><b>Para probar el tiempo real:</b> abre esta página en otra pestaña, entra con otro rol (por ejemplo, nutricionista en una y despachador en la otra) y haz un cambio. La otra pestaña se actualiza sola.</div></div></div>';
+      '<div class="tip"><b>Para probar el tiempo real:</b> abre esta página en otra pestaña, entra con otro rol (por ejemplo, nutricionista en una y despachador en la otra) y haz un cambio. La otra pestaña se actualiza sola.</div>' +
+      '<div class="tip"><b>Para probar las empresas:</b> entra como Ricardo Méndez (jefe de despacho de Clínica Central y Clínica del Norte) o como Mariana López y cambia de empresa arriba: cada una muestra solo sus dietas, despachos y reportes.</div></div></div>';
   }
   function shell(content) {
     var acc = ACCESS[user.role], sec = '', nav = '';
-    var pend = S.diets.filter(pendingOf).length;
-    var toReceive = S.diets.reduce(function (n, d) { return n + d.dispatches.filter(function (x) { return !x.receivedAt; }).length; }, 0);
+    var pend = D().filter(pendingOf).length;
+    var toReceive = D().reduce(function (n, d) { return n + d.dispatches.filter(function (x) { return !x.receivedAt; }).length; }, 0);
     acc.views.forEach(function (v) {
       var meta = VIEWS[v];
       if (meta[1] !== sec) { sec = meta[1]; nav += '<div class="nav-sec">' + sec + '</div>'; }
@@ -541,7 +604,19 @@
       '<main class="work"><div class="work-in">' + content + '</div></main></div>';
   }
   function viewHtml() {
-    return ({ activas: vActivas, despacho: vDespacho, despachos: vDespachos, historial: vHistorial, reporte: vReporte, facturacion: vFacturacion, usuarios: vUsuarios, auditoria: vAuditoria })[view]();
+    return ({ activas: vActivas, despacho: vDespacho, despachos: vDespachos, historial: vHistorial, reporte: vReporte, facturacion: vFacturacion, empresas: vEmpresas, usuarios: vUsuarios, auditoria: vAuditoria })[view]();
+  }
+  // Selector de empresa arriba de cada página (x-company-switcher)
+  function coBar() {
+    var list = userCos(user), c = coById(coId);
+    if (!c) return '<div class="cobar"><span class="lbl">Empresa</span><span class="muted">Aún no tienes empresas. Crea la primera en Empresas.</span></div>';
+    if (list.length === 1) return '<div class="cobar"><span class="lbl">Empresa</span><b>' + esc(c.name) + '</b></div>';
+    return '<form class="cobar" id="coSwitch"><label class="lbl" for="co-sel">Empresa</label><select class="input" id="co-sel">' +
+      list.map(function (x) { return '<option value="' + x.id + '"' + (x.id === coId ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') +
+      '</select><button type="submit" class="btn btn-outline-primary btn-sm">Cambiar empresa</button><span class="small muted">Solo ves las dietas, despachos y reportes de esta empresa.</span></form>';
+  }
+  function noCompany() {
+    return '<div class="card card-pad" style="text-align:center;padding:48px 18px;display:grid;gap:8px;justify-items:center"><span class="tag chip-err">403</span><h1 style="font-size:22px">Sin empresa asignada</h1><p class="muted" style="margin:0;max-width:440px">Tu usuario no tiene empresas activas. Pide a tu jefe de despacho que te asigne una.</p></div>';
   }
   function tagsHtml(list, cls, labels) { return list.length ? '<div class="tags">' + list.map(function (k) { return '<span class="tag ' + cls + '">' + esc(labels[k] || k) + '</span>'; }).join('') + '</div>' : '<span class="muted">—</span>'; }
   function mealTags(d) {
@@ -558,7 +633,7 @@
   // ── Dietas activas (nutricionista, enfermería, admin) ──
   function vActivas() {
     var acc = ACCESS[user.role], act = activeDiets();
-    var cancelled = S.diets.filter(function (d) { return d.status === 'cancelled'; }), finished = S.diets.filter(function (d) { return d.status === 'finished'; });
+    var cancelled = D().filter(function (d) { return d.status === 'cancelled'; }), finished = D().filter(function (d) { return d.status === 'finished'; });
     var kp = '<div class="kpis">' +
       kpi('Dietas activas', act.length, 'Pacientes en seguimiento', 'k-brand') +
       kpi('Canceladas', cancelled.length, finished.length + ' finalizadas por alta', 'k-err') +
@@ -595,7 +670,7 @@
   function tab(k, label, n) { return '<button type="button" class="tab" role="tab" aria-selected="' + (ui.tab === k) + '" data-a="tab" data-k="' + k + '">' + label + ' (' + n + ')</button>'; }
   function receiptsPanel() {
     var items = [];
-    S.diets.forEach(function (d) { d.dispatches.forEach(function (x, i) { if (!x.receivedAt) items.push({ d: d, x: x, i: i }); }); });
+    D().forEach(function (d) { d.dispatches.forEach(function (x, i) { if (!x.receivedAt) items.push({ d: d, x: x, i: i }); }); });
     if (!items.length) return '<div class="panel"><h3>✓ No hay despachos por recibir</h3></div>';
     items.sort(function (a, b) { return a.x.at < b.x.at ? -1 : 1; });
     var n = Object.keys(ui.rsel).filter(function (k) { return ui.rsel[k]; }).length;
@@ -608,8 +683,8 @@
 
   // ── Despacho (cocina) ──
   function vDespacho() {
-    var svc = ui.service, list = S.diets.filter(function (d) { return d.status === 'active' || transferToday(d); });
-    var pend = S.diets.filter(pendingOf).sort(roomSort);
+    var svc = ui.service, list = D().filter(function (d) { return d.status === 'active' || transferToday(d); });
+    var pend = D().filter(pendingOf).sort(roomSort);
     if (!ui.showAll) list = list.filter(function (d) { return pendingOf(d) || cur(d).time.indexOf(svc) >= 0; });
     list = list.slice().sort(function (a, b) { return (pendingOf(b) - pendingOf(a)) || roomSort(a, b); });
     var nsel = Object.keys(ui.sel).filter(function (k) { return ui.sel[k] && !blockReason(byId(k), svc); }).length;
@@ -645,10 +720,10 @@
   // ── Despachos del día ──
   function vDespachos() {
     var T = today(), rows = [];
-    S.diets.forEach(function (d) { d.dispatches.forEach(function (x) { if (x.date === T) rows.push({ d: d, x: x }); }); });
+    D().forEach(function (d) { d.dispatches.forEach(function (x) { if (x.date === T) rows.push({ d: d, x: x }); }); });
     var summary = ['desayuno', 'mediamanana', 'almuerzo', 'algo', 'merienda', 'cena', 'fraccionada'].map(function (m) {
       var r = rows.filter(function (it) { return it.x.meal === m; }), ok = r.filter(function (it) { return it.x.receivedAt; }).length;
-      var prog = S.diets.filter(function (d) { return (d.status === 'active' || transferToday(d)) && cur(d).time.indexOf(m) >= 0; }).length;
+      var prog = D().filter(function (d) { return (d.status === 'active' || transferToday(d)) && cur(d).time.indexOf(m) >= 0; }).length;
       return '<div class="card card-pad" style="display:grid;gap:6px"><span class="lbl">' + MEAL_LABEL[m] + (SCHEDULE[m] ? ' · ' + SCHEDULE[m] : '') + '</span><b class="num" style="font-size:20px">' + r.length + ' <span class="small muted" style="font-weight:500">de ' + prog + ' despachados</span></b><span class="small" style="color:var(--t-deliv);font-weight:700">' + ok + ' recibidos</span>' +
         '<div class="bar-track"><div class="bar-fill" style="width:' + (prog ? Math.round(ok / prog * 100) : 0) + '%;background:var(--t-deliv)"></div></div></div>';
     }).join('');
@@ -667,9 +742,10 @@
 
   // ── Historial ──
   function vHistorial() {
-    var all = S.diets.slice().sort(roomSort);
+    var all = D().slice().sort(roomSort);
     if (!ui.histId || !byId(ui.histId)) ui.histId = all[0] && all[0].id;
     var d = byId(ui.histId);
+    if (!d) return '<div class="head"><div><h1>Historial de cambios</h1><p>Cada versión de la dieta: quién la cambió, cuándo y qué cambió.</p></div></div><div class="card"><p class="empty">Esta empresa todavía no tiene dietas.</p></div>';
     var opts = all.map(function (x) { return '<option value="' + x.id + '"' + (x.id === d.id ? ' selected' : '') + '>Hab. ' + esc(x.room) + ' · ' + esc(x.patient) + (x.status !== 'active' ? ' (' + (x.status === 'cancelled' ? 'cancelada' : 'alta') + ')' : '') + '</option>'; }).join('');
     var vers = d.versions.slice().reverse().map(function (v, i, arr) {
       var prev = arr[i + 1];
@@ -705,13 +781,13 @@
   function vReporte() {
     var days = monthDays(ui.month), perDay = days.map(function (k) {
       var c = {}; MEALS.forEach(function (m) { c[m] = 0; });
-      S.diets.forEach(function (d) { mealsCounted(d, k).forEach(function (x) { c[x.meal]++; }); });
+      D().forEach(function (d) { mealsCounted(d, k).forEach(function (x) { c[x.meal]++; }); });
       return { day: k, c: c, total: MEALS.reduce(function (s, m) { return s + c[m]; }, 0) };
     });
     var totals = {}; MEALS.forEach(function (m) { totals[m] = perDay.reduce(function (s, p) { return s + p.c[m]; }, 0); });
     var trays = MEALS.reduce(function (s, m) { return s + totals[m]; }, 0);
-    var patients = S.diets.filter(function (d) { return days.some(function (k) { return mealsCounted(d, k).length; }); }).length;
-    var dietDays = 0; days.forEach(function (k) { S.diets.forEach(function (d) { if (mealsCounted(d, k).length) dietDays++; }); });
+    var patients = D().filter(function (d) { return days.some(function (k) { return mealsCounted(d, k).length; }); }).length;
+    var dietDays = 0; days.forEach(function (k) { D().forEach(function (d) { if (mealsCounted(d, k).length) dietDays++; }); });
     var kp = '<div class="kpis">' + kpi('Bandejas del mes', trays.toLocaleString('es-CO'), 'Suma de todos los tiempos de comida', 'k-brand') +
       kpi('Promedio diario', days.length ? (dietDays / days.length).toFixed(1).replace('.', ',') : '0', 'Dietas vigentes por día', 'k-brand') +
       kpi('Pacientes en el mes', patients, 'Con al menos un día de dieta', 'k-brand') +
@@ -744,7 +820,7 @@
   function vFacturacion() {
     var days = monthDays(ui.month), sum = {};
     days.forEach(function (k) {
-      S.diets.forEach(function (d) {
+      D().forEach(function (d) {
         mealsCounted(d, k).forEach(function (x) {
           if (x.meal === 'fraccionada') return; // la fraccionada no se factura
           var type = BILLING[x.billing][1].indexOf(x.meal) >= 0 ? x.billing : (SNACKS.indexOf(x.meal) >= 0 ? 'entrecomidas' : x.billing);
@@ -770,28 +846,101 @@
       '<div class="card"><div class="toolbar"><div><h2>Precios vigentes</h2><p class="sub">Edita un precio y el total del mes se recalcula.</p></div></div><div class="twrap"><table><thead><tr><th>Tipo</th>' + svcs.map(function (s) { return '<th>' + SERVICE_LABEL[s] + '</th>'; }).join('') + '</tr></thead><tbody>' + priceRows + '</tbody></table></div></div>';
   }
 
+  // ── Empresas (admin y jefe de despacho) ──
+  function vEmpresas() {
+    var admin = user.role === 'admin';
+    var list = managedCos().slice().sort(function (a, b) { return b.isDefault - a.isDefault || a.name.localeCompare(b.name); });
+    var rows = list.map(function (c) {
+      var mgr = S.users.find(function (u) { return u.id === c.managerId; });
+      var open = S.diets.filter(function (d) { return d.companyId === c.id && d.status === 'active'; }).length;
+      return '<tr><td><b>' + esc(c.name) + '</b>' + (c.isDefault ? ' <span class="tag chip-brand">Predeterminada</span>' : '') + '</td><td class="nit">' + esc(c.nit) + '</td>' +
+        '<td>' + esc(c.contact || '—') + '<div class="small muted">' + esc([c.phone, c.email].filter(Boolean).join(' · ')) + '</div></td>' +
+        (admin ? '<td>' + (mgr ? esc(mgr.name) : '<span class="muted">—</span>') + '</td>' : '') +
+        '<td class="num">' + open + '</td><td>' + (c.active ? '<span class="tag chip-ok">Activa</span>' : '<span class="tag chip-muted">Inactiva</span>') + '</td>' +
+        '<td class="actions"><div class="acts"><button type="button" class="btn btn-success btn-sm" data-a="editCo" data-co="' + c.id + '">Editar</button>' +
+        (c.isDefault ? '' : '<button type="button" class="btn btn-sm ' + (c.active ? 'btn-ghost' : 'btn-primary') + '" data-a="toggleCo" data-co="' + c.id + '">' + (c.active ? 'Desactivar' : 'Activar') + '</button>') + '</div></td></tr>';
+    }).join('') || '<tr><td colspan="7" class="empty">Todavía no tienes empresas. Crea la primera.</td></tr>';
+    return '<div class="head"><div><h1>Empresas</h1><p>' + (admin ? 'Empresas que atiende el despacho. Cada una tiene su jefe de despacho y sus datos separados.' : 'Tus empresas: créalas, edítalas o desactívalas. Las de otros jefes de despacho no aparecen.') + '</p></div><div class="actions"><button type="button" class="btn btn-primary" data-a="newCo">+ Nueva empresa</button></div></div>' +
+      '<div class="box box-info">Las empresas no se borran: al desactivarla sale de los selectores y conserva su historial. La predeterminada no se desactiva.</div>' +
+      '<div class="card"><div class="twrap"><table><thead><tr><th>Empresa</th><th>NIT</th><th>Contacto</th>' + (admin ? '<th>Jefe de despacho</th>' : '') + '<th>Dietas activas</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+  }
+  function openCompany(c) {
+    var admin = user.role === 'admin', v = c || { name: '', nit: '', contact: '', phone: '', email: '', managerId: '' };
+    var mgrs = S.users.filter(function (u) { return u.role === 'jefe_despacho' && u.active; });
+    var body = '<div class="form-grid">' +
+      '<div class="field full"><label for="co-name">Nombre</label><input class="input" id="co-name" maxlength="150" value="' + esc(v.name) + '" placeholder="Ej. Clínica San Rafael"></div>' +
+      '<div class="field"><label for="co-nit">NIT con dígito de verificación</label><input class="input" id="co-nit" value="' + esc(v.nit) + '" placeholder="900123456-8"></div>' +
+      '<div class="field"><label for="co-contact">Contacto</label><input class="input" id="co-contact" value="' + esc(v.contact) + '" placeholder="Nombre del contacto"></div>' +
+      '<div class="field"><label for="co-phone">Teléfono</label><input class="input" id="co-phone" value="' + esc(v.phone) + '" placeholder="+573001234567"></div>' +
+      '<div class="field"><label for="co-email">Correo</label><input class="input" id="co-email" type="email" value="' + esc(v.email) + '" placeholder="contacto@empresa.co"></div>' +
+      (admin ? '<div class="field full"><label for="co-mgr">Jefe de despacho</label><select class="input" id="co-mgr"><option value="">Elige el jefe de despacho</option>' + mgrs.map(function (u) { return '<option value="' + u.id + '"' + (u.id === v.managerId ? ' selected' : '') + '>' + esc(u.name) + '</option>'; }).join('') + '</select></div>'
+        : '<p class="small muted full" style="margin:0">La empresa queda a tu nombre como jefe de despacho.</p>') +
+      '<p class="err-msg full" id="f-err" hidden></p></div>';
+    openModal(c ? 'Editar empresa' : 'Nueva empresa', body, '<button type="button" class="btn btn-ghost" data-a="closeModal">Cancelar</button><button type="button" class="btn btn-primary" data-a="saveCo"' + (c ? ' data-co="' + c.id + '"' : '') + '>' + (c ? 'Guardar' : 'Crear empresa') + '</button>');
+  }
+  function giveCompany(uid, cid) { var u = S.users.find(function (x) { return x.id === uid; }); if (u && u.companies !== 'all' && u.companies.indexOf(cid) < 0) u.companies.push(cid); }
+
   // ── Usuarios ──
+  // Quién aparece: el admin ve a todos; el jefe de nutrición, a los nutricionistas;
+  // el jefe de despacho, solo a los despachadores de sus empresas
+  function visibleUsers() {
+    if (user.role === 'admin') return S.users;
+    if (user.role === 'jefe_despacho') {
+      var mine = managedCos().map(function (c) { return c.id; });
+      return S.users.filter(function (u) { return u.role === 'despachador' && u.companies !== 'all' && u.companies.some(function (id) { return mine.indexOf(id) >= 0; }); });
+    }
+    return S.users.filter(function (u) { return u.role === ACCESS[user.role].usersOnly; });
+  }
+  // Empresas que puede asignar: el jefe de despacho solo las suyas
+  function assignableCos() { return (user.role === 'jefe_despacho' ? managedCos() : S.companies).filter(function (c) { return c.active; }); }
+  function coAccess(u) {
+    if (hasAll(u)) return '<span class="tag chip-brand">Todas</span>';
+    var list = u.companies.map(coById).filter(Boolean);
+    return list.length ? '<div class="tags">' + list.map(function (c) { return '<span class="tag ' + (c.active ? 'chip-muted' : 'tag-del') + '">' + esc(c.name) + '</span>'; }).join('') + '</div>' : '<span class="tag chip-err">Sin empresa asignada</span>';
+  }
+  function coChecks(id, selected, allowAll, all) {
+    return '<div class="opts" id="' + id + '">' + (allowAll ? '<label class="check small"><input type="checkbox" value="all"' + (all ? ' checked' : '') + '> Todas (incluye las futuras)</label>' : '') +
+      assignableCos().map(function (c) { return '<label class="check small"><input type="checkbox" value="' + c.id + '"' + (selected.indexOf(c.id) >= 0 ? ' checked' : '') + '> ' + esc(c.name) + '</label>'; }).join('') + '</div>';
+  }
+  function readCos(id) {
+    var v = [].slice.call(document.querySelectorAll('#' + id + ' input:checked')).map(function (i) { return i.value; });
+    return { all: v.indexOf('all') >= 0, ids: v.filter(function (x) { return x !== 'all'; }).map(Number) };
+  }
   function vUsuarios() {
-    var acc = ACCESS[user.role], list = S.users.filter(function (u) { return !acc.usersOnly || u.role === acc.usersOnly; });
+    var acc = ACCESS[user.role], list = visibleUsers(), admin = user.role === 'admin';
     var roles = acc.usersOnly ? [acc.usersOnly] : Object.keys(ROLE);
     var rows = list.map(function (u) {
-      return '<tr><td><b>' + esc(u.name) + '</b></td><td>' + esc(u.email) + '</td><td><span class="tag chip-brand">' + ROLE[u.role] + '</span></td><td>' + (u.active ? '<span class="tag chip-ok">Activo</span>' : '<span class="tag chip-muted">Inactivo</span>') + '</td><td class="actions">' +
-        (acc.usersOnly ? '<span class="muted small">Solo lectura</span>' : u.id === user.id ? '<span class="muted small">Tu usuario</span>' : '<button type="button" class="btn btn-sm ' + (u.active ? 'btn-ghost' : 'btn-success') + '" data-a="toggleUser" data-id="' + u.id + '">' + (u.active ? 'Desactivar' : 'Activar') + '</button>') + '</td></tr>';
-    }).join('');
-    return '<div class="head"><div><h1>Usuarios</h1><p>' + (acc.usersOnly ? 'Como jefe de nutrición puedes ver y crear despachadores.' : 'Crea usuarios, asigna su rol y activa o desactiva su acceso.') + '</p></div></div>' +
+      var act = [];
+      if (admin && u.id !== user.id) act.push('<button type="button" class="btn btn-sm ' + (u.active ? 'btn-ghost' : 'btn-success') + '" data-a="toggleUser" data-id="' + u.id + '">' + (u.active ? 'Desactivar' : 'Activar') + '</button>');
+      if ((admin || user.role === 'jefe_despacho') && u.role !== 'admin') act.push('<button type="button" class="btn btn-sm btn-outline-primary" data-a="userCos" data-id="' + u.id + '">Empresas</button>');
+      return '<tr><td><b>' + esc(u.name) + '</b></td><td>' + esc(u.email) + '</td><td><span class="tag chip-brand">' + ROLE[u.role] + '</span></td><td>' + coAccess(u) + '</td><td>' + (u.active ? '<span class="tag chip-ok">Activo</span>' : '<span class="tag chip-muted">Inactivo</span>') + '</td><td class="actions">' +
+        (act.length ? '<div class="acts">' + act.join('') + '</div>' : '<span class="muted small">' + (u.id === user.id ? 'Tu usuario' : 'Solo lectura') + '</span>') + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="empty">Todavía no hay usuarios que puedas ver.</td></tr>';
+    var intro = admin ? 'Crea usuarios, asigna su rol, sus empresas y activa o desactiva su acceso.'
+      : user.role === 'jefe_despacho' ? 'Crea y edita los despachadores de tus empresas. Solo ves a los usuarios de tus empresas.'
+      : 'Como jefe de nutrición puedes ver y crear nutricionistas.';
+    var hint = admin ? 'El despachador siempre lleva empresas específicas; el administrador tiene todas.' : user.role === 'jefe_despacho' ? 'Solo puedes asignar tus empresas.' : 'Elige las empresas del nutricionista.';
+    return '<div class="head"><div><h1>Usuarios</h1><p>' + intro + '</p></div></div>' +
       '<div class="card card-pad"><h2>Nuevo usuario</h2><form id="newUser" class="form-grid" style="margin-top:12px" novalidate>' +
       '<div class="field"><label for="nu-name">Nombre</label><input class="input" id="nu-name" required placeholder="Nombre y apellido"></div>' +
       '<div class="field"><label for="nu-email">Correo</label><input class="input" id="nu-email" type="email" required placeholder="nombre@hospital.co"></div>' +
       '<div class="field"><label for="nu-role">Rol</label><select class="input" id="nu-role">' + roles.map(function (r) { return '<option value="' + r + '">' + ROLE[r] + '</option>'; }).join('') + '</select></div>' +
-      '<div class="field" style="align-content:end"><button type="submit" class="btn btn-primary">Crear usuario</button></div><p class="err-msg full" id="nu-err" hidden></p></form></div>' +
-      '<div class="card"><div class="twrap"><table><thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+      '<div class="field full"><span class="lbl">Empresas</span>' + coChecks('nu-cos', [], admin, false) + '<span class="small muted">' + hint + '</span></div>' +
+      '<div class="field"><button type="submit" class="btn btn-primary">Crear usuario</button></div><p class="err-msg full" id="nu-err" hidden></p></form></div>' +
+      '<div class="card"><div class="twrap"><table><thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Empresas</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+  }
+  function openUserCos(u) {
+    var admin = user.role === 'admin', ids = u.companies === 'all' ? [] : u.companies;
+    openModal('Empresas de ' + esc(u.name), '<p style="margin:0" class="small muted">' + ROLE[u.role] + (u.role === 'despachador' ? ': siempre con empresas específicas.' : '.') + (admin ? '' : ' Solo cambias tus empresas; las demás que tenga se conservan.') + '</p>' +
+      coChecks('uc-cos', ids, admin && u.role !== 'despachador', u.companies === 'all') + '<p class="err-msg" id="f-err" hidden></p>',
+      '<button type="button" class="btn btn-ghost" data-a="closeModal">Cancelar</button><button type="button" class="btn btn-primary" data-a="saveUserCos" data-id="' + u.id + '">Guardar</button>');
   }
 
   // ── Auditoría ──
   function vAuditoria() {
-    var rows = S.audit.map(function (a) { return '<tr><td class="num">' + fmtDateTime(a.at) + '</td><td>' + esc(a.who) + '</td><td>' + esc(a.what) + '</td></tr>'; }).join('');
+    var rows = S.audit.map(function (a) { var c = a.co ? coById(a.co) : null; return '<tr><td class="num">' + fmtDateTime(a.at) + '</td><td>' + esc(a.who) + '</td><td>' + (c ? esc(c.name) : '<span class="muted">—</span>') + '</td><td>' + esc(a.what) + '</td></tr>'; }).join('');
     return '<div class="head"><div><h1>Auditoría</h1><p>Registro de lo que se hizo en la demo. Sin datos clínicos: solo habitación o identificadores.</p></div></div>' +
-      '<div class="card"><div class="twrap"><table><thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+      '<div class="card"><div class="twrap"><table><thead><tr><th>Fecha</th><th>Usuario</th><th>Empresa</th><th>Acción</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
   }
 
   // ════════════════ Modales ════════════════
@@ -852,7 +1001,7 @@
     var a = el.dataset.a, d = el.dataset.id ? byId(el.dataset.id) : null;
     if (el.tagName === 'INPUT' || el.tagName === 'SELECT') return; // los maneja «change»
     switch (a) {
-      case 'login': user = S.users.find(function (u) { return u.id === el.dataset.id; }); try { sessionStorage.setItem(USER_KEY, user.id); } catch (er) {} view = null; ui.sel = {}; ui.rsel = {}; audit('Inicio de sesión (' + ROLE[user.role] + ')'); render(); break;
+      case 'login': user = S.users.find(function (u) { return u.id === el.dataset.id; }); try { sessionStorage.setItem(USER_KEY, user.id); sessionStorage.removeItem(CO_KEY); } catch (er) {} view = null; coId = null; ui.histId = null; resolveCo(); ui.sel = {}; ui.rsel = {}; audit('Inicio de sesión (' + ROLE[user.role] + ')'); render(); break;
       case 'logout': openLogout(); break;
       case 'doLogout': try { sessionStorage.removeItem(USER_KEY); } catch (er) {} user = null; closeModal(); render(); break;
       case 'reset': openReset(); break;
@@ -873,7 +1022,7 @@
         if (!f.time.length) return formError('Elige al menos un tiempo de comida.');
         if (!f.cons.length) return formError('Elige la consistencia.');
         if (activeDiets().some(function (x) { return x.room === f.room; })) return formError('La habitación ' + f.room + ' ya tiene una dieta activa. Edítala en lugar de registrar otra.');
-        var nd = { id: S.nextId++, room: f.room, patient: f.patient, status: 'active', createdAt: isoNow(), closedAt: null, transfer: null, days: {}, dispatches: [], versions: [] };
+        var nd = { id: S.nextId++, companyId: coId, room: f.room, patient: f.patient, status: 'active', createdAt: isoNow(), closedAt: null, transfer: null, days: {}, dispatches: [], versions: [] };
         nd.versions.push({ v: 1, at: nd.createdAt, by: user.name, time: f.time, cons: f.cons, spec: f.spec, obs: f.obs, iso: f.iso, billing: f.billing, change: 'creada', pending: false });
         nd.days[today()] = { authorized: true, completedAt: null };
         S.diets.push(nd);
@@ -918,7 +1067,7 @@
         break;
       }
       case 'confirm': d.versions.forEach(function (v) { v.pending = false; }); commit('Cambios confirmados · Hab. ' + d.room, 'Confirmó los cambios de la habitación ' + d.room); break;
-      case 'confirmAll': { var cnt = 0; S.diets.forEach(function (x) { if (pendingOf(x)) { cnt++; x.versions.forEach(function (v) { v.pending = false; }); } }); commit(cnt + ' dietas confirmadas', 'Confirmó los cambios de ' + cnt + ' dieta(s)'); break; }
+      case 'confirmAll': { var cnt = 0; D().forEach(function (x) { if (pendingOf(x)) { cnt++; x.versions.forEach(function (v) { v.pending = false; }); } }); commit(cnt + ' dietas confirmadas', 'Confirmó los cambios de ' + cnt + ' dieta(s)'); break; }
       case 'dispatch': {
         var svc = ui.service, ids = Object.keys(ui.sel).filter(function (k) { return ui.sel[k] && !blockReason(byId(k), svc); }), T = today();
         ids.forEach(function (id) { byId(id).dispatches.push({ date: T, meal: svc, at: isoNow(), by: user.name, receivedAt: null, receivedBy: null }); });
@@ -933,13 +1082,53 @@
         commit((u.active ? 'Usuario activado: ' : 'Usuario desactivado: ') + u.name, (u.active ? 'Activó' : 'Desactivó') + ' al usuario ' + u.email);
         break;
       }
-      case 'excel': toast('En la demo no se descargan archivos. En la aplicación se genera el Excel del mes.'); break;
+      case 'excel': toast('En la demo no se descargan archivos. En la aplicación se genera reporte-nutricional_' + slug((coById(coId) || { name: '' }).name) + '_' + ui.month + '.xlsx'); break;
+      case 'newCo': openCompany(null); break;
+      case 'editCo': { var ec = managedCos().find(function (c) { return c.id === +el.dataset.co; }); if (ec) openCompany(ec); break; }
+      case 'saveCo': {
+        var co = el.dataset.co ? managedCos().find(function (c) { return c.id === +el.dataset.co; }) : null;
+        var nm = document.getElementById('co-name').value.trim(), nt = document.getElementById('co-nit').value.replace(/[.\s]/g, ''), ph = document.getElementById('co-phone').value.trim(), em = document.getElementById('co-email').value.trim().toLowerCase();
+        var mg = user.role === 'admin' ? document.getElementById('co-mgr').value : (co ? co.managerId : user.id);
+        var others = S.companies.filter(function (c) { return c !== co; });
+        if (!nm) return formError('Escribe el nombre de la empresa.');
+        if (others.some(function (c) { return c.name.toLowerCase() === nm.toLowerCase(); })) return formError('Ya existe una empresa con ese nombre.');
+        if (!validNit(nt)) return formError('NIT inválido: revisa el dígito de verificación (formato 900123456-8).');
+        if (others.some(function (c) { return c.nit === nt; })) return formError('Ya existe una empresa con ese NIT.');
+        if (ph && !/^\+[1-9]\d{7,14}$/.test(ph)) return formError('El teléfono va con indicativo, por ejemplo +573001234567.');
+        if (em && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return formError('Escribe un correo válido.');
+        if (!mg) return formError('Elige el jefe de despacho de la empresa.');
+        var data = { name: nm, nit: nt, contact: document.getElementById('co-contact').value.trim(), phone: ph, email: em, managerId: mg };
+        if (co) Object.assign(co, data); else { co = Object.assign({ id: S.nextCompanyId++, active: true, isDefault: false }, data); S.companies.push(co); }
+        giveCompany(mg, co.id);
+        commit(el.dataset.co ? 'Empresa actualizada: ' + nm : 'Empresa creada: ' + nm, (el.dataset.co ? 'Editó' : 'Creó') + ' la empresa ' + nm + ' (NIT ' + nt + ')');
+        break;
+      }
+      case 'toggleCo': {
+        var tc = managedCos().find(function (c) { return c.id === +el.dataset.co; });
+        if (!tc || tc.isDefault) { toast('La empresa predeterminada no se desactiva.'); break; }
+        tc.active = !tc.active;
+        commit((tc.active ? 'Empresa activada: ' : 'Empresa desactivada: ') + tc.name, (tc.active ? 'Activó' : 'Desactivó') + ' la empresa ' + tc.name);
+        break;
+      }
+      case 'userCos': { var uu = visibleUsers().find(function (x) { return x.id === el.dataset.id; }); if (uu) openUserCos(uu); break; }
+      case 'saveUserCos': {
+        var tu = visibleUsers().find(function (x) { return x.id === el.dataset.id; }), sel = readCos('uc-cos');
+        if (!tu) break;
+        if (sel.all && tu.role === 'despachador') return formError('El despachador no puede tener «Todas»: elige sus empresas.');
+        // El jefe de despacho solo cambia sus empresas: las demás del usuario se conservan
+        var keep = user.role === 'admin' || tu.companies === 'all' ? [] : tu.companies.filter(function (id) { return !assignableCos().some(function (c) { return c.id === id; }); });
+        var ids = uniq(keep.concat(sel.ids));
+        if (!sel.all && !ids.length) return formError('Elige «Todas» o al menos una empresa.');
+        tu.companies = sel.all ? 'all' : ids;
+        commit('Empresas actualizadas: ' + tu.name, 'Cambió las empresas de ' + tu.email);
+        break;
+      }
     }
   });
   document.addEventListener('change', function (e) {
     var el = e.target, a = el.dataset && el.dataset.a; if (!a) return;
     if (a === 'sel') { ui.sel[el.dataset.id] = el.checked; render(); }
-    else if (a === 'selAll') { S.diets.forEach(function (d) { if ((d.status === 'active' || transferToday(d)) && !blockReason(d, ui.service)) ui.sel[d.id] = el.checked; }); render(); }
+    else if (a === 'selAll') { D().forEach(function (d) { if ((d.status === 'active' || transferToday(d)) && !blockReason(d, ui.service)) ui.sel[d.id] = el.checked; }); render(); }
     else if (a === 'rsel') { ui.rsel[el.dataset.k] = el.checked; render(); }
     else if (a === 'service') { ui.service = el.value; ui.sel = {}; render(); }
     else if (a === 'showAll') { ui.showAll = el.checked; render(); }
@@ -956,12 +1145,24 @@
     }
   });
   document.addEventListener('submit', function (e) {
+    if (e.target.id === 'coSwitch') {
+      // Cambiar empresa: vuelve a la misma pantalla con los filtros limpios
+      e.preventDefault();
+      var nc = +document.getElementById('co-sel').value;
+      if (!userCos(user).some(function (c) { return c.id === nc; })) return;
+      coId = nc; try { sessionStorage.setItem(CO_KEY, coId); } catch (er) {}
+      ui.q = ''; ui.tab = 'active'; ui.sel = {}; ui.rsel = {}; ui.histId = null; ui.dlService = ''; ui.dlState = '';
+      render(); toast('Ahora trabajas en ' + coById(coId).name);
+      return;
+    }
     if (e.target.id !== 'newUser') return;
     e.preventDefault();
     var name = document.getElementById('nu-name').value.trim(), email = document.getElementById('nu-email').value.trim().toLowerCase(), role = document.getElementById('nu-role').value, err = document.getElementById('nu-err');
-    var fail = !name ? 'Escribe el nombre.' : !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? 'Escribe un correo válido.' : S.users.some(function (u) { return u.email === email; }) ? 'Ya existe un usuario con ese correo.' : '';
+    var cs = readCos('nu-cos');
+    var fail = !name ? 'Escribe el nombre.' : !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? 'Escribe un correo válido.' : S.users.some(function (u) { return u.email === email; }) ? 'Ya existe un usuario con ese correo.'
+      : role === 'admin' ? '' : cs.all && role === 'despachador' ? 'El despachador no puede tener «Todas»: elige sus empresas.' : !cs.all && !cs.ids.length ? 'Elige «Todas» o al menos una empresa.' : '';
     if (fail) { err.textContent = fail; err.hidden = false; return; }
-    S.users.push({ id: 'u' + Date.now(), name: name, email: email, role: role, active: true });
+    S.users.push({ id: 'u' + Date.now(), name: name, email: email, role: role, active: true, companies: role === 'admin' || cs.all ? 'all' : cs.ids });
     commit('Usuario creado: ' + name, 'Creó al usuario ' + email + ' (' + ROLE[role] + ')');
   });
   document.addEventListener('keydown', function (e) {
@@ -981,7 +1182,7 @@
     if (user) user = S.users.find(function (u) { return u.id === user.id && u.active; }) || null;
     if (!modalEl.innerHTML) render();
     var last = S.audit[0];
-    if (user && last && last.who !== user.name) toast('Cambio en vivo: ' + last.who + ' · ' + last.what);
+    if (user && last && last.who !== user.name && (!last.co || last.co === coId)) toast('Cambio en vivo: ' + last.who + ' · ' + last.what);
   });
 
   var h = (location.hash || '').slice(1);

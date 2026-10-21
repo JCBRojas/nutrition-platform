@@ -93,8 +93,8 @@ class User extends Authenticatable
             $this->hasRole('despachador') => route('dashboard.dispatch'),
             // El jefe de nutrición trabaja como nutricionista: inicia en las dietas activas
             $this->hasRole('jefe_nutricion') => route('dashboard.nutrition'),
-            // Sin Premium sus pantallas (despachos del día, empresas) están bloqueadas: va a pagar el plan (NUT-RN-003-17)
-            $this->hasRole('jefe_despacho') => $premium('dispatch_log') ? route('dispatches.index') : route('subscription.index'),
+            // Inicia en sus empresas; sin Premium están bloqueadas: va a pagar el plan (NUT-RN-003-17, -25)
+            $this->hasRole('jefe_despacho') => $premium('companies') ? route('companies.index') : route('subscription.index'),
             $this->hasRole('admin') => route('admin.users.index'),
             // Roles creados desde /admin/roles (p. ej. enfermería): según sus permisos
             $this->can('viewActiveDiets') => route('dashboard.nutrition'),

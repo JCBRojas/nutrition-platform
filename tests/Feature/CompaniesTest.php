@@ -145,6 +145,18 @@ class CompaniesTest extends TestCase
         Livewire::actingAs($dispatcher)->test(CompaniesManager::class)->assertForbidden();
     }
 
+    public function test_viewer_only_sees_assigned_companies(): void
+    {
+        $viewer = User::factory()->create(['all_companies' => false]);
+        $viewer->givePermissionTo('viewCompanies');
+        $assigned = $this->company('Clínica Norte', '900123456-8');
+        $this->company('Clínica Sur', '800197268-4');
+        $viewer->companies()->sync([$assigned->id]);
+
+        $this->actingAs($viewer)->get(route('companies.index'))
+            ->assertOk()->assertSee('Clínica Norte')->assertDontSee('Clínica Sur');
+    }
+
     public function test_view_only_permission_cannot_create_or_edit(): void
     {
         $viewer = User::factory()->create();

@@ -19,7 +19,8 @@ use Livewire\WithPagination;
  * Empresas atendidas por el despacho (/empresas, NUT-RN-003-01 a -03, -20 a -22).
  * Ver: viewCompanies o manageCompanies. Crear, editar y desactivar: manageCompanies.
  * El admin ve todas y elige el jefe de despacho de cada una; el jefe de despacho solo ve
- * y administra las suyas, y las que crea quedan a su nombre.
+ * y administra las suyas, y las que crea quedan a su nombre. Los demás (p. ej. el despachador)
+ * solo consultan las empresas que tienen asignadas (NUT-RN-003-06).
  */
 #[Layout('layouts.app')]
 class CompaniesManager extends Component
@@ -197,6 +198,8 @@ class CompaniesManager extends Component
             // Conteo de cada empresa, no solo de la activa (CompanyScope filtraría las demás a 0)
             ->withCount(['diets' => fn ($q) => $q->withoutGlobalScope(CompanyScope::class)])
             ->when($this->isManager(), fn ($q) => $q->managedBy(auth()->user()))
+            ->when(! $this->isManager() && ! auth()->user()->hasAllCompanies(),
+                fn ($q) => $q->whereIn('companies.id', auth()->user()->accessibleCompanies()->select('companies.id')))
             ->when($this->status === 'active', fn ($q) => $q->where('is_active', true))
             ->when($this->status === 'inactive', fn ($q) => $q->where('is_active', false))
             ->when($this->search !== '', fn ($q) => $q->where(fn ($q) => $q
