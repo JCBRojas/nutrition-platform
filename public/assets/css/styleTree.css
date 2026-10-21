@@ -996,18 +996,18 @@ tr:hover td {
 }
 
 .tag-tiempo {
-  background: var(--blue-light);
-  color: var(--blue)
+  background: var(--dieta-tiempo-suave);
+  color: var(--dieta-tiempo)
 }
 
 .tag-consist {
-  background: var(--accent-light);
-  color: var(--accent)
+  background: var(--dieta-consistencia-suave);
+  color: var(--dieta-consistencia)
 }
 
 .tag-espec {
-  background: var(--purple-light);
-  color: var(--purple)
+  background: var(--dieta-especificacion-suave);
+  color: var(--dieta-especificacion)
 }
 
 .tag-cancel {
@@ -1379,18 +1379,18 @@ textarea {
 
 .chip-select:focus-within,
 .chip-select.open {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--color-foco)
+  border-color: var(--dieta-campo-foco-general);
+  box-shadow: 0 0 0 3px var(--dieta-campo-foco-general-halo)
 }
 
 .chip-select.pink-focus:focus-within {
-  border-color: var(--pink);
-  box-shadow: 0 0 0 3px var(--color-foco)
+  border-color: var(--dieta-rosa);
+  box-shadow: 0 0 0 3px rgba(224, 122, 143, .1)
 }
 
 .chip-select.blue-focus:focus-within {
-  border-color: var(--blue);
-  box-shadow: 0 0 0 3px var(--color-foco)
+  border-color: var(--dieta-campo-foco);
+  box-shadow: 0 0 0 3px var(--dieta-campo-foco-halo)
 }
 
 .chips-display {
@@ -1413,18 +1413,18 @@ textarea {
 }
 
 .chip.pink {
-  background: var(--pink-light);
-  color: var(--pink)
+  background: var(--dieta-rosa-suave);
+  color: var(--dieta-rosa)
 }
 
 .chip.blue {
-  background: var(--blue-light);
-  color: var(--blue)
+  background: var(--dieta-tiempo-suave);
+  color: var(--dieta-tiempo)
 }
 
 .chip.purple {
-  background: var(--purple-light);
-  color: var(--purple)
+  background: var(--dieta-especificacion-suave);
+  color: var(--dieta-especificacion)
 }
 
 .chip .remove {
@@ -1463,8 +1463,8 @@ textarea {
 }
 
 .chip-option:hover {
-  background: var(--border);
-  color: var(--text)
+  background: var(--dieta-opcion-hover);
+  color: var(--dieta-opcion-hover-texto)
 }
 
 .chip-option.selected {
@@ -2235,6 +2235,6 @@ textarea {
 }
 /* ── Estado de despacho del día en la columna Tiempo (x-meal-tag) ── */
 .meal-received, .meal-dispatched { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; }
-.meal-received { background: var(--color-exito); color: var(--color-superficie); }
-.meal-dispatched { background: var(--color-superficie); color: var(--color-exito); border: 1.5px dashed var(--color-exito); padding: 1px 7px; }
+.meal-received { background: var(--dieta-entregado); color: #fff; }
+.meal-dispatched { background: #fff; color: var(--dieta-entregado); border: 1.5px dashed var(--dieta-entregado); padding: 1px 7px; }
 .meal-legend { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }

@@ -97,13 +97,15 @@ function renderChips(csId, key) {
         <span class="chip"
             style="background-color: ${
                 colorKey === "timeFood"
-                    ? "var(--primary)"
+                    ? "var(--dieta-chip-tiempo)"
                     : colorKey === "consistency"
-                      ? "var(--warning)"
-                      : "var(--success)"
+                      ? "var(--dieta-chip-consistencia)"
+                      : "var(--dieta-chip-especificacion)"
             };
             color: ${
-                colorKey === "timeFood" ? "var(--light)" : "var(--dark)"
+                colorKey === "timeFood"
+                    ? "var(--dieta-chip-tiempo-texto)"
+                    : "var(--dieta-chip-texto)"
             };">
             ${LABEL_MAP[v] ?? v}
             <span class="remove"

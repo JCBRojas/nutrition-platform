@@ -55,4 +55,33 @@
   --btn-dark-hover: #424649;
   --btn-dark-texto: #FFFFFF;
   --btn-foco: rgba(13, 110, 253, .25);
+
+  /* ── CATÁLOGO DE DIETAS: colores originales (anteriores a la paleta violeta) ──
+     Tiempos de comida, consistencia y especificaciones conservan sus colores de siempre en
+     los formularios de registrar/editar y en las tablas (NUT-CMP-001 §2c). No usar la paleta aquí. */
+  /* Tablas: etiquetas .tag-tiempo / .tag-consist / .tag-espec */
+  --dieta-tiempo: #4A7FCB;
+  --dieta-tiempo-suave: #DDEAF8;
+  --dieta-consistencia: #2D6A4F;
+  --dieta-consistencia-suave: #D8F3DC;
+  --dieta-especificacion: #7B5EA7;
+  --dieta-especificacion-suave: #EDE9F5;
+  /* Tiempo con estado de despacho del día (x-meal-tag): turquesa */
+  --dieta-entregado: #0F766E;
+  --dieta-despachado-barra: #99D5CF;
+  /* Formularios: etiquetas seleccionadas (modal-render-chips.js) */
+  --dieta-chip-tiempo: #3592FE;
+  --dieta-chip-tiempo-texto: #F0EDE8;
+  --dieta-chip-consistencia: #F59E0B;
+  --dieta-chip-especificacion: #4ADF9C;
+  --dieta-chip-texto: #1A1714;
+  /* Formularios: campo de selección y su lista de opciones */
+  --dieta-campo-foco: #4A7FCB;
+  --dieta-campo-foco-halo: rgba(74, 127, 203, .1);
+  --dieta-campo-foco-general: #2D6A4F;
+  --dieta-campo-foco-general-halo: rgba(45, 106, 79, .1);
+  --dieta-opcion-hover: #E2DDD6;
+  --dieta-opcion-hover-texto: #1A1714;
+  --dieta-rosa: #E07A8F;
+  --dieta-rosa-suave: #FCE4EA;
 }

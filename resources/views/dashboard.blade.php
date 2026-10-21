@@ -96,6 +96,6 @@
     const CONS_LABELS = @json($consistencyLabels);
 </script>
 
-    <script src="{{ asset('assets/js/modal-render-chips.js') }}"></script>
+    <script src="{{ asset('assets/js/modal-render-chips.js') }}?v={{ filemtime(public_path('assets/js/modal-render-chips.js')) }}"></script>
 
 </x-app-layout>
