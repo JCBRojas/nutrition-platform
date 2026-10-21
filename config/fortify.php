@@ -150,11 +150,13 @@ return [
         // Features::emailVerification(),
         Features::updateProfileInformation(),
         Features::updatePasswords(),
-        Features::twoFactorAuthentication([
+        // TWO_FACTOR_ENABLED=false apaga la verificación en dos pasos: el login no pide el código
+        // aunque el usuario la tenga activa, y el perfil no muestra la sección.
+        ...(env('TWO_FACTOR_ENABLED', true) ? [Features::twoFactorAuthentication([
             'confirm' => true,
             'confirmPassword' => true,
             // 'window' => 0,
-        ]),
+        ])] : []),
     ],
 
 ];

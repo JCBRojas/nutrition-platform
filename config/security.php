@@ -20,8 +20,11 @@ return [
         'jefe_nutricion' => ['despachador'],
     ],
 
-    // Roles que deben tener la verificación en dos pasos (2FA) activa para usar la plataforma
-    'two_factor_roles' => array_values(array_filter(array_map('trim', explode(',', env('TWO_FACTOR_ROLES', 'admin,jefe_nutricion'))))),
+    // Roles que deben tener la verificación en dos pasos (2FA) activa para usar la plataforma.
+    // Con TWO_FACTOR_ENABLED=false no se exige a nadie (ver config/fortify.php).
+    'two_factor_roles' => env('TWO_FACTOR_ENABLED', true)
+        ? array_values(array_filter(array_map('trim', explode(',', env('TWO_FACTOR_ROLES', 'admin,jefe_nutricion')))))
+        : [],
 
     // Política de tratamiento de datos que cada usuario acepta al ingresar.
     // Cambiar la versión hace que todos la acepten de nuevo.
