@@ -19,6 +19,8 @@ use InvalidArgumentException;
  * - Refrigerios de un tipo sin esa fila → config('billing.snack_type') (Entrecomidas).
  * - Fraccionada no se factura (no está en config('billing.services')).
  * - Valor: cada día se valora con el precio vigente ese día (service_prices).
+ * - Por empresa (NUT-RN-003-14, -15): dietas y precios son los de la empresa activa
+ *   (CompanyScope en Diet y ServicePrice).
  * - Desde config('dispatch.required_from') solo se factura el tiempo de comida despachado
  *   por cocina y recibido por el nutricionista (activeDietsByDay con $receivedOnly).
  * - Desde config('dispatch.completion_required_from') solo se facturan los días en que la
@@ -73,7 +75,7 @@ class BillingService
         }
 
         return ServicePrice::updateOrCreate(
-            ['billing_type' => $type, 'service' => $service, 'valid_from' => $validFrom->toDateString()],
+            ['company_id' => ServicePrice::defaultCompanyId(), 'billing_type' => $type, 'service' => $service, 'valid_from' => $validFrom->toDateString()],
             ['price' => round($price, 2), 'created_by' => $userId],
         );
     }

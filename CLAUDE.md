@@ -269,7 +269,7 @@ Nombres de archivo con fecha local: `produccion_2026-10-15_0630.pdf` (`now('Amer
 - **Facturación** (formato del hospital `Facturación 1 al 31 de Enero 2026 UCI.xlsx`):
   - Catálogo en `config/billing.php`: 17 tipos de dieta con sus servicios (81 filas), `services` (Comida = cena; Fraccionada **no** se factura), `snack_type` = `entrecomidas`, `unit` = `BILLING_UNIT` (UCI).
   - `diet_histories.billing_type`: obligatorio en los formularios (`StoreDietRequest`/`StoreDietVersionRequest`), lo elige el nutricionista y se copia al cancelar. Las versiones antiguas sin tipo aparecen como advertencia y no se facturan.
-  - Precios por tipo × servicio en `service_prices` (`billing_type`, `service`, `price`, `valid_from`; único por los tres). Los digita el jefe en `/precios` (`PricesManager`, permiso `managePrices`).
+  - Precios por tipo × servicio y por empresa en `service_prices` (`company_id`, `billing_type`, `service`, `price`, `valid_from`; único por los cuatro). Los digita el jefe en `/precios` (`PricesManager`, permiso `managePrices`).
   - `App\Services\BillingService::monthly()`: usa `DietReportService::activeDietsByDay()` (misma regla que el reporte). Los refrigerios de tipos sin esa fila van a Entrecomidas, y cada día se valora con su precio vigente.
   - Excel `GET /facturacion/excel?mes=YYYY-MM` (`billing.excel`) → `App\Exports\BillingWorkbook` (PhpSpreadsheet directo). Hoja `{MES} {AÑO}`: días 1–31 (los inexistentes en gris), `AJ=SUM`, `AK=D*AJ`; si el precio cambió en el mes, `AK` lleva el valor calculado y un comentario. Incluye resumen AM:AN, subtotal, total del mes y la hoja `FACTURACIÓN MES A MES `.
 - Rol `jefe_nutricion`: los permisos del nutricionista (`createDiets`, `editDiets`, `viewDiets`, `viewReports`, `confirmReception`, `viewDispatches`, `viewActiveDiets`, `continueDiets`) más `generateFiles` (descarga reportes), `managePrices`, `manageSubscription`, `viewUsers` y `createUsers` (solo crea y ve nutricionistas: `config('security.assignable_roles')`, `UserService::assignableRoles`; no edita ni elimina). Migración `2026_10_30_000000_jefe_nutricion_works_as_nutritionist`. Al iniciar sesión va a `dashboard.nutrition`. En el menú, también «Facturación y precios».
@@ -302,7 +302,7 @@ Detalle y lista de tareas de cada institución: `docs/seguridad/cumplimiento.md`
 
 ## 7f. Empresas atendidas por el despacho (NUT-RN-003, SCRUM-7)
 
-- Regla en Confluence: NUT-RN-003. Pendiente: Premium (SCRUM-9), precios y facturación por empresa (SCRUM-10).
+- Regla en Confluence: NUT-RN-003. Pendiente: Premium (SCRUM-9).
 - `companies` (`App\Models\Company`): `name` único (150), `nit` único con dígito de verificación (`App\Rules\Nit`, algoritmo DIAN; se guarda sin puntos, p. ej. `900123456-8`), contacto (`contact_name`, `contact_phone` E.164, `contact_email`), `is_active`, `is_default`. **Nunca se borran:** se desactivan; la desactivada sale de los selectores (`User::selectableCompanies()`) pero conserva su historial. La predeterminada (`Company::default()`, migración `2026_10_27_000000_create_companies_tables`, nombre `DEFAULT_COMPANY_NAME`, NIT `DEFAULT_COMPANY_NIT`) no se desactiva.
 - `diets.company_id`: las dietas existentes quedan en la predeterminada; `Diet::creating` usa la predeterminada si no se indica empresa.
 - Pantalla `/empresas` (`companies.index`, `App\Livewire\CompaniesManager`, paginada): ver con `viewCompanies` o `manageCompanies`; crear, editar y desactivar solo `manageCompanies` (`App\Services\CompanyService`). Auditoría `company_created`, `company_updated`, `company_deactivated`. Inicio del `jefe_despacho`.
@@ -319,6 +319,7 @@ Detalle y lista de tareas de cada institución: `docs/seguridad/cumplimiento.md`
 - Selector `<x-company-switcher>` arriba de cada página del layout de la app: con varias empresas, select + «Cambiar empresa» → `POST /empresa-activa` (`company.switch`, 403 si no es elegible), que vuelve a la misma pantalla sin la consulta (página 1, filtros limpios). Con una sola empresa muestra su nombre.
 - Tiempo real: `DietsChanged` lleva `companies` (IDs; `[]` = todas) y `live.js` ignora los avisos cuya empresa no es la de `<meta name="nt-company">`.
 - El Excel del reporte lleva la empresa en el nombre (`reporte-nutricional_{empresa}_{mes}_…`).
+- **Precios y facturación por empresa (NUT-RN-003-14, -15, SCRUM-10):** `service_prices.company_id` (único por empresa + tipo + servicio + vigencia; la migración `2026_10_31_000000_add_company_to_service_prices_table` dejó los existentes en la predeterminada). `ServicePrice` usa `CompanyScope` y al crear toma la empresa activa (`ServicePrice::defaultCompanyId()`; sin usuario, la predeterminada); su empresa no cambia. `/precios` y `BillingService::monthly()` trabajan con la empresa activa; el Excel de facturación lleva la empresa en el nombre del archivo y de la hoja del mes (`BillingWorkbook`, máx. 31 caracteres). Tests: `tests/Feature/CompanyBillingTest.php`.
 - Tests: `tests/Feature/CompanyIsolationTest.php`. El `UserFactory` crea usuarios con «Todas».
 
 ## 7c. Paginación de tablas

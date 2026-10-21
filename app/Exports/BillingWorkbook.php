@@ -15,6 +15,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  *  - Hoja "{MES} {AÑO}": tipo × servicio, valor unitario, días 1–31, total servicios
  *    (=SUM) y valor total (=D*AJ), resumen por servicio (AM:AN), subtotal y total del mes.
  *  - Hoja "FACTURACIÓN MES A MES": total de cada mes del año.
+ *  - Por empresa (NUT-RN-003-15): su nombre va en el archivo y en la hoja del mes.
  */
 class BillingWorkbook
 {
@@ -39,11 +40,19 @@ class BillingWorkbook
      * @param  array  $monthly  BillingService::monthly()
      * @param  array  $yearTotals  BillingService::yearTotals(): 'YYYY-MM' => valor
      */
-    public function __construct(private array $monthly, private array $yearTotals, private string $unit) {}
+    public function __construct(private array $monthly, private array $yearTotals, private string $unit, private ?string $company = null) {}
 
     public function sheetTitle(): string
     {
-        return self::MONTHS[$this->monthly['month']->month - 1].' '.$this->monthly['month']->year;
+        $title = self::MONTHS[$this->monthly['month']->month - 1].' '.$this->monthly['month']->year;
+        if (! $this->company) {
+            return $title;
+        }
+
+        // Excel limita el nombre de la hoja a 31 caracteres y no admite \ / ? * [ ] : ni comillas simples
+        $company = trim(preg_replace('/\s+/', ' ', preg_replace("/[\\\\\/?*\[\]:']/", ' ', $this->company)));
+
+        return rtrim(mb_substr("{$title} {$company}", 0, 31));
     }
 
     public function fileName(): string
@@ -51,7 +60,9 @@ class BillingWorkbook
         $m = $this->monthly['month'];
         $lastDay = $this->monthly['daysCounted'] ?: $m->daysInMonth;
 
-        return sprintf('Facturación 1 al %d de %s %d %s.xlsx', $lastDay, ucfirst(mb_strtolower(self::MONTHS[$m->month - 1])), $m->year, $this->unit);
+        $company = $this->company ? ' '.trim(preg_replace('/\s+/', ' ', preg_replace('/[\\\\\/?*:"<>|]/', ' ', $this->company))) : '';
+
+        return sprintf('Facturación 1 al %d de %s %d %s%s.xlsx', $lastDay, ucfirst(mb_strtolower(self::MONTHS[$m->month - 1])), $m->year, $this->unit, $company);
     }
 
     public function build(): Spreadsheet

@@ -22,7 +22,11 @@
     </style>
 
     <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-4">
-        <h1 class="card-title mb-4">Precios y facturación</h1>
+        <h1 class="card-title mb-1">Precios y facturación</h1>
+        @if ($company)
+            {{-- NUT-RN-003-14, -15: precios y facturación de la empresa activa --}}
+            <p class="text-sm text-slate-500 mb-4">Empresa: <strong>{{ $company->name }}</strong>. Los precios y la facturación son solo de esta empresa.</p>
+        @endif
 
         @if (session('success'))
             <div class="info-banner mb-4" role="status">{{ session('success') }}</div>

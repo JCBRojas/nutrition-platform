@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Services\AuditLogger;
 use App\Services\BillingService;
+use App\Support\CurrentCompany;
 use Carbon\CarbonImmutable;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -73,7 +74,7 @@ class PricesManager extends Component
 
         $label = BillingService::types()[$data['editType']]['name'].' / '.ucfirst(mb_strtolower(BillingService::services()[$data['editService']]));
         AuditLogger::log('price_updated', "Precio de {$label}: {$data['price']} desde {$data['validFrom']}", null, [
-            'billing_type' => $data['editType'], 'service' => $data['editService'], 'price' => (float) $data['price'], 'valid_from' => $data['validFrom'],
+            'company_id' => app(CurrentCompany::class)->id(), 'billing_type' => $data['editType'], 'service' => $data['editService'], 'price' => (float) $data['price'], 'valid_from' => $data['validFrom'],
         ]);
         $this->cancel();
         session()->flash('success', "Precio de {$label} guardado.");
@@ -114,6 +115,7 @@ class PricesManager extends Component
         [$historyType, $historyService] = $this->openHistory ? explode('.', $this->openHistory) : [null, null];
 
         return view('livewire.prices-manager', [
+            'company' => app(CurrentCompany::class)->get(),
             'types' => BillingService::types(),
             'services' => BillingService::services(),
             'rows' => $rows,
