@@ -34,6 +34,26 @@ class UserService
     }
 
     /**
+     * $actor puede editar a $model: sin restricción de roles (admin) siempre; si no, solo usuarios
+     * con roles que puede asignar y, si es jefe de despacho, de alguna de sus empresas (NUT-RN-003-23).
+     */
+    public static function canManage(User $actor, User $model): bool
+    {
+        $assignable = self::assignableRoles($actor);
+        if ($assignable === null) {
+            return true;
+        }
+
+        $roles = $model->getRoleNames();
+        if ($roles->isEmpty() || $roles->diff($assignable)->isNotEmpty()) {
+            return false;
+        }
+
+        return ! $actor->isDispatchManager()
+            || $model->companies()->where('manager_id', $actor->getKey())->exists();
+    }
+
+    /**
      * Crear usuario con sus roles
      */
     public function create(array $data): User
@@ -160,8 +180,16 @@ class UserService
         $all = (bool) ($data['all_companies'] ?? false);
         $ids = $all ? [] : array_values(array_unique(array_map('intval', $data['companies'] ?? [])));
 
-        if (! $all && $ids === []) {
-            throw ValidationException::withMessages(['companies' => 'Asigna al menos una empresa o marca «Todas las empresas».']);
+        // Despachador y jefe de despacho: siempre empresas específicas (las del jefe son las que administra)
+        $restricted = $user->hasAnyRole([User::DISPATCHER_ROLE, User::DISPATCH_MANAGER_ROLE]) && ! $user->hasRole(self::ADMIN_ROLE);
+        if ($all && $restricted) {
+            throw ValidationException::withMessages(['companies' => 'A los despachadores y jefes de despacho se les asignan empresas específicas, no «Todas».']);
+        }
+
+        if (! $all && $ids === [] && ! $user->isDispatchManager()) {
+            throw ValidationException::withMessages(['companies' => $user->hasRole(User::DISPATCHER_ROLE)
+                ? 'Asigna al menos una empresa específica al despachador.'
+                : 'Asigna al menos una empresa o marca «Todas las empresas».']);
         }
 
         $user->forceFill(['all_companies' => $all])->save();

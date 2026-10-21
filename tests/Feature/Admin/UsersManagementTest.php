@@ -50,7 +50,7 @@ class UsersManagementTest extends TestCase
             ->set('password', 'Secreta-2026')
             ->set('password_confirmation', 'Secreta-2026')
             ->set('roles', ['despachador'])
-            ->set('all_companies', true)
+            ->set('companies', [(string) \App\Models\Company::default()->id]) // despachador: empresa específica
             ->call('save')
             ->assertHasNoErrors()
             ->assertSet('showForm', false);

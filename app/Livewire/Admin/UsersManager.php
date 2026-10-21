@@ -120,11 +120,21 @@ class UsersManager extends Component
 
         if (! $this->assignsCompanies()) {
             // Quien no administra empresas (p. ej. jefe de nutrición) no cambia el acceso; al crear, el
-            // usuario nuevo recibe el mismo acceso a empresas que quien lo crea
+            // usuario nuevo recibe, como empresas específicas, las que puede elegir quien lo crea
             unset($data['all_companies'], $data['companies']);
             if (! $user) {
-                $data['all_companies'] = auth()->user()->all_companies;
-                $data['companies'] = auth()->user()->companies()->pluck('companies.id')->all();
+                $data['all_companies'] = false;
+                $data['companies'] = auth()->user()->selectableCompanies()->pluck('companies.id')->all();
+            }
+        } elseif ($this->isDispatchManager()) {
+            // Jefe de despacho: solo sus empresas, nunca «Todas»; conserva las de otros jefes que ya tenga
+            $data['all_companies'] = false;
+            $others = $user ? $user->companies()->where(fn ($q) => $q->whereNull('manager_id')->orWhere('manager_id', '!=', auth()->id()))->pluck('companies.id')->all() : [];
+            $data['companies'] = [...array_map('intval', $data['companies'] ?? []), ...$others];
+            if (($data['companies'] ?? []) === [] || array_diff(array_map('intval', $this->companies), $this->managedCompanyIds()) !== []) {
+                $this->addError('companies', 'Asigna al menos una de tus empresas.');
+
+                return;
             }
         }
 
@@ -197,6 +207,17 @@ class UsersManager extends Component
         return auth()->user()->can('viewCompanies');
     }
 
+    /** Jefe de despacho (sin ser admin): asigna solo sus empresas y ve solo a los usuarios de ellas */
+    private function isDispatchManager(): bool
+    {
+        return auth()->user()->isDispatchManager();
+    }
+
+    private function managedCompanyIds(): array
+    {
+        return Company::managedBy(auth()->user())->pluck('id')->all();
+    }
+
     /** null = puede asignar cualquier rol (admin) */
     private function assignable(): ?array
     {
@@ -239,6 +260,7 @@ class UsersManager extends Component
                 ->orWhere('phone', 'like', "%{$this->search}%")))
             ->when($allRoles->contains($this->role), fn ($q) => $q->role($this->role))
             ->when($assignable !== null, fn ($q) => $assignable === [] ? $q->whereRaw('1 = 0') : $q->role($assignable))
+            ->when($this->isDispatchManager(), fn ($q) => $q->whereHas('companies', fn ($q) => $q->where('manager_id', auth()->id())))
             ->orderBy('name')
             ->paginate(Pagination::perPage($this->perPage));
 
@@ -246,9 +268,11 @@ class UsersManager extends Component
             'users' => $users,
             'allRoles' => $allRoles,
             'assignsCompanies' => $this->assignsCompanies(),
+            'offersAllCompanies' => ! $this->isDispatchManager(),
             // Activas, más las desactivadas que el usuario en edición ya tiene (para no quitárselas sin querer)
             'companyOptions' => $this->assignsCompanies()
                 ? Company::query()
+                    ->when($this->isDispatchManager(), fn ($q) => $q->managedBy(auth()->user()))
                     ->where(fn ($q) => $q->where('is_active', true)->orWhereIn('id', $this->companies ?: [0]))
                     ->orderBy('name')->get(['id', 'name', 'is_active'])
                 : collect(),

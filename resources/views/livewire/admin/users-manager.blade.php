@@ -192,9 +192,12 @@
                     @if ($assignsCompanies)
                         <fieldset class="form-group" style="border:0;padding:0;margin:0 0 14px">
                             <legend style="font-weight:600;font-size:13px;margin-bottom:6px">Empresas <span class="req">*</span></legend>
-                            <label style="display:inline-flex;align-items:center;gap:6px;font-weight:400;margin-bottom:6px">
-                                <input type="checkbox" wire:model.live="all_companies"> Todas las empresas (incluye las que se creen después)
-                            </label>
+                            @if ($offersAllCompanies)
+                                <label style="display:inline-flex;align-items:center;gap:6px;font-weight:400;margin-bottom:6px">
+                                    <input type="checkbox" wire:model.live="all_companies"> Todas las empresas (incluye las que se creen después)
+                                </label>
+                                <div class="form-hint" style="margin-bottom:6px">A los despachadores y jefes de despacho se les asignan empresas específicas.</div>
+                            @endif
                             @unless ($all_companies)
                                 <div>
                                     @forelse ($companyOptions as $c)

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Http\Middleware\EnsureAccountCompliance;
+use App\Http\Middleware\EnsureCompanyAssigned;
 use App\Http\Middleware\EnsurePremiumFeature;
 use App\Models\Diet;
 use App\Models\DietDay;
@@ -42,7 +43,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // Las acciones de Livewire (/livewire/update) también exigen política aceptada y 2FA
-        Livewire::addPersistentMiddleware([EnsureAccountCompliance::class, EnsurePremiumFeature::class]);
+        Livewire::addPersistentMiddleware([EnsureAccountCompliance::class, EnsurePremiumFeature::class, EnsureCompanyAssigned::class]);
 
         // @premium('history') … @endpremium: la función está en el plan de la institución (admin siempre)
         Blade::if('premium', fn (string $feature) => app(SubscriptionService::class)->hasFeature($feature));

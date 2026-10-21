@@ -25,6 +25,11 @@ class User extends Authenticatable
     use SoftDeletes;
     use TwoFactorAuthenticatable;
 
+    /** Roles de despacho con empresas propias o específicas (NUT-RN-003-20 a -24) */
+    public const DISPATCH_MANAGER_ROLE = 'jefe_despacho';
+
+    public const DISPATCHER_ROLE = 'despachador';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -153,18 +158,43 @@ class User extends Authenticatable
         return $this->belongsToMany(Company::class);
     }
 
-    /** Tiene acceso a todas las empresas, incluidas las que se creen después: admin o «Todas» */
+    /**
+     * Tiene acceso a todas las empresas, incluidas las que se creen después: admin o «Todas».
+     * El jefe de despacho y el despachador nunca: solo sus empresas (NUT-RN-003-22, -24).
+     */
     public function hasAllCompanies(): bool
     {
-        return $this->all_companies || $this->hasRole(\App\Services\UserService::ADMIN_ROLE);
+        if ($this->hasRole(\App\Services\UserService::ADMIN_ROLE)) {
+            return true;
+        }
+
+        return $this->all_companies && ! $this->hasAnyRole([self::DISPATCH_MANAGER_ROLE, self::DISPATCHER_ROLE]);
     }
 
-    /** Empresas que puede ver (incluye desactivadas, para su historial) */
+    /** Jefe de despacho (sin ser admin): administra solo las empresas a su nombre */
+    public function isDispatchManager(): bool
+    {
+        return $this->hasRole(self::DISPATCH_MANAGER_ROLE) && ! $this->hasRole(\App\Services\UserService::ADMIN_ROLE);
+    }
+
+    /** Empresas que puede ver (incluye desactivadas, para su historial): «Todas», las suyas (jefe de despacho) o las asignadas */
     public function accessibleCompanies()
     {
-        return $this->hasAllCompanies()
-            ? Company::query()
-            : Company::whereHas('users', fn ($q) => $q->whereKey($this->getKey()));
+        if ($this->hasAllCompanies()) {
+            return Company::query();
+        }
+
+        return Company::where(fn ($q) => $q
+            ->whereHas('users', fn ($q) => $q->whereKey($this->getKey()))
+            ->when($this->isDispatchManager(), fn ($q) => $q->orWhere('manager_id', $this->getKey())));
+    }
+
+    /** Despachador sin ninguna empresa específica activa: no puede ver ninguna pantalla (NUT-RN-003-24) */
+    public function lacksRequiredCompany(): bool
+    {
+        return $this->hasRole(self::DISPATCHER_ROLE)
+            && ! $this->hasRole(\App\Services\UserService::ADMIN_ROLE)
+            && ! $this->companies()->where('is_active', true)->exists();
     }
 
     /** Empresas que puede elegir en el selector: las accesibles y activas */

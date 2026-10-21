@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\User;
+use App\Services\UserService;
 
 class UserPolicy
 {
@@ -18,7 +19,7 @@ class UserPolicy
 
     public function update(User $user, User $model): bool
     {
-        return $user->can('editUsers');
+        return $user->can('editUsers') && UserService::canManage($user, $model);
     }
 
     public function delete(User $user, User $model): bool

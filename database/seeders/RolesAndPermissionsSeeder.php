@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Company;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -78,14 +79,17 @@ class RolesAndPermissionsSeeder extends Seeder
             'createUsers',
         ]);
 
-        // Asignar permisos a Jefe de despacho: registra las empresas que atiende la cocina (NUT-RN-003)
+        // Asignar permisos a Jefe de despacho: administra sus empresas y los despachadores de ellas (NUT-RN-003)
         $jefeDespacho->syncPermissions([
             'manageCompanies',
             'viewCompanies',
             'viewDiets',
-            'viewDispatches',
+            'viewDispatches', // Despachos del día (NUT-RN-003-25)
             'viewReports',
             'generateFiles',
+            'viewUsers',      // solo despachadores de sus empresas (config security.assignable_roles)
+            'createUsers',
+            'editUsers',
         ]);
 
         // Asignar permisos a Despachador
@@ -158,8 +162,13 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $userJefeDespacho->assignRole($jefeDespacho);
 
-        // Usuarios demo: acceso a todas las empresas (NUT-RN-003-05)
-        User::whereIn('id', [$userNutricionista->id, $userDespachador->id, $userJefe->id, $userJefeDespacho->id])
-            ->update(['all_companies' => true]);
+        // Usuarios demo (NUT-RN-003-05, -20, -24): nutrición con «Todas»; el jefe de despacho administra
+        // la empresa predeterminada y el despachador la tiene como empresa específica
+        User::whereIn('id', [$userNutricionista->id, $userJefe->id])->update(['all_companies' => true]);
+        if ($default = Company::default()) {
+            $default->manager_id ??= $userJefeDespacho->id;
+            $default->save();
+            $userDespachador->companies()->syncWithoutDetaching([$default->id]);
+        }
     }
 }

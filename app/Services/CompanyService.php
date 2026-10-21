@@ -8,15 +8,19 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Empresas atendidas por el despacho (NUT-RN-003-01 a -04). Nunca se borran: se desactivan.
+ * Empresas atendidas por el despacho (NUT-RN-003-01 a -04, -20 a -22). Nunca se borran: se desactivan.
+ * Cada empresa tiene su jefe de despacho (manager_id): el admin lo elige; el jefe de despacho
+ * que crea una empresa queda como su administrador.
  */
 class CompanyService
 {
     public function create(array $data): Company
     {
         return DB::transaction(function () use ($data) {
-            $company = Company::create($this->attributes($data));
-            AuditLogger::log('company_created', "Creó la empresa {$company->name}", $company, ['nit' => $company->nit]);
+            $company = new Company($this->attributes($data));
+            $company->manager_id = $data['manager_id'];
+            $company->save();
+            AuditLogger::log('company_created', "Creó la empresa {$company->name}", $company, ['nit' => $company->nit, 'manager_id' => $company->manager_id]);
 
             return $company;
         });
@@ -26,6 +30,9 @@ class CompanyService
     {
         return DB::transaction(function () use ($company, $data) {
             $company->fill($this->attributes($data));
+            if (array_key_exists('manager_id', $data)) {
+                $company->manager_id = $data['manager_id'];
+            }
             $changed = array_keys($company->getDirty());
             $company->save();
 

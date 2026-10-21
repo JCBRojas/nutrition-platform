@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Company;
+use App\Models\User;
 use App\Rules\Nit;
 use App\Services\CompanyService;
 use App\Support\Pagination;
@@ -14,8 +15,10 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * Empresas atendidas por el despacho (/empresas, NUT-RN-003-01 a -03).
+ * Empresas atendidas por el despacho (/empresas, NUT-RN-003-01 a -03, -20 a -22).
  * Ver: viewCompanies o manageCompanies. Crear, editar y desactivar: manageCompanies.
+ * El admin ve todas y elige el jefe de despacho de cada una; el jefe de despacho solo ve
+ * y administra las suyas, y las que crea quedan a su nombre.
  */
 #[Layout('layouts.app')]
 class CompaniesManager extends Component
@@ -49,6 +52,9 @@ class CompaniesManager extends Component
 
     public string $contact_email = '';
 
+    /** Jefe de despacho de la empresa (lo elige el admin) */
+    public ?int $manager_id = null;
+
     public function mount(): void
     {
         abort_unless(auth()->user()->canAny(['viewCompanies', 'manageCompanies']), 403);
@@ -75,7 +81,7 @@ class CompaniesManager extends Component
     public function edit(int $id): void
     {
         $this->authorize('manageCompanies');
-        $company = Company::findOrFail($id);
+        $company = $this->findOwn($id);
 
         $this->resetForm();
         $this->editingId = $company->id;
@@ -84,13 +90,14 @@ class CompaniesManager extends Component
         $this->contact_name = (string) $company->contact_name;
         $this->contact_phone = (string) $company->contact_phone;
         $this->contact_email = (string) $company->contact_email;
+        $this->manager_id = $company->manager_id;
         $this->showForm = true;
     }
 
     public function save(CompanyService $service): void
     {
         $this->authorize('manageCompanies');
-        $company = $this->editingId ? Company::findOrFail($this->editingId) : null;
+        $company = $this->editingId ? $this->findOwn($this->editingId) : null;
 
         $this->name = trim($this->name);
         $this->nit = Nit::normalize($this->nit);
@@ -105,7 +112,16 @@ class CompaniesManager extends Component
             'contact_name' => 'nombre del contacto',
             'contact_phone' => 'teléfono del contacto',
             'contact_email' => 'correo del contacto',
+            'manager_id' => 'jefe de despacho',
         ]);
+
+        // El jefe de despacho administra lo que crea; al editar no cambia el jefe de la empresa
+        if ($this->isManager()) {
+            unset($data['manager_id']);
+            if (! $company) {
+                $data['manager_id'] = auth()->id();
+            }
+        }
 
         $company ? $service->update($company, $data) : $service->create($data);
 
@@ -119,7 +135,7 @@ class CompaniesManager extends Component
         $this->authorize('manageCompanies');
 
         try {
-            $company = $service->toggleActive(Company::findOrFail($id));
+            $company = $service->toggleActive($this->findOwn($id));
             session()->flash('success', $company->is_active ? 'Empresa reactivada' : 'Empresa desactivada');
         } catch (ValidationException $e) {
             session()->flash('error', $e->validator->errors()->first());
@@ -142,19 +158,43 @@ class CompaniesManager extends Component
             'contact_name' => ['required', 'string', 'max:120'],
             'contact_phone' => ['required', 'regex:/^\+[1-9]\d{7,14}$/'],
             'contact_email' => ['required', 'email', 'max:160'],
+            'manager_id' => $this->isManager() ? ['nullable'] : ['required', 'integer', Rule::in($this->managerOptions()->pluck('id'))],
         ];
+    }
+
+    /** Jefe de despacho (sin ser admin): solo sus empresas */
+    private function isManager(): bool
+    {
+        return auth()->user()->isDispatchManager();
+    }
+
+    /** Empresa por ID; el jefe de despacho solo las suyas (403 las de otro jefe) */
+    private function findOwn(int $id): Company
+    {
+        $company = Company::findOrFail($id);
+        abort_if($this->isManager() && $company->manager_id !== auth()->id(), 403);
+
+        return $company;
+    }
+
+    /** Jefes de despacho activos que el admin puede asociar a una empresa */
+    private function managerOptions()
+    {
+        return User::role(User::DISPATCH_MANAGER_ROLE)->where('is_active', true)->orderBy('name')->get(['id', 'name', 'email']);
     }
 
     private function resetForm(): void
     {
-        $this->reset(['editingId', 'name', 'nit', 'contact_name', 'contact_phone', 'contact_email']);
+        $this->reset(['editingId', 'name', 'nit', 'contact_name', 'contact_phone', 'contact_email', 'manager_id']);
         $this->resetErrorBag();
     }
 
     public function render()
     {
         $companies = Company::query()
+            ->with('manager')
             ->withCount('diets')
+            ->when($this->isManager(), fn ($q) => $q->managedBy(auth()->user()))
             ->when($this->status === 'active', fn ($q) => $q->where('is_active', true))
             ->when($this->status === 'inactive', fn ($q) => $q->where('is_active', false))
             ->when($this->search !== '', fn ($q) => $q->where(fn ($q) => $q
@@ -168,6 +208,8 @@ class CompaniesManager extends Component
         return view('livewire.companies-manager', [
             'companies' => $companies,
             'canManage' => auth()->user()->can('manageCompanies'),
+            'isManager' => $this->isManager(),
+            'managers' => $this->isManager() ? collect() : $this->managerOptions(),
         ]);
     }
 }

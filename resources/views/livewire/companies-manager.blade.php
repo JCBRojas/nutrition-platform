@@ -50,6 +50,9 @@
                             <th>Empresa</th>
                             <th>NIT</th>
                             <th>Contacto</th>
+                            @unless ($isManager)
+                                <th>Jefe de despacho</th>
+                            @endunless
                             <th class="text-right">Dietas</th>
                             <th>Estado</th>
                             @if ($canManage)
@@ -78,6 +81,9 @@
                                         <span class="co-meta">Sin datos de contacto</span>
                                     @endif
                                 </td>
+                                @unless ($isManager)
+                                    <td>{{ $company->manager?->name ?? '—' }}</td>
+                                @endunless
                                 <td class="text-right">{{ $company->diets_count }}</td>
                                 <td>
                                     @if ($company->is_active)
@@ -100,7 +106,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $canManage ? 6 : 5 }}" class="empty" style="padding:24px">No hay empresas con estos filtros</td>
+                                <td colspan="{{ ($canManage ? 6 : 5) + ($isManager ? 0 : 1) }}" class="empty" style="padding:24px">No hay empresas con estos filtros</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -160,6 +166,19 @@
                                 <input id="co-email" type="email" wire:model="contact_email" autocomplete="off">
                                 @error('contact_email') <div class="form-hint text-red-600">{{ $message }}</div> @enderror
                             </div>
+                            @unless ($isManager)
+                                <div class="form-group">
+                                    <label for="co-manager">Jefe de despacho <span class="req">*</span></label>
+                                    <select id="co-manager" wire:model="manager_id" class="filter-select">
+                                        <option value="">Elige el jefe de despacho</option>
+                                        @foreach ($managers as $manager)
+                                            <option value="{{ $manager->id }}">{{ $manager->name }} ({{ $manager->email }})</option>
+                                        @endforeach
+                                    </select>
+                                    <div class="form-hint">Administra la empresa: sus usuarios y despachos.</div>
+                                    @error('manager_id') <div class="form-hint text-red-600">{{ $message }}</div> @enderror
+                                </div>
+                            @endunless
                         </div>
                     </div>
 

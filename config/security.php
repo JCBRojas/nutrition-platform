@@ -16,8 +16,10 @@ return [
 
     // Roles que puede asignar quien administra usuarios sin ser admin (el admin asigna todos).
     // El jefe de nutrición crea despachadores y solo ve a los usuarios con esos roles.
+    // El jefe de despacho crea despachadores de sus empresas (NUT-RN-003-23).
     'assignable_roles' => [
         'jefe_nutricion' => ['despachador'],
+        'jefe_despacho' => ['despachador'],
     ],
 
     // Roles que deben tener la verificación en dos pasos (2FA) activa para usar la plataforma.

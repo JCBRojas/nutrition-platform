@@ -99,7 +99,7 @@ Nunca se edita un `DietHistory` existente (salvo el flag `modify`); todo cambio 
 | `nutricionista` | `createDiets`, `editDiets`, `viewDiets`, `viewReports`, `confirmReception`, `viewDispatches`, `viewActiveDiets`, `continueDiets` |
 | `enfermeria` (creado desde `/admin/roles`) | según la matriz; la migración `2026_10_22_000000_create_diet_days_table` le da `continueDiets` |
 | `despachador` | `viewDiets`, `confirmDelivery`, `viewDispatches`, `generateFiles` |
-| `jefe_despacho` | `manageCompanies`, `viewCompanies`, `viewDiets`, `viewDispatches`, `viewReports`, `generateFiles` |
+| `jefe_despacho` | `manageCompanies`, `viewCompanies`, `viewDiets`, `viewDispatches`, `viewReports`, `generateFiles`, `viewUsers`, `createUsers`, `editUsers` (solo despachadores de sus empresas) |
 
 Convención de permisos: **camelCase verbo+Recurso**. Middleware alias registrados: `role`, `permission`, `role_or_permission`.
 
@@ -305,8 +305,10 @@ Detalle y lista de tareas de cada institución: `docs/seguridad/cumplimiento.md`
 - `companies` (`App\Models\Company`): `name` único (150), `nit` único con dígito de verificación (`App\Rules\Nit`, algoritmo DIAN; se guarda sin puntos, p. ej. `900123456-8`), contacto (`contact_name`, `contact_phone` E.164, `contact_email`), `is_active`, `is_default`. **Nunca se borran:** se desactivan; la desactivada sale de los selectores (`User::selectableCompanies()`) pero conserva su historial. La predeterminada (`Company::default()`, migración `2026_10_27_000000_create_companies_tables`, nombre `DEFAULT_COMPANY_NAME`, NIT `DEFAULT_COMPANY_NIT`) no se desactiva.
 - `diets.company_id`: las dietas existentes quedan en la predeterminada; `Diet::creating` usa la predeterminada si no se indica empresa.
 - Pantalla `/empresas` (`companies.index`, `App\Livewire\CompaniesManager`, paginada): ver con `viewCompanies` o `manageCompanies`; crear, editar y desactivar solo `manageCompanies` (`App\Services\CompanyService`). Auditoría `company_created`, `company_updated`, `company_deactivated`. Inicio del `jefe_despacho`.
-- Acceso de usuarios (`/admin/usuarios`, visible con `viewCompanies`): «Todas» (`users.all_companies`, incluye las futuras) o empresas específicas (`company_user`); obligatorio uno de los dos (`UserService::syncCompanies`). El admin siempre tiene todas (`User::hasAllCompanies()`). Quien crea usuarios sin `viewCompanies` (jefe de nutrición) les da su mismo acceso. La migración dejó a los usuarios existentes con «Todas».
-- Tests: `tests/Feature/CompaniesTest.php`.
+- Acceso de usuarios (`/admin/usuarios`, visible con `viewCompanies`): «Todas» (`users.all_companies`, incluye las futuras) o empresas específicas (`company_user`); obligatorio uno de los dos (`UserService::syncCompanies`). El admin siempre tiene todas (`User::hasAllCompanies()`). Quien crea usuarios sin `viewCompanies` (jefe de nutrición) les asigna como específicas las empresas que él puede elegir. La migración dejó a los usuarios existentes con «Todas».
+- **Jefe de despacho (NUT-RN-003-20 a -25):** cada empresa tiene `companies.manager_id`. El admin lo elige al crearla (obligatorio, rol `jefe_despacho` activo); la que crea un jefe de despacho queda a su nombre. El jefe (`User::isDispatchManager()`) solo ve y administra sus empresas (`Company::managedBy`; 403 sobre las de otro) y crea/edita despachadores (`security.assignable_roles`) solo con sus empresas y sin «Todas»; ve y edita solo a los usuarios de sus empresas (`UserService::canManage`, `UserPolicy::update`). Tiene «Despachos del día» (`viewDispatches`, Premium).
+- **Despachador:** nunca «Todas», siempre empresas específicas. Sin ninguna activa, el middleware `company` (`EnsureCompanyAssigned`, también persistente de Livewire) responde 403 «Sin empresa asignada» en toda la app (`User::lacksRequiredCompany()`); el perfil queda libre.
+- Tests: `tests/Feature/CompaniesTest.php`, `tests/Feature/DispatchManagerTest.php`.
 
 **Empresa activa y aislamiento (SCRUM-8):**
 - `App\Support\CurrentCompany` (singleton): empresa activa del usuario autenticado; sesión `company_id`, luego `users.last_company_id`, luego la predeterminada, luego la primera asignada. Solo empresas asignadas y activas (`User::selectableCompanies()`). `id()` = null sin usuario (consola, colas, programador), 0 si no tiene empresas.

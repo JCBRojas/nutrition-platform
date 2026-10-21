@@ -29,12 +29,16 @@ class CompaniesTest extends TestCase
         $this->jefeDespacho = User::role('jefe_despacho')->firstOrFail();
     }
 
-    private function company(string $name, string $nit, bool $active = true): Company
+    private function company(string $name, string $nit, bool $active = true, ?User $manager = null): Company
     {
-        return Company::create([
+        $company = new Company([
             'name' => $name, 'nit' => $nit, 'contact_name' => 'Contacto', 'contact_phone' => '+573001234567',
             'contact_email' => 'contacto@example.com', 'is_active' => $active,
         ]);
+        $company->manager_id = ($manager ?? $this->jefeDespacho)->id;
+        $company->save();
+
+        return $company;
     }
 
     private function fillForm($component, string $name, string $nit)
@@ -174,8 +178,10 @@ class CompaniesTest extends TestCase
         $this->assertSame([$a->id], $user->selectableCompanies()->pluck('id')->all());
         $this->assertFalse($user->canAccessCompany($b));
 
+        // «Todas» no aplica al despachador (NUT-RN-003-24): se prueba con un nutricionista
         Livewire::actingAs($admin)->test(UsersManager::class)
             ->call('edit', $user->id)
+            ->set('roles', ['nutricionista'])
             ->set('all_companies', true)
             ->call('save')
             ->assertHasNoErrors();

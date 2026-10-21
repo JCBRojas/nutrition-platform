@@ -57,6 +57,9 @@ class CompanyIsolationTest extends TestCase
         $this->b = Company::create(['name' => 'Clínica Beta', 'nit' => '860002964-4', 'contact_name' => 'B',
             'contact_phone' => '+573001234567', 'contact_email' => 'b@example.com']);
 
+        // El despachador atiende ambas empresas (empresas específicas, NUT-RN-003-24)
+        $this->dispatcher->companies()->sync([$this->a->id, $this->b->id]);
+
         // Datos de ambas empresas, creados sin usuario autenticado (sin filtro)
         $this->dietA = $this->diet('101', $this->a);
         $this->dietB = $this->diet('202', $this->b);

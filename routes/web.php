@@ -63,6 +63,7 @@ Route::middleware([
     config('jetstream.auth_session'),
     'verified',
     'compliance',
+    'company', // despachador sin empresa específica: «Sin empresa asignada» (NUT-RN-003-24)
 ])->group(function () {
     // 🔵 DIETAS ACTIVAS (nutricionista y quien tenga el permiso, p. ej. enfermería)
     Route::middleware(['permission:viewActiveDiets'])->group(function () {

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
  * Empresa cliente para la que la cocina despacha la alimentación (NUT-RN-003).
  * No se borra: se desactiva (is_active). La predeterminada (is_default) la crea la migración
  * con los datos anteriores al módulo y es con la que se trabaja sin plan Premium.
+ * Cada empresa la administra un jefe de despacho (manager_id).
  */
 class Company extends Model
 {
@@ -33,6 +34,17 @@ class Company extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /** Jefe de despacho que administra la empresa (NUT-RN-003-20) */
+    public function manager()
+    {
+        return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    public function scopeManagedBy($query, User $user)
+    {
+        return $query->where('manager_id', $user->getKey());
     }
 
     public function users()
