@@ -1,3 +1,7 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>NutriTrack Demo Premium</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -64,6 +68,8 @@
   .btn-ghost:hover:not(:disabled) { background: var(--b-secondary); color: #fff; }
   .btn-outline-primary { background: var(--surface); color: var(--b-primary); border-color: var(--b-primary); }
   .btn-outline-primary:hover:not(:disabled) { background: var(--b-primary); color: #fff; }
+  .btn-outline-danger { background: var(--surface); color: var(--b-danger); border-color: var(--b-danger); }
+  .btn-outline-danger:hover:not(:disabled) { background: var(--b-danger); color: #fff; }
   .btn-light-outline { background: transparent; color: var(--b-light); border-color: var(--b-light); }
   .btn-light-outline:hover { background: var(--b-light); color: #000; }
 
@@ -269,7 +275,46 @@
     .ver dl { grid-template-columns: minmax(0, 1fr); }
     .bar-row { grid-template-columns: 90px minmax(0, 1fr) 70px; }
   }
-  @media (max-width: 520px) { .kpis { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 720px) {
+    .work { padding-block: 16px 40px; }
+    .head h1 { font-size: 21px; }
+    .head .actions, .head .actions .btn { flex: 1 1 auto; }
+    .card-pad { padding: 14px; }
+    .toolbar, .dispatchbar { padding: 12px; }
+    .dispatchbar > .field, .dispatchbar > .btn { flex: 1 1 100%; }
+    .tabs { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+    .tab { flex-shrink: 0; }
+    .who { grid-template-columns: minmax(0, 1fr); }
+    .bar-row { grid-template-columns: 80px minmax(0, 1fr) 60px; gap: 8px; font-size: 12.5px; }
+    .ver dl { grid-template-columns: minmax(0, 1fr); }
+    /* Tablas de listas como tarjetas */
+    .t-cards, .t-cards tbody, .t-cards tr, .t-cards td { display: block; }
+    .t-cards th { display: none; }
+    .t-cards th:has(input) { display: flex; align-items: center; gap: 8px; background: none; padding: 0; text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--ink); }
+    .t-cards th:has(input)::after { content: "Seleccionar todas"; }
+    .t-cards tr { margin: 10px 12px; border: 1px solid var(--line); border-radius: 12px; padding: 6px 0; background: var(--surface); }
+    .t-cards thead tr { display: flex; margin: 0; padding: 10px 12px 0; border: 0; background: none; }
+    .t-cards td { position: relative; border: 0; padding: 6px 14px 6px 140px; min-height: 32px; }
+    .t-cards td::before { content: attr(data-label); position: absolute; left: 14px; top: 9px; width: 116px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+    .t-cards td:not([data-label]) { padding-left: 14px; }
+    .t-cards td:not([data-label])::before { content: none; }
+    .t-cards td.actions { white-space: normal; }
+    .t-cards .acts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .panel-item { flex-wrap: wrap; }
+    .panel-item .grow { flex-basis: 50%; }
+    .t-cards td.actions > .btn { margin: 0 4px 4px 0; }
+    .t-cards tr.pending { background: var(--warn-soft); box-shadow: inset 4px 0 0 var(--warn); border-color: var(--warn); }
+    .t-cards tr.pending td { background: none; box-shadow: none; }
+    .t-cards td.empty { text-align: center; }
+    .t-cards tr:has(td.empty) { border: 0; background: none; }
+    /* Modales como hoja inferior */
+    .overlay { padding: 0; place-items: end stretch; }
+    .modal { width: 100%; max-height: 94vh; border-radius: 16px 16px 0 0; }
+    .modal-h, .modal-b { padding-left: 16px; padding-right: 16px; }
+    .modal-f { padding: 12px 16px max(12px, env(safe-area-inset-bottom, 0px)); }
+    .modal-f .btn { flex: 1 1 auto; }
+  }
+  @media (max-width: 520px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpi b { font-size: 24px; } }
   @media (prefers-reduced-motion: reduce) { .side { transition: none; } }
 </style>
 
@@ -435,6 +480,8 @@
     var c = cur(d);
     d.versions.push(Object.assign({}, c, patch, { v: c.v + 1, at: isoNow(), by: user.name, change: change, pending: pending }));
   }
+  // Despachos anulados (error de cocina) o que no llegaron: salen de d.dispatches y quedan en d.voided
+  function missingToday(d, meal) { return (d.voided || []).filter(function (x) { return x.date === today() && x.meal === meal && x.voidKind === 'missing'; }).pop(); }
   function dispatchOf(d, date, meal) { return d.dispatches.find(function (x) { return x.date === date && x.meal === meal; }); }
   function transferToday(d) { return d.status === 'finished' && d.transfer && d.transfer.date === today(); }
   function blockReason(d, meal) {
@@ -509,6 +556,16 @@
     // El despachador sin empresas activas no puede usar la plataforma (EnsureCompanyAssigned)
     if (!coId && user.role === 'despachador') { root.innerHTML = demoBar() + shell(noCompany()); return; }
     root.innerHTML = demoBar() + shell(coBar() + viewHtml());
+    labelCells();
+  }
+  // En móvil las tablas .t-cards se ven como tarjetas: cada celda muestra el título de su columna
+  function labelCells() {
+    root.querySelectorAll('table.t-cards').forEach(function (t) {
+      var heads = [].map.call(t.querySelectorAll('thead th'), function (th) { return th.textContent.trim(); });
+      t.querySelectorAll('tbody tr').forEach(function (tr) {
+        [].forEach.call(tr.children, function (td, i) { if (heads[i] && !td.hasAttribute('colspan')) td.setAttribute('data-label', heads[i]); });
+      });
+    });
   }
   function demoBar() {
     return '<div class="demo-bar">Demostración con datos ficticios. Los cambios se guardan solo en este navegador. <button type="button" data-a="reset">Reiniciar demo</button></div>';
@@ -616,7 +673,7 @@
       tab('active', 'Activas', act.length) + tab('cancelled', 'Canceladas', cancelled.length) + tab('finished', 'Finalizadas', finished.length) +
       '</div><input class="input search" id="q" type="search" placeholder="Buscar habitación o paciente" value="' + esc(ui.q) + '" data-a="search" aria-label="Buscar"></div>' +
       '<div style="padding:10px 16px 0">' + legend() + '</div>' +
-      '<div class="twrap"><table><thead><tr><th>Hab.</th><th>Paciente</th><th>Día</th><th>Tiempo</th><th>Consistencia</th><th>Especificaciones</th><th>Aislam.</th><th>Acciones</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+      '<div class="twrap"><table class="t-cards"><thead><tr><th>Hab.</th><th>Paciente</th><th>Día</th><th>Tiempo</th><th>Consistencia</th><th>Especificaciones</th><th>Aislam.</th><th>Acciones</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
   }
   function kpi(label, n, sub, cls) { return '<div class="card kpi ' + cls + '"><span>' + label + '</span><b>' + n + '</b><small>' + sub + '</small></div>'; }
   function tab(k, label, n) { return '<button type="button" class="tab" role="tab" aria-selected="' + (ui.tab === k) + '" data-a="tab" data-k="' + k + '">' + label + ' (' + n + ')</button>'; }
@@ -629,7 +686,8 @@
     return '<div class="panel"><h3>🚚 ' + items.length + (items.length === 1 ? ' despacho por recibir' : ' despachos por recibir') + '<span style="margin-left:auto"><button type="button" class="btn btn-primary btn-sm" data-a="receive"' + (n ? '' : ' disabled') + '>Confirmar recepción (' + n + ')</button></span></h3><div class="panel-list">' +
       items.map(function (it) {
         var k = it.d.id + ':' + it.i;
-        return '<label class="panel-item"><input type="checkbox" data-a="rsel" data-k="' + k + '"' + (ui.rsel[k] ? ' checked' : '') + ' style="width:17px;height:17px;accent-color:var(--b-primary)"><span class="room">' + esc(it.d.room) + '</span><span class="grow">' + esc(it.d.patient) + '</span><span class="tag tag-time">' + MEAL_LABEL[it.x.meal] + '</span><span class="small muted">' + fmtTime(it.x.at) + '</span></label>';
+        return '<label class="panel-item"><input type="checkbox" data-a="rsel" data-k="' + k + '"' + (ui.rsel[k] ? ' checked' : '') + ' style="width:17px;height:17px;accent-color:var(--b-primary)"><span class="room">' + esc(it.d.room) + '</span><span class="grow">' + esc(it.d.patient) + '</span><span class="tag tag-time">' + MEAL_LABEL[it.x.meal] + '</span><span class="small muted">' + fmtTime(it.x.at) + '</span>' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-a="voidDispatch" data-kind="missing" data-id="' + it.d.id + '" data-i="' + it.i + '">✗ No llegó</button></label>';
       }).join('') + '</div></div>';
   }
 
@@ -646,7 +704,9 @@
     var rows = list.map(function (d) {
       var p = pendingOf(d), c = cur(d), base = confirmed(d), br = blockReason(d, svc), x = dispatchOf(d, today(), svc);
       var state = p ? '<div style="display:grid;gap:6px"><span class="small" style="color:var(--warn);font-weight:700">Cambio sin confirmar</span><button type="button" class="btn btn-warning btn-sm" data-a="confirm" data-id="' + d.id + '">✓ Confirmar</button></div>'
-        : x ? '<span class="tag ' + (x.receivedAt ? 'tag-recv' : 'tag-sent') + '">' + (x.receivedAt ? '✓ Recibido' : '🚚 Despachado ' + fmtTime(x.at)) + '</span>'
+        : x ? '<div style="display:grid;gap:6px;justify-items:start"><span class="tag ' + (x.receivedAt ? 'tag-recv' : 'tag-sent') + '">' + (x.receivedAt ? '✓ Recibido' : '🚚 Despachado ' + fmtTime(x.at)) + '</span>' +
+            (x.receivedAt ? '' : '<button type="button" class="btn btn-outline-danger btn-sm" data-a="voidDispatch" data-kind="error" data-id="' + d.id + '" data-i="' + d.dispatches.indexOf(x) + '">Anular despacho</button>') + '</div>'
+        : missingToday(d, svc) ? '<span class="tag chip-warn" title="' + esc(missingToday(d, svc).voidReason || '') + '">⚠ No llegó: volver a despachar</span>'
         : transferToday(d) ? '<span class="tag chip-warn">Alta: enviar a ' + esc(d.transfer.dest) + '</span>' : '<span class="small muted">' + (br || 'Lista para despachar') + '</span>';
       var check = '<input type="checkbox" data-a="sel" data-id="' + d.id + '"' + (ui.sel[d.id] && !br ? ' checked' : '') + (br ? ' disabled title="' + esc(br) + '"' : '') + ' aria-label="Seleccionar habitación ' + esc(d.room) + '" style="width:18px;height:18px;accent-color:var(--b-primary)">';
       return '<tr' + (p ? ' class="pending"' : '') + '><td>' + check + '</td><td>' + state + '</td><td><span class="room">' + esc(d.room) + '</span></td><td><b>' + esc(d.patient) + '</b></td>' +
@@ -659,7 +719,7 @@
       '<button type="button" class="btn btn-success" data-a="dispatch"' + (nsel ? '' : ' disabled') + '>🚚 Despachar seleccionadas (' + nsel + ')</button>' +
       '<span class="small muted" style="flex:1 1 220px">El nutricionista confirma la recepción; solo lo recibido se factura.</span></div>' +
       '<div style="padding:10px 16px 0">' + legend() + '</div>' +
-      '<div class="twrap"><table><thead><tr><th><input type="checkbox" data-a="selAll" aria-label="Seleccionar todas" style="width:18px;height:18px;accent-color:var(--b-primary)"></th><th>Estado</th><th>Hab.</th><th>Paciente</th><th>Tiempo</th><th>Consistencia</th><th>Especificaciones</th><th>Observaciones</th><th>Aislam.</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+      '<div class="twrap"><table class="t-cards"><thead><tr><th><input type="checkbox" data-a="selAll" aria-label="Seleccionar todas" style="width:18px;height:18px;accent-color:var(--b-primary)"></th><th>Estado</th><th>Hab.</th><th>Paciente</th><th>Tiempo</th><th>Consistencia</th><th>Especificaciones</th><th>Observaciones</th><th>Aislam.</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
   }
   function diffCell(before, after, labels, cls) {
     var added = after.filter(function (k) { return before.indexOf(k) < 0; }), removed = before.filter(function (k) { return after.indexOf(k) < 0; });
@@ -679,17 +739,18 @@
       return '<div class="card card-pad" style="display:grid;gap:6px"><span class="lbl">' + MEAL_LABEL[m] + (SCHEDULE[m] ? ' · ' + SCHEDULE[m] : '') + '</span><b class="num" style="font-size:20px">' + r.length + ' <span class="small muted" style="font-weight:500">de ' + prog + ' despachados</span></b><span class="small" style="color:var(--t-deliv);font-weight:700">' + ok + ' recibidos</span>' +
         '<div class="bar-track"><div class="bar-fill" style="width:' + (prog ? Math.round(ok / prog * 100) : 0) + '%;background:var(--t-deliv)"></div></div></div>';
     }).join('');
+    D().forEach(function (d) { (d.voided || []).forEach(function (x) { if (x.date === T) rows.push({ d: d, x: x }); }); });
     if (ui.dlService) rows = rows.filter(function (it) { return it.x.meal === ui.dlService; });
-    if (ui.dlState) rows = rows.filter(function (it) { return ui.dlState === 'received' ? it.x.receivedAt : !it.x.receivedAt; });
+    if (ui.dlState) rows = rows.filter(function (it) { return ui.dlState === 'voided' ? it.x.voidedAt : !it.x.voidedAt && (ui.dlState === 'received' ? it.x.receivedAt : !it.x.receivedAt); });
     rows.sort(function (a, b) { return roomSort(a.d, b.d) || MEALS.indexOf(a.x.meal) - MEALS.indexOf(b.x.meal); });
     var body = rows.map(function (it) {
-      return '<tr><td><span class="room">' + esc(it.d.room) + '</span></td><td>' + esc(it.d.patient) + '</td><td><span class="tag tag-time">' + MEAL_LABEL[it.x.meal] + '</span></td><td class="num">' + fmtTime(it.x.at) + '<div class="small muted">' + esc(it.x.by) + '</div></td><td>' + (it.x.receivedAt ? '<span class="tag tag-recv">✓ Recibido ' + fmtTime(it.x.receivedAt) + '</span><div class="small muted">' + esc(it.x.receivedBy) + '</div>' : '<span class="tag tag-sent">🚚 Sin recibir</span>') + '</td></tr>';
+      return '<tr><td><span class="room">' + esc(it.d.room) + '</span></td><td>' + esc(it.d.patient) + '</td><td><span class="tag tag-time">' + MEAL_LABEL[it.x.meal] + '</span></td><td class="num">' + fmtTime(it.x.at) + '<div class="small muted">' + esc(it.x.by) + '</div></td><td>' + (it.x.voidedAt ? '<span class="tag chip-err">' + (it.x.voidKind === 'missing' ? '✗ No llegó' : '✗ Anulado por cocina') + ' ' + fmtTime(it.x.voidedAt) + '</span><div class="small muted">' + esc(it.x.voidedBy) + (it.x.voidReason ? ' · ' + esc(it.x.voidReason) : '') + '</div>' : it.x.receivedAt ? '<span class="tag tag-recv">✓ Recibido ' + fmtTime(it.x.receivedAt) + '</span><div class="small muted">' + esc(it.x.receivedBy) + '</div>' : '<span class="tag tag-sent">🚚 Sin recibir</span>') + '</td></tr>';
     }).join('') || '<tr><td colspan="5" class="empty">No hay despachos con estos filtros.</td></tr>';
     return '<div class="head"><div><h1>Despachos del día</h1><p>Lo que salió de cocina hoy y lo que ya recibió nutrición.</p></div></div>' +
       '<div class="kpis" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr))">' + summary + '</div>' +
       '<div class="card"><div class="toolbar"><div class="tabs"><select class="input" data-a="dlService" aria-label="Servicio"><option value="">Todos los servicios</option>' + MEALS.map(function (m) { return '<option value="' + m + '"' + (ui.dlService === m ? ' selected' : '') + '>' + MEAL_LABEL[m] + '</option>'; }).join('') + '</select>' +
-      '<select class="input" data-a="dlState" aria-label="Estado"><option value="">Todos los estados</option><option value="pending"' + (ui.dlState === 'pending' ? ' selected' : '') + '>Sin recibir</option><option value="received"' + (ui.dlState === 'received' ? ' selected' : '') + '>Recibidos</option></select></div><span class="small muted">' + fmtDate(T) + '</span></div>' +
-      '<div class="twrap"><table><thead><tr><th>Hab.</th><th>Paciente</th><th>Tiempo</th><th>Despachado</th><th>Recepción</th></tr></thead><tbody>' + body + '</tbody></table></div></div>';
+      '<select class="input" data-a="dlState" aria-label="Estado"><option value="">Todos los estados</option><option value="pending"' + (ui.dlState === 'pending' ? ' selected' : '') + '>Sin recibir</option><option value="received"' + (ui.dlState === 'received' ? ' selected' : '') + '>Recibidos</option><option value="voided"' + (ui.dlState === 'voided' ? ' selected' : '') + '>Anulados o no llegaron</option></select></div><span class="small muted">' + fmtDate(T) + '</span></div>' +
+      '<div class="twrap"><table class="t-cards"><thead><tr><th>Hab.</th><th>Paciente</th><th>Tiempo</th><th>Despachado</th><th>Recepción</th></tr></thead><tbody>' + body + '</tbody></table></div></div>';
   }
 
   // ── Historial ──
@@ -814,7 +875,7 @@
     }).join('') || '<tr><td colspan="7" class="empty">Todavía no tienes empresas. Crea la primera.</td></tr>';
     return '<div class="head"><div><h1>Empresas</h1><p>' + (admin ? 'Empresas que atiende el despacho. Cada una tiene su jefe de despacho y sus datos separados.' : 'Tus empresas: créalas, edítalas o desactívalas. Las de otros jefes de despacho no aparecen.') + '</p></div><div class="actions"><button type="button" class="btn btn-primary" data-a="newCo">+ Nueva empresa</button></div></div>' +
       '<div class="box box-info">Las empresas no se borran: al desactivarla sale de los selectores y conserva su historial. La predeterminada no se desactiva.</div>' +
-      '<div class="card"><div class="twrap"><table><thead><tr><th>Empresa</th><th>NIT</th><th>Contacto</th>' + (admin ? '<th>Jefe de despacho</th>' : '') + '<th>Dietas activas</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+      '<div class="card"><div class="twrap"><table class="t-cards"><thead><tr><th>Empresa</th><th>NIT</th><th>Contacto</th>' + (admin ? '<th>Jefe de despacho</th>' : '') + '<th>Dietas activas</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
   }
   function openCompany(c) {
     var admin = user.role === 'admin', v = c || { name: '', nit: '', contact: '', phone: '', email: '', managerId: '' };
@@ -879,7 +940,7 @@
       '<div class="field"><label for="nu-role">Rol</label><select class="input" id="nu-role">' + roles.map(function (r) { return '<option value="' + r + '">' + ROLE[r] + '</option>'; }).join('') + '</select></div>' +
       '<div class="field full"><span class="lbl">Empresas</span>' + coChecks('nu-cos', [], admin, false) + '<span class="small muted">' + hint + '</span></div>' +
       '<div class="field"><button type="submit" class="btn btn-primary">Crear usuario</button></div><p class="err-msg full" id="nu-err" hidden></p></form></div>' +
-      '<div class="card"><div class="twrap"><table><thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Empresas</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+      '<div class="card"><div class="twrap"><table class="t-cards"><thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Empresas</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
   }
   function openUserCos(u) {
     var admin = user.role === 'admin', ids = u.companies === 'all' ? [] : u.companies;
@@ -892,7 +953,7 @@
   function vAuditoria() {
     var rows = S.audit.map(function (a) { var c = a.co ? coById(a.co) : null; return '<tr><td class="num">' + fmtDateTime(a.at) + '</td><td>' + esc(a.who) + '</td><td>' + (c ? esc(c.name) : '<span class="muted">—</span>') + '</td><td>' + esc(a.what) + '</td></tr>'; }).join('');
     return '<div class="head"><div><h1>Auditoría</h1><p>Registro de lo que se hizo en la demo. Sin datos clínicos: solo habitación o identificadores.</p></div></div>' +
-      '<div class="card"><div class="twrap"><table><thead><tr><th>Fecha</th><th>Usuario</th><th>Empresa</th><th>Acción</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+      '<div class="card"><div class="twrap"><table class="t-cards"><thead><tr><th>Fecha</th><th>Usuario</th><th>Empresa</th><th>Acción</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
   }
 
   // ════════════════ Modales ════════════════
@@ -940,6 +1001,14 @@
         pendingMeals.map(function (m) { return '<label class="check small" style="margin-right:10px"><input type="checkbox" value="' + m + '"> ' + MEAL_LABEL[m] + '</label>'; }).join('') + '</div></div>';
     }
     openModal((kind === 'finish' ? 'Dar de alta' : 'Cancelar dieta') + ' · Hab. ' + esc(d.room), body + '<p class="err-msg" id="f-err" hidden></p>', '<button type="button" class="btn btn-ghost" data-a="closeModal">Volver</button><button type="button" class="btn ' + (kind === 'finish' ? 'btn-info' : 'btn-danger') + '" data-a="saveClose" data-kind="' + kind + '" data-id="' + d.id + '">' + (kind === 'finish' ? 'Dar de alta' : 'Cancelar dieta') + '</button>');
+  }
+  function openVoid(d, i, kind) {
+    var x = d.dispatches[i], missing = kind === 'missing';
+    if (!x || x.receivedAt) return;
+    var body = '<p style="margin:0">Hab. <b>' + esc(d.room) + '</b> · ' + esc(d.patient) + ' · <span class="tag tag-time">' + MEAL_LABEL[x.meal] + '</span> despachado a las ' + fmtTime(x.at) + ' por ' + esc(x.by) + '.</p>' +
+      '<div class="box box-info">' + (missing ? 'El despacho queda como no recibido y no se factura. La cocina ve el aviso y puede volver a despacharlo.' : 'El despacho se anula y la dieta vuelve a quedar lista para despachar en este servicio. Nutrición ya no lo verá por recibir.') + '</div>' +
+      '<div class="field"><label for="v-reason">Motivo (opcional)</label><input class="input" id="v-reason" maxlength="120" placeholder="' + (missing ? 'Ej.: no llegó a la habitación' : 'Ej.: se despachó la habitación equivocada') + '"></div>';
+    openModal((missing ? 'El despacho no llegó' : 'Anular despacho') + ' · Hab. ' + esc(d.room), body, '<button type="button" class="btn btn-ghost" data-a="closeModal">Volver</button><button type="button" class="btn btn-danger" data-a="saveVoid" data-kind="' + kind + '" data-id="' + d.id + '" data-i="' + i + '">' + (missing ? 'Reportar que no llegó' : 'Anular despacho') + '</button>');
   }
   function openLogout() { openModal('Cambiar de usuario', '<p style="margin:0">Vuelves a la pantalla de entrada para elegir otro usuario de prueba. Los datos de la demo se conservan.</p>', '<button type="button" class="btn btn-ghost" data-a="closeModal">Cancelar</button><button type="button" class="btn btn-danger" data-a="doLogout">Cambiar de usuario</button>'); }
   function openReset() { openModal('Reiniciar demo', '<p style="margin:0">Se borran los cambios que hiciste y se cargan de nuevo los datos de prueba originales.</p>', '<button type="button" class="btn btn-ghost" data-a="closeModal">Cancelar</button><button type="button" class="btn btn-danger" data-a="doReset">Reiniciar</button>'); }
@@ -1016,6 +1085,18 @@
         Object.keys(touched).forEach(function (id) { evaluateDay(byId(id), touched[id]); });
         ui.rsel = {};
         commit(n + (n === 1 ? ' despacho recibido' : ' despachos recibidos'), 'Confirmó la recepción de ' + n + ' despacho(s)');
+        break;
+      }
+      case 'voidDispatch': if (d) openVoid(d, +el.dataset.i, el.dataset.kind); break;
+      case 'saveVoid': {
+        var vi = +el.dataset.i, vx = d && d.dispatches[vi], vk = el.dataset.kind;
+        if (!vx || vx.receivedAt) { closeModal(); toast('Ese despacho ya fue recibido.'); break; }
+        var reason = document.getElementById('v-reason').value.trim();
+        d.dispatches.splice(vi, 1);
+        (d.voided = d.voided || []).push(Object.assign({}, vx, { voidedAt: isoNow(), voidedBy: user.name, voidKind: vk, voidReason: reason }));
+        ui.rsel = {};
+        if (vk === 'missing') commit('Reportado: no llegó · Hab. ' + d.room, 'Reportó que no llegó ' + MEAL_LABEL[vx.meal] + ' de la habitación ' + d.room);
+        else commit('Despacho anulado · Hab. ' + d.room, 'Anuló el despacho de ' + MEAL_LABEL[vx.meal] + ' de la habitación ' + d.room);
         break;
       }
       case 'confirm': d.versions.forEach(function (v) { v.pending = false; }); commit('Cambios confirmados · Hab. ' + d.room, 'Confirmó los cambios de la habitación ' + d.room); break;
