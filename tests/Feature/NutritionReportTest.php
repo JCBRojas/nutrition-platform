@@ -142,7 +142,7 @@ class NutritionReportTest extends TestCase
             ->get(route('reports.monthly.excel', ['mes' => '2026-10']))
             ->assertOk();
 
-        Excel::assertDownloaded('reporte-nutricional_2026-10_20261015_1200.xlsx', function (MonthlySummaryExport $export) {
+        Excel::assertDownloaded('reporte-nutricional_empresa-principal_2026-10_20261015_1200.xlsx', function (MonthlySummaryExport $export) {
             [$summary, $daily, $perDiet] = $export->sheets();
 
             return $summary->title() === 'Resumen'
@@ -160,7 +160,7 @@ class NutritionReportTest extends TestCase
 
         $response->assertOk()
             ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        $this->assertStringContainsString('reporte-nutricional_2026-10', $response->headers->get('content-disposition'));
+        $this->assertStringContainsString('reporte-nutricional_empresa-principal_2026-10', $response->headers->get('content-disposition'));
     }
 
     public function test_invalid_or_future_month_is_rejected(): void

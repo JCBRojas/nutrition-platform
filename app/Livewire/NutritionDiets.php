@@ -86,7 +86,7 @@ class NutritionDiets extends Component
     {
         abort_unless(auth()->user()?->can('continueDiets'), 403);
 
-        $diet = Diet::findOrFail($dietId);
+        $diet = Diet::findAccessible($dietId);
 
         try {
             $days->continueDiet($diet, auth()->id());
@@ -106,7 +106,9 @@ class NutritionDiets extends Component
         abort_unless(auth()->user()?->can('editDiets'), 403);
 
         $this->resetClose();
-        $this->closingId = Diet::active()->findOrFail($dietId)->id;
+        $diet = Diet::findAccessible($dietId);
+        abort_unless($diet->isActive(), 404);
+        $this->closingId = $diet->id;
         $this->closingType = $type === 'cancel' ? 'cancel' : 'finish';
     }
 

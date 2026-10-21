@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BillingExportController;
+use App\Http\Controllers\CompanyContextController;
 use App\Http\Controllers\DemoRequestController;
 use App\Http\Controllers\DietController;
 use App\Http\Controllers\PrivacyController;
@@ -108,6 +109,9 @@ Route::middleware([
         Route::get('/reportes/produccion', [DietController::class, 'index'])->name('reports.production');
         Route::get('/reportes/mensual/excel', [ReportExportController::class, 'monthlyExcel'])->name('reports.monthly.excel');
     });
+    // Cambio de la empresa activa (selector de la parte superior; 403 si no está asignada)
+    Route::post('/empresa-activa', [CompanyContextController::class, 'switch'])->name('company.switch');
+
     // Empresas atendidas por el despacho (NUT-RN-003): ver o administrar
     Route::get('/empresas', CompaniesManager::class)
         ->middleware('permission:viewCompanies|manageCompanies')->name('companies.index');

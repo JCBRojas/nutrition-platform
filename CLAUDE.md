@@ -85,7 +85,7 @@ Cada archivo expone `labels` (texto UI) y `colors` (clases Tailwind). Las claves
 
 ### Tiempo real (sin polling)
 
-- Servidor: `App\Support\LiveUpdates::touch($kind)` junta los cambios (`diet`, `dispatch`, `day`) y, al confirmar la transacción, emite **un** `App\Events\DietsChanged` (`ShouldBroadcastNow`, canal privado `diets`, evento `.diets.changed`, payload solo `kinds`: sin datos clínicos). Lo disparan los eventos de modelo registrados en `AppServiceProvider` (`DietHistory` created, `Diet`/`DietDispatch`/`DietDay` saved) y las actualizaciones por consulta (`confirmChanges`, `confirmReceipt`, `startDay`), que llaman a `touch` a mano. Si el servidor WebSocket falla, `rescue` registra el error y la operación sigue (timeout `PUSHER_TIMEOUT`, 2 s). `LiveUpdates::muted()` para seeders/cargas masivas.
+- Servidor: `App\Support\LiveUpdates::touch($kind)` junta los cambios (`diet`, `dispatch`, `day`) y, al confirmar la transacción, emite **un** `App\Events\DietsChanged` (`ShouldBroadcastNow`, canal privado `diets`, evento `.diets.changed`, payload `kinds` y `companies`: sin datos clínicos). Lo disparan los eventos de modelo registrados en `AppServiceProvider` (`DietHistory` created, `Diet`/`DietDispatch`/`DietDay` saved) y las actualizaciones por consulta (`confirmChanges`, `confirmReceipt`, `startDay`), que llaman a `touch` a mano. Si el servidor WebSocket falla, `rescue` registra el error y la operación sigue (timeout `PUSHER_TIMEOUT`, 2 s). `LiveUpdates::muted()` para seeders/cargas masivas.
 - Canal `diets` (`routes/channels.php`): usuarios activos con `viewActiveDiets`, `viewDiets`, `viewDispatches`, `confirmDelivery` o `confirmReception`.
 - Navegador: `resources/js/live.js` → `window.ntLive(callback, { kinds, canRun, fallbackMs, safetyMs })` en el `x-init` de `DietsManager` (3 s), `DispatchReceipts` y `DispatchLog` (`kinds: ['dispatch']`, 5 s / 10 s) y `NutritionDiets` (5 s, `canRun` = sin modal abierto). Sin conexión WebSocket consulta cada `fallbackMs` (como el antiguo poll); conectado, solo cada 60 s por seguridad. No consulta con la pestaña oculta. **No volver a usar `wire:poll`.** `ntLive` devuelve `{ stop() }` y nunca una función: Alpine ejecuta en el acto la función que devuelve una expresión de `x-init`. Los bloques `@script` deben empezar con `let`/`const` (no con un comentario): Livewire los evalúa con Alpine y, si no, los trata como expresión y fallan.
 - `.env`: `BROADCAST_DRIVER=pusher`, `PUSHER_APP_ID/KEY/SECRET`, `PUSHER_HOST`, `PUSHER_PORT`, `PUSHER_SCHEME` (local Soketi: `app-id`/`app-key`/`app-secret`, `127.0.0.1`, `6001`, `http`). Tras cambiar las `VITE_PUSHER_*`, `npm run build`. Sin `VITE_PUSHER_APP_KEY` no hay WebSocket y todo funciona con el respaldo. Tests: `tests/Feature/LiveUpdatesTest.php`.
@@ -301,12 +301,22 @@ Detalle y lista de tareas de cada institución: `docs/seguridad/cumplimiento.md`
 
 ## 7f. Empresas atendidas por el despacho (NUT-RN-003, SCRUM-7)
 
-- Regla en Confluence: NUT-RN-003. Pendiente: selector y filtrado por empresa (SCRUM-8), Premium (SCRUM-9), precios y facturación por empresa (SCRUM-10).
+- Regla en Confluence: NUT-RN-003. Pendiente: Premium (SCRUM-9), precios y facturación por empresa (SCRUM-10).
 - `companies` (`App\Models\Company`): `name` único (150), `nit` único con dígito de verificación (`App\Rules\Nit`, algoritmo DIAN; se guarda sin puntos, p. ej. `900123456-8`), contacto (`contact_name`, `contact_phone` E.164, `contact_email`), `is_active`, `is_default`. **Nunca se borran:** se desactivan; la desactivada sale de los selectores (`User::selectableCompanies()`) pero conserva su historial. La predeterminada (`Company::default()`, migración `2026_10_27_000000_create_companies_tables`, nombre `DEFAULT_COMPANY_NAME`, NIT `DEFAULT_COMPANY_NIT`) no se desactiva.
 - `diets.company_id`: las dietas existentes quedan en la predeterminada; `Diet::creating` usa la predeterminada si no se indica empresa.
 - Pantalla `/empresas` (`companies.index`, `App\Livewire\CompaniesManager`, paginada): ver con `viewCompanies` o `manageCompanies`; crear, editar y desactivar solo `manageCompanies` (`App\Services\CompanyService`). Auditoría `company_created`, `company_updated`, `company_deactivated`. Inicio del `jefe_despacho`.
 - Acceso de usuarios (`/admin/usuarios`, visible con `viewCompanies`): «Todas» (`users.all_companies`, incluye las futuras) o empresas específicas (`company_user`); obligatorio uno de los dos (`UserService::syncCompanies`). El admin siempre tiene todas (`User::hasAllCompanies()`). Quien crea usuarios sin `viewCompanies` (jefe de nutrición) les da su mismo acceso. La migración dejó a los usuarios existentes con «Todas».
 - Tests: `tests/Feature/CompaniesTest.php`.
+
+**Empresa activa y aislamiento (SCRUM-8):**
+- `App\Support\CurrentCompany` (singleton): empresa activa del usuario autenticado; sesión `company_id`, luego `users.last_company_id`, luego la predeterminada, luego la primera asignada. Solo empresas asignadas y activas (`User::selectableCompanies()`). `id()` = null sin usuario (consola, colas, programador), 0 si no tiene empresas.
+- **Filtro en el servidor:** scope global `App\Models\Scopes\CompanyScope` en `Diet` (`company_id`), `DietDispatch` y `DietDay` (por `diet_id`). Toda consulta Eloquent (listados, contadores, reportes, Excel, `whereHas`) queda en la empresa activa; para saltarlo, `withoutGlobalScope(CompanyScope::class)` (solo en código de sistema). Las consultas con `DB::table` **no** se filtran.
+- Acciones por ID: `Diet::findAccessible($id)` (404 si no existe, 403 si es de otra empresa); el route model binding de `{diet}` hace lo mismo.
+- La dieta se crea en la empresa activa (`DietController::createDiet` → `CurrentCompany::require()`) y `company_id` no cambia (`Diet::updating` lanza `LogicException`).
+- Selector `<x-company-switcher>` arriba de cada página del layout de la app: con varias empresas, select + «Cambiar empresa» → `POST /empresa-activa` (`company.switch`, 403 si no es elegible), que vuelve a la misma pantalla sin la consulta (página 1, filtros limpios). Con una sola empresa muestra su nombre.
+- Tiempo real: `DietsChanged` lleva `companies` (IDs; `[]` = todas) y `live.js` ignora los avisos cuya empresa no es la de `<meta name="nt-company">`.
+- El Excel del reporte lleva la empresa en el nombre (`reporte-nutricional_{empresa}_{mes}_…`).
+- Tests: `tests/Feature/CompanyIsolationTest.php`. El `UserFactory` crea usuarios con «Todas».
 
 ## 7c. Paginación de tablas
 

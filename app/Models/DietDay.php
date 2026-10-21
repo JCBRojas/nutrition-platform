@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\CompanyScope;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,12 @@ use Illuminate\Database\Eloquent\Model;
  */
 class DietDay extends Model
 {
+    /** Solo los de dietas de la empresa activa (CompanyScope) */
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new CompanyScope);
+    }
+
     public const VIA_CREATION = 'creacion';
 
     public const VIA_CONTINUATION = 'continuacion';

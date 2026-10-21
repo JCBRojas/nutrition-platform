@@ -237,7 +237,7 @@ class DispatchService
 
             DietDispatch::whereIn('id', $dispatches->pluck('id'))
                 ->update(['received_by' => $userId, 'received_at' => now()]);
-            LiveUpdates::touch(LiveUpdates::DISPATCH);
+            $dispatches->pluck('diet.company_id')->unique()->each(fn ($companyId) => LiveUpdates::touch(LiveUpdates::DISPATCH, $companyId));
 
             return [
                 'received' => $dispatches->count(),

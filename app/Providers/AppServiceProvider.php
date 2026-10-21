@@ -9,6 +9,7 @@ use App\Models\DietDay;
 use App\Models\DietDispatch;
 use App\Models\DietHistory;
 use App\Services\SubscriptionService;
+use App\Support\CurrentCompany;
 use App\Support\LiveUpdates;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\URL;
@@ -25,6 +26,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // Una instancia por petición: memoriza el plan vigente (el menú lo consulta varias veces)
         $this->app->scoped(SubscriptionService::class);
+
+        // Empresa activa del usuario (NUT-RN-003); la usan los scopes globales de dietas
+        $this->app->singleton(CurrentCompany::class);
     }
 
     /**
@@ -48,9 +52,10 @@ class AppServiceProvider extends ServiceProvider
 
         // Tiempo real: toda escritura de dietas, despachos o días avisa a las pantallas abiertas.
         // Las actualizaciones masivas por consulta (sin eventos de modelo) llaman a LiveUpdates::touch.
-        DietHistory::created(fn () => LiveUpdates::touch(LiveUpdates::DIET));
-        Diet::saved(fn () => LiveUpdates::touch(LiveUpdates::DIET));
-        DietDispatch::saved(fn () => LiveUpdates::touch(LiveUpdates::DISPATCH));
-        DietDay::saved(fn () => LiveUpdates::touch(LiveUpdates::DAY));
+        // Cada aviso lleva la empresa de la dieta: las pantallas de otras empresas lo ignoran.
+        DietHistory::created(fn (DietHistory $h) => LiveUpdates::touch(LiveUpdates::DIET, LiveUpdates::companyOf($h->diet_id)));
+        Diet::saved(fn (Diet $d) => LiveUpdates::touch(LiveUpdates::DIET, $d->company_id));
+        DietDispatch::saved(fn (DietDispatch $d) => LiveUpdates::touch(LiveUpdates::DISPATCH, LiveUpdates::companyOf($d->diet_id)));
+        DietDay::saved(fn (DietDay $d) => LiveUpdates::touch(LiveUpdates::DAY, LiveUpdates::companyOf($d->diet_id)));
     }
 }

@@ -122,7 +122,7 @@ class DietsManager extends Component
     {
         abort_unless(auth()->user()?->can('confirmDelivery'), 403);
 
-        $diet = Diet::findOrFail($dietId);
+        $diet = Diet::findAccessible($dietId);
         $diets->confirmChanges($diet);
 
         $this->pendingCache = null;

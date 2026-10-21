@@ -5,6 +5,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    {{-- Empresa activa: resources/js/live.js ignora los avisos de otras empresas --}}
+    <meta name="nt-company" content="{{ app(\App\Support\CurrentCompany::class)->id() }}">
 
     <title>{{ config('app.name', 'Laravel') }}</title>
 
@@ -45,6 +47,9 @@
 
     <!-- Page Content -->
     <main class="main">
+        @auth
+            <x-company-switcher />
+        @endauth
         {{ $slot }}
     </main>
 

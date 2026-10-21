@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Exports\MonthlySummaryExport;
 use App\Services\AuditLogger;
 use App\Services\Reports\DietReportService;
+use App\Support\CurrentCompany;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ReportExportController extends Controller
@@ -19,11 +21,13 @@ class ReportExportController extends Controller
     public function monthlyExcel(Request $request)
     {
         $month = self::monthFromRequest($request);
-        AuditLogger::log('export', 'Descargó el reporte nutricional de '.$month->format('Y-m'), null, ['report' => 'reporte_nutricional', 'month' => $month->format('Y-m')]);
+        // Solo datos de la empresa activa (CompanyScope); su nombre va en el archivo
+        $company = app(CurrentCompany::class)->get();
+        AuditLogger::log('export', 'Descargó el reporte nutricional de '.$month->format('Y-m'), null, ['report' => 'reporte_nutricional', 'month' => $month->format('Y-m'), 'company_id' => $company?->id]);
 
         return Excel::download(
             new MonthlySummaryExport($this->reports->monthlyCensus($month, receivedOnly: true)), // solo lo despachado y recibido
-            sprintf('reporte-nutricional_%s_%s.xlsx', $month->format('Y-m'), now()->format('Ymd_Hi')),
+            sprintf('reporte-nutricional_%s%s_%s.xlsx', $company ? Str::slug($company->name).'_' : '', $month->format('Y-m'), now()->format('Ymd_Hi')),
         );
     }
 

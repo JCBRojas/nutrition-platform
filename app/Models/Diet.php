@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\CompanyScope;
+use App\Support\CurrentCompany;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use LogicException;
 
 class Diet extends Model
 {
@@ -55,12 +58,44 @@ class Diet extends Model
         'transfer_date' => 'date',
     ];
 
-    /** Sin empresa indicada, la dieta queda en la predeterminada (NUT-RN-003-18) */
+    /**
+     * Sin empresa indicada, la dieta queda en la activa del usuario o en la predeterminada
+     * (NUT-RN-003-07, -18). La empresa no cambia después de crearla.
+     */
     protected static function booted(): void
     {
+        static::addGlobalScope(new CompanyScope);
+
         static::creating(function (Diet $diet) {
-            $diet->company_id ??= Company::default()?->id;
+            $diet->company_id ??= app(CurrentCompany::class)->id() ?: Company::default()?->id;
         });
+
+        static::updating(function (Diet $diet) {
+            if ($diet->isDirty('company_id') && $diet->getOriginal('company_id') !== null) {
+                throw new LogicException('La empresa de una dieta no se cambia.');
+            }
+        });
+    }
+
+    /**
+     * Dieta por ID para una acción del usuario: 404 si no existe, 403 si es de otra empresa
+     * (NUT-RN-003-12). Las consultas normales ya filtran con CompanyScope.
+     */
+    public static function findAccessible(int|string $id): self
+    {
+        $diet = static::withoutGlobalScope(CompanyScope::class)->findOrFail($id);
+        $current = app(CurrentCompany::class)->id();
+        abort_if($current !== null && $diet->company_id !== $current, 403);
+
+        return $diet;
+    }
+
+    /** Rutas con {diet}: misma regla que findAccessible (403 en vez de 404 para otra empresa) */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        return $field === null || $field === $this->getRouteKeyName()
+            ? static::findAccessible($value)
+            : parent::resolveRouteBinding($value, $field);
     }
 
     /** En curso: activas y completadas (no canceladas ni finalizadas) */

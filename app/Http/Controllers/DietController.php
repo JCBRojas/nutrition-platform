@@ -7,6 +7,7 @@ use App\Models\Diet;
 use App\Models\DietHistory;
 use App\Services\DietService;
 use App\Services\Reports\DietReportService;
+use App\Support\CurrentCompany;
 use Illuminate\Http\Request;
 
 class DietController extends Controller
@@ -21,7 +22,10 @@ class DietController extends Controller
      */
     public function createDiet(StoreDietRequest $request)
     {
-        $diet = $this->dietService->createDiet($request->validated(), auth()->id());
+        $diet = $this->dietService->createDiet(
+            [...$request->validated(), 'company_id' => app(CurrentCompany::class)->require()],
+            auth()->id()
+        );
 
         return redirect()->back()->with('success', 'Dieta creada');
     }

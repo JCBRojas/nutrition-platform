@@ -195,7 +195,7 @@ class DispatchFlowTest extends TestCase
 
         $this->actingAs($this->nutritionist)->get(route('reports.monthly.excel', ['mes' => '2026-10']))->assertOk();
 
-        Excel::assertDownloaded('reporte-nutricional_2026-10_20261020_1230.xlsx', function (MonthlySummaryExport $export) {
+        Excel::assertDownloaded('reporte-nutricional_empresa-principal_2026-10_20261020_1230.xlsx', function (MonthlySummaryExport $export) {
             $summary = collect($export->sheets()[0]->array());
 
             return $summary->contains(fn ($row) => $row[0] === 'Total bandejas' && $row[1] === 1)

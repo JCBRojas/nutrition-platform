@@ -31,6 +31,7 @@ class DietHistoryViewer extends Component
     public function mount(): void
     {
         if ($this->dietId) {
+            Diet::findAccessible($this->dietId); // ?dieta= de otra empresa: 403
             $this->auditView(); // abierto desde ?dieta=
         }
     }
@@ -45,7 +46,7 @@ class DietHistoryViewer extends Component
 
     public function select(int $id): void
     {
-        $this->dietId = $id;
+        $this->dietId = Diet::findAccessible($id)->id;
         $this->auditView();
     }
 

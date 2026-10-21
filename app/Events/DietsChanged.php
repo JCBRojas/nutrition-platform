@@ -18,8 +18,11 @@ class DietsChanged implements ShouldBroadcastNow
 
     public const CHANNEL = 'diets';
 
-    /** @param  array<int, string>  $kinds  diet | dispatch | day */
-    public function __construct(public array $kinds) {}
+    /**
+     * @param  array<int, string>  $kinds  diet | dispatch | day
+     * @param  array<int, int>  $companies  empresas afectadas (IDs, sin datos clínicos); [] = todas
+     */
+    public function __construct(public array $kinds, public array $companies = []) {}
 
     public function broadcastOn(): array
     {
@@ -33,6 +36,6 @@ class DietsChanged implements ShouldBroadcastNow
 
     public function broadcastWith(): array
     {
-        return ['kinds' => $this->kinds];
+        return ['kinds' => $this->kinds, 'companies' => $this->companies];
     }
 }

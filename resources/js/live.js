@@ -7,6 +7,7 @@
  *
  * Opciones:
  *  - kinds: tipos que interesan (diet, dispatch, day); vacío = todos
+ *  Los avisos de otras empresas se ignoran (event.companies frente a <meta name="nt-company">).
  *  - canRun(): false aplaza el refresco (p. ej. modal abierto); se ejecuta al volver a true
  *  - fallbackMs (5000), safetyMs (60000)
  *
@@ -26,6 +27,12 @@ function subscribe() {
     }
 
     channel = window.Echo.private('diets').listen('.diets.changed', (event) => {
+        // Avisos de otra empresa: esta pantalla no los muestra (NUT-RN-003-11)
+        const current = Number(document.querySelector('meta[name="nt-company"]')?.content || 0);
+        const companies = event?.companies ?? [];
+        if (current && companies.length > 0 && ! companies.includes(current)) {
+            return;
+        }
         listeners.forEach((listener) => listener(event?.kinds ?? []));
     });
 }

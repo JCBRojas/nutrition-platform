@@ -21,6 +21,8 @@ class DietService
 
             // 1️⃣ Crear cabecera
             $diet = Diet::create([
+                // Empresa activa de quien la crea (NUT-RN-003-07); no cambia en versiones posteriores
+                'company_id' => $data['company_id'] ?? null,
                 'habitation' => $data['habitation'],
                 'name_patient' => $data['name_patient'],
                 'status' => Diet::ACTIVE,
@@ -201,7 +203,7 @@ class DietService
     public function confirmChanges(Diet $diet): int
     {
         $count = $diet->history()->where('modify', 'si')->update(['modify' => 'no']);
-        LiveUpdates::touch(LiveUpdates::DIET);
+        LiveUpdates::touch(LiveUpdates::DIET, $diet->company_id);
 
         return $count;
     }
