@@ -101,7 +101,8 @@
         .dr-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--blue); }
         .dr-checkbox:focus-visible, .dr-confirm:focus-visible, .dr-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         .dr-row-selected td { background: var(--color-primario-suave); }
-        .dr-confirm { background: var(--blue); color: #fff; font-weight: 700; border: 0; }
+        .dr-confirm { background: var(--btn-primary); color: var(--btn-primary-texto); font-weight: 700; border: 0; }
+        .dr-confirm:hover:not([disabled]) { background: var(--btn-primary-hover); }
         .dr-confirm[disabled] { opacity: .5; cursor: not-allowed; }
         .dr-toast { position: fixed; right: 20px; bottom: 20px; z-index: 300; max-width: min(360px, calc(100vw - 32px)); background: var(--text); color: #fff; padding: 12px 16px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.2); font-size: 13.5px; }
         @media (max-width: 640px) { .dr-head .dr-confirm { width: 100%; justify-content: center; margin-left: 0; } .dr-help { display: none; } }

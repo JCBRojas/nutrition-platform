@@ -41,6 +41,13 @@
             --error-bg: #FDECEC;
             --error-ink: #B91C1C;
             --focus: #6C5DD3;
+            /* Botones: colores de Bootstrap 5.3 (NUT-CMP-001 §2b) */
+            --btn-primary: #0D6EFD;
+            --btn-primary-hover: #0B5ED7;
+            --btn-primary-texto: #FFFFFF;
+            --btn-ghost: #6C757D;
+            --btn-ghost-fondo: #FFFFFF;
+            --btn-ghost-texto-hover: #FFFFFF;
             --shadow: 0 1px 2px rgba(31, 35, 64, .06), 0 12px 32px -12px rgba(31, 35, 64, .18);
         }
 
@@ -57,6 +64,9 @@
                 --error-bg: #3A1A1F;
                 --error-ink: #F87171;
                 --focus: #C9C2FA;
+                --btn-ghost: #ADB5BD;
+                --btn-ghost-fondo: transparent;
+                --btn-ghost-texto-hover: #000000;
                 --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 16px 40px -16px rgba(0, 0, 0, .6);
             }
         }
@@ -73,6 +83,9 @@
             --error-bg: #3A1A1F;
             --error-ink: #F87171;
             --focus: #C9C2FA;
+            --btn-ghost: #ADB5BD;
+            --btn-ghost-fondo: transparent;
+            --btn-ghost-texto-hover: #000000;
             --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 16px 40px -16px rgba(0, 0, 0, .6);
         }
 
@@ -391,8 +404,8 @@
             font: inherit;
             font-weight: 700;
             font-size: 1.0625rem;
-            color: var(--on-accent);
-            background: var(--accent);
+            color: var(--btn-primary-texto);
+            background: var(--btn-primary);
             border: 0;
             border-radius: .75rem;
             padding: .875rem 1rem;
@@ -401,7 +414,7 @@
         }
 
         .submit:hover {
-            background: var(--accent-hover);
+            background: var(--btn-primary-hover);
         }
 
         .back {
@@ -509,24 +522,27 @@
             transition: background .15s, color .15s, border-color .15s;
         }
 
+        /* Botones de Bootstrap: primary y outline-secondary */
         .cta {
-            background: var(--ink);
-            color: var(--bg);
+            background: var(--btn-primary);
+            color: var(--btn-primary-texto);
         }
 
         .cta:hover {
-            background: var(--accent);
-            color: var(--on-accent);
+            background: var(--btn-primary-hover);
+            color: var(--btn-primary-texto);
         }
 
         .cta-ghost {
-            border: 1.5px solid var(--line);
-            color: var(--ink);
+            border: 1.5px solid var(--btn-ghost);
+            background: var(--btn-ghost-fondo);
+            color: var(--btn-ghost);
         }
 
         .cta-ghost:hover {
-            border-color: var(--ink);
-            color: var(--ink);
+            border-color: var(--btn-ghost);
+            background: var(--btn-ghost);
+            color: var(--btn-ghost-texto-hover);
         }
 
         .cta svg,

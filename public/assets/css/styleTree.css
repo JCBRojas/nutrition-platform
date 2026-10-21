@@ -129,8 +129,8 @@ body {
 .login-btn {
   width: 100%;
   padding: 12px;
-  background: var(--accent);
-  color: #fff;
+  background: var(--btn-primary);
+  color: var(--btn-primary-texto);
   border: none;
   border-radius: var(--radius-sm);
   font-family: 'DM Sans', sans-serif;
@@ -142,9 +142,9 @@ body {
 }
 
 .login-btn:hover {
-  background: var(--color-primario-suave-texto);
+  background: var(--btn-primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px var(--color-foco)
+  box-shadow: 0 4px 14px var(--btn-foco)
 }
 
 .login-error {
@@ -688,57 +688,82 @@ body {
   white-space: nowrap
 }
 
+/* Botones con los colores de Bootstrap 5.3 (tokens --btn-* de theme.css) */
 .btn-success {
-  background: var(--accent);
-  color: #fff
+  background: var(--btn-success);
+  color: var(--btn-success-texto)
 }
 
 .btn-success:hover {
-  background: var(--color-primario-suave-texto);
+  background: var(--btn-success-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px var(--color-foco)
+  box-shadow: 0 4px 12px var(--btn-foco)
 }
 
 .btn-primary {
-  background: var(--primary);
-  color: #fff
+  background: var(--btn-primary);
+  color: var(--btn-primary-texto)
 }
 
 .btn-primary:hover {
-  background: var(--color-primario-hover);
+  background: var(--btn-primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px var(--color-foco)
+  box-shadow: 0 4px 12px var(--btn-foco)
 }
 
 .btn-danger {
-  background: var(--accent2);
-  color: #fff
+  background: var(--btn-danger);
+  color: var(--btn-danger-texto)
 }
 
 .btn-danger:hover {
-  background: var(--color-error);
-  filter: brightness(.88)
+  background: var(--btn-danger-hover)
 }
 
+.btn-warning {
+  background: var(--btn-warning);
+  color: var(--btn-warning-texto)
+}
+
+.btn-warning:hover {
+  background: var(--btn-warning-hover)
+}
+
+.btn-secondary {
+  background: var(--btn-secondary);
+  color: var(--btn-secondary-texto)
+}
+
+.btn-secondary:hover {
+  background: var(--btn-secondary-hover)
+}
+
+/* Fantasma = outline-secondary; fondo blanco: sobre el lavanda el gris no llega a 4.5:1 */
 .btn-ghost {
-  background: transparent;
-  color: var(--text-muted);
-  border: 1px solid var(--border)
+  background: var(--color-superficie);
+  color: var(--btn-secondary);
+  border: 1px solid var(--btn-secondary)
 }
 
 .btn-ghost:hover {
-  background: var(--surface2);
-  color: var(--text)
+  background: var(--btn-secondary);
+  color: var(--btn-secondary-texto)
 }
 
 .btn-info {
-  background: var(--blue-light);
-  color: var(--blue);
-  border: 1px solid var(--color-borde)
+  background: var(--btn-info);
+  color: var(--btn-info-texto);
+  border: 1px solid var(--btn-info)
 }
 
 .btn-info:hover {
-  background: var(--color-borde)
+  background: var(--btn-info-hover);
+  border-color: var(--btn-info-hover)
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 .25rem var(--btn-foco)
 }
 
 .btn-sm {
@@ -1116,9 +1141,9 @@ tr:hover td {
 }
 
 .page-btn.active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent)
+  background: var(--btn-primary);
+  color: var(--btn-primary-texto);
+  border-color: var(--btn-primary)
 }
 
 .page-btn:disabled {

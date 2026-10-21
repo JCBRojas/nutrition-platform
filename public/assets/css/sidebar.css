@@ -72,16 +72,18 @@
   flex-shrink: 0;
   width: 30px;
   height: 30px;
-  border: 1px solid var(--color-texto-sobre-primario);
+  border: 1px solid var(--btn-light);
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--color-texto-sobre-primario);
+  color: var(--btn-light);
   cursor: pointer;
-  transition: background .15s, transform .2s;
+  transition: background .15s, color .15s, transform .2s;
 }
 
+/* Botones del menú = outline-light de Bootstrap (#F8F9FA sobre el violeta: 4.81:1) */
 .sidebar-collapse:hover {
-  background: var(--color-primario-hover);
+  background: var(--btn-light);
+  color: var(--btn-light-texto);
 }
 
 .nav {
@@ -246,10 +248,10 @@
   justify-content: center;
   gap: 8px;
   padding: 9px 12px;
-  border: 1px solid var(--color-texto-sobre-primario);
+  border: 1px solid var(--btn-light);
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--color-texto-sobre-primario);
+  color: var(--btn-light);
   font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
@@ -261,18 +263,14 @@
 }
 
 .logout-btn:hover {
-  color: var(--color-texto-sobre-primario);
-  background: var(--color-primario-hover);
-  border-color: var(--color-texto-sobre-primario);
+  color: var(--btn-light-texto);
+  background: var(--btn-light);
+  border-color: var(--btn-light);
 }
 
 /* Modal de cierre de sesión */
 .logout-modal {
   max-width: 420px;
-}
-
-.logout-modal .btn-danger {
-  background: var(--color-error);
 }
 
 /* ── Escritorio: menú contraído (solo íconos) ── */

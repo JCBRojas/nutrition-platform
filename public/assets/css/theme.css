@@ -26,4 +26,33 @@
   --color-error-suave: #FDECEC;
   --color-advertencia-suave: #FEF3E2;
   --color-foco: rgba(108, 93, 211, .18);
+
+  /* ── BOTONES: colores de Bootstrap 5.3 (NUT-CMP-001 §2b) ──
+     Fondo / hover / texto. Contraste del texto: primary 4.50, secondary 4.69, success 4.53,
+     danger 4.53, warning 12.88, info 10.72. Las pestañas y el menú lateral siguen la paleta violeta. */
+  --btn-primary: #0D6EFD;
+  --btn-primary-hover: #0B5ED7;
+  --btn-primary-texto: #FFFFFF;
+  --btn-secondary: #6C757D;
+  --btn-secondary-hover: #5C636A;
+  --btn-secondary-texto: #FFFFFF;
+  --btn-success: #198754;
+  --btn-success-hover: #157347;
+  --btn-success-texto: #FFFFFF;
+  --btn-danger: #DC3545;
+  --btn-danger-hover: #BB2D3B;
+  --btn-danger-texto: #FFFFFF;
+  --btn-warning: #FFC107;
+  --btn-warning-hover: #FFCA2C;
+  --btn-warning-texto: #000000;
+  --btn-info: #0DCAF0;
+  --btn-info-hover: #31D2F2;
+  --btn-info-texto: #000000;
+  --btn-light: #F8F9FA;
+  --btn-light-hover: #D3D4D5;
+  --btn-light-texto: #000000;
+  --btn-dark: #212529;
+  --btn-dark-hover: #424649;
+  --btn-dark-texto: #FFFFFF;
+  --btn-foco: rgba(13, 110, 253, .25);
 }

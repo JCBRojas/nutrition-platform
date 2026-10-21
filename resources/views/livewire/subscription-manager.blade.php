@@ -304,7 +304,8 @@
         .sb-review:first-of-type { border-top: 0; }
         .sb-actions { display: flex; gap: 6px; flex-wrap: wrap; }
         .sb-reject { display: grid; gap: 6px; min-width: min(320px, 100%); }
-        .sb-danger { background: var(--color-error); color: #fff; border: 0; }
+        .sb-danger { background: var(--btn-danger); color: var(--btn-danger-texto); border: 0; }
+        .sb-danger:hover { background: var(--btn-danger-hover); }
         .sb-link { font-size: 12.5px; color: var(--blue); text-decoration: underline; }
         .sb-admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
         .sb-nowrap { white-space: nowrap; }

@@ -61,8 +61,8 @@
     .nd-next svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
     .nd-next-ok { background: var(--blue-light); color: var(--blue); }
     .nd-next-off { color: var(--text-muted); font-weight: 500; }
-    .nd-continue { border: 1px solid var(--blue); background: var(--surface); color: var(--blue); cursor: pointer; transition: background .15s, color .15s; }
-    .nd-continue:hover { background: var(--blue); color: #fff; }
+    .nd-continue { border: 1px solid var(--btn-primary); background: var(--surface); color: var(--btn-primary); cursor: pointer; transition: background .15s, color .15s; }
+    .nd-continue:hover { background: var(--btn-primary); color: var(--btn-primary-texto); }
     .nd-continue:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .nd-continue[disabled] { opacity: .5; cursor: wait; }
     .nd-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

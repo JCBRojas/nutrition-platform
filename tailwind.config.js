@@ -31,6 +31,15 @@ export default {
                     900: '#2B2268',
                     950: '#1C1B33',
                 },
+                // Botones: colores de Bootstrap 5.3 (mismos valores que --btn-* en theme.css)
+                bs: {
+                    primary: '#0D6EFD',
+                    'primary-hover': '#0B5ED7',
+                    secondary: '#6C757D',
+                    'secondary-hover': '#5C636A',
+                    danger: '#DC3545',
+                    'danger-hover': '#BB2D3B',
+                },
             },
         },
     },
