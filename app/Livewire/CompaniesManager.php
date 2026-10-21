@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Company;
+use App\Models\Scopes\CompanyScope;
 use App\Models\User;
 use App\Rules\Nit;
 use App\Services\CompanyService;
@@ -193,7 +194,8 @@ class CompaniesManager extends Component
     {
         $companies = Company::query()
             ->with('manager')
-            ->withCount('diets')
+            // Conteo de cada empresa, no solo de la activa (CompanyScope filtraría las demás a 0)
+            ->withCount(['diets' => fn ($q) => $q->withoutGlobalScope(CompanyScope::class)])
             ->when($this->isManager(), fn ($q) => $q->managedBy(auth()->user()))
             ->when($this->status === 'active', fn ($q) => $q->where('is_active', true))
             ->when($this->status === 'inactive', fn ($q) => $q->where('is_active', false))

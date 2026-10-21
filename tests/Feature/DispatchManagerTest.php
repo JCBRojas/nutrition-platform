@@ -6,6 +6,7 @@ use App\Livewire\Admin\UsersManager;
 use App\Livewire\CompaniesManager;
 use App\Livewire\DietsManager;
 use App\Models\Company;
+use App\Models\Diet;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -89,6 +90,7 @@ class DispatchManagerTest extends TestCase
 
     public function test_company_created_by_a_manager_is_his_and_he_only_sees_his_companies(): void
     {
+        $this->activatePremium(); // varias empresas: función Premium (NUT-RN-003-16)
         $foreign = $this->companyOf($this->otherManager(), 'Clínica Ajena', '860002964-4');
 
         $this->companyForm(Livewire::actingAs($this->manager)->test(CompaniesManager::class), 'Clínica Propia', '900123456-8')
@@ -110,6 +112,7 @@ class DispatchManagerTest extends TestCase
 
     public function test_manager_creates_dispatchers_only_with_his_companies(): void
     {
+        $this->activatePremium(); // varias empresas: función Premium (NUT-RN-003-16)
         $own = $this->companyOf($this->manager, 'Clínica Propia', '900123456-8');
         $foreign = $this->companyOf($this->otherManager(), 'Clínica Ajena', '860002964-4');
 
@@ -134,8 +137,47 @@ class DispatchManagerTest extends TestCase
         $this->assertSame([$own->id], $user->companies()->pluck('companies.id')->all());
     }
 
+    public function test_companies_list_counts_the_diets_of_each_company(): void
+    {
+        $this->activatePremium();
+        $own = $this->companyOf($this->manager, 'Clínica Propia', '900123456-8');
+        Diet::create(['company_id' => $own->id, 'habitation' => '301', 'name_patient' => 'Paciente', 'status' => Diet::ACTIVE]);
+        $active = $this->companyOf($this->manager, 'Clínica Activa', '860002964-4');
+        $this->manager->forceFill(['last_company_id' => $active->id])->save();
+
+        // La empresa activa del jefe es otra: el conteo no debe depender de ella
+        Livewire::actingAs($this->manager)->test(CompaniesManager::class)
+            ->assertViewHas('companies', fn ($companies) => $companies->firstWhere('id', $own->id)->diets_count === 1);
+    }
+
+    public function test_without_premium_manager_runs_the_default_company(): void
+    {
+        // Sin Premium solo existe para él la predeterminada (NUT-RN-003-18), aunque tenga otras a su nombre
+        $default = Company::default();
+        $own = $this->companyOf($this->manager, 'Clínica Propia', '900123456-8');
+
+        Livewire::actingAs($this->manager)->test(UsersManager::class)
+            ->call('create')
+            ->assertSee($default->name)
+            ->assertDontSee('Clínica Propia');
+
+        $this->newDispatcherForm(Livewire::actingAs($this->manager)->test(UsersManager::class), 'propia@example.com', [$own->id])
+            ->call('save')
+            ->assertHasErrors('companies');
+
+        $this->newDispatcherForm(Livewire::actingAs($this->manager)->test(UsersManager::class), 'basico@example.com', [$default->id])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $dispatcher = User::where('email', 'basico@example.com')->firstOrFail();
+        $this->assertSame([$default->id], $dispatcher->companies()->pluck('companies.id')->all());
+        $this->assertTrue($this->manager->can('update', $dispatcher));
+        Livewire::actingAs($this->manager)->test(UsersManager::class)->assertSee('basico@example.com');
+    }
+
     public function test_manager_can_assign_all_his_companies_at_once(): void
     {
+        $this->activatePremium(); // varias empresas: función Premium (NUT-RN-003-16)
         $one = $this->companyOf($this->manager, 'Clínica Uno', '900123456-8');
         $two = $this->companyOf($this->manager, 'Clínica Dos', '860002964-4');
         $own = Company::managedBy($this->manager)->active()->pluck('id')->all(); // incluye la predeterminada
@@ -180,6 +222,7 @@ class DispatchManagerTest extends TestCase
 
     public function test_manager_only_sees_and_edits_users_of_his_companies(): void
     {
+        $this->activatePremium(); // varias empresas: función Premium (NUT-RN-003-16)
         $own = $this->companyOf($this->manager, 'Clínica Propia', '900123456-8');
         $foreign = $this->companyOf($this->otherManager(), 'Clínica Ajena', '860002964-4');
         $mine = User::factory()->create(['name' => 'Despachador Propio', 'all_companies' => false]);

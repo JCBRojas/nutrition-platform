@@ -129,7 +129,7 @@ class UsersManager extends Component
         } elseif ($this->isDispatchManager()) {
             // Jefe de despacho: solo sus empresas, nunca «Todas»; conserva las de otros jefes que ya tenga
             $data['all_companies'] = false;
-            $others = $user ? $user->companies()->where(fn ($q) => $q->whereNull('manager_id')->orWhere('manager_id', '!=', auth()->id()))->pluck('companies.id')->all() : [];
+            $others = $user ? $user->companies()->whereNotIn('companies.id', $this->managedCompanyIds())->pluck('companies.id')->all() : [];
             $data['companies'] = [...array_map('intval', $data['companies'] ?? []), ...$others];
             if (($data['companies'] ?? []) === [] || array_diff(array_map('intval', $this->companies), $this->managedCompanyIds()) !== []) {
                 $this->addError('companies', 'Asigna al menos una de tus empresas.');
@@ -269,7 +269,7 @@ class UsersManager extends Component
                 ->orWhere('phone', 'like', "%{$this->search}%")))
             ->when($allRoles->contains($this->role), fn ($q) => $q->role($this->role))
             ->when($assignable !== null, fn ($q) => $assignable === [] ? $q->whereRaw('1 = 0') : $q->role($assignable))
-            ->when($this->isDispatchManager(), fn ($q) => $q->whereHas('companies', fn ($q) => $q->where('manager_id', auth()->id())))
+            ->when($this->isDispatchManager(), fn ($q) => $q->whereHas('companies', fn ($q) => $q->whereIn('companies.id', $this->managedCompanyIds())))
             ->orderBy('name')
             ->paginate(Pagination::perPage($this->perPage));
 

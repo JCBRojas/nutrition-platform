@@ -75,6 +75,7 @@
                 ['img' => 'facturacion.png', 'title' => 'Facturación y precios', 'text' => 'Precios por tipo de dieta y servicio, con su historial, y la facturación del mes lista para descargar en Excel.'],
                 ['img' => 'despachos.png', 'title' => 'Despachos del día', 'text' => 'Lo que salió de cocina y lo que recibió nutrición, por tiempo de comida, con filtros por estado y habitación.'],
                 ['img' => 'historial.png', 'title' => 'Historial de cambios', 'text' => 'Cada versión de la dieta del paciente: quién la cambió, cuándo y qué cambió.'],
+                ['img' => 'empresas.png', 'title' => 'Varias empresas atendidas', 'text' => 'Cada clínica u hospital con sus dietas, despachos, precios y facturación por separado, y su jefe de despacho.'],
             ];
         @endphp
         <section class="mb-6" aria-labelledby="preview-title">
@@ -309,7 +310,8 @@
         .sb-link { font-size: 12.5px; color: var(--blue); text-decoration: underline; }
         .sb-admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
         .sb-nowrap { white-space: nowrap; }
-        .sb-previews { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+        .sb-previews { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; } /* 4 funciones: 2 × 2 */
+        @media (max-width: 700px) { .sb-previews { grid-template-columns: minmax(0, 1fr); } }
         .sb-preview { margin: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--surface2); padding: 16px 16px 0; overflow: hidden; }
         .sb-preview figcaption { display: grid; gap: 4px; margin-bottom: 12px; }
         .sb-preview figcaption strong { font-size: 15px; }

@@ -42,8 +42,16 @@ class Company extends Model
         return $this->belongsTo(User::class, 'manager_id');
     }
 
+    /**
+     * Empresas a cargo del jefe de despacho. Sin Premium solo se trabaja con la predeterminada
+     * (NUT-RN-003-18): el jefe de despacho la administra para crear y editar sus despachadores.
+     */
     public function scopeManagedBy($query, User $user)
     {
+        if (! $user->hasMultipleCompanies()) {
+            return $query->where('is_default', true);
+        }
+
         return $query->where('manager_id', $user->getKey());
     }
 

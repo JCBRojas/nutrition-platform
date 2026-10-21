@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Company;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -50,7 +51,7 @@ class UserService
         }
 
         return ! $actor->isDispatchManager()
-            || $model->companies()->where('manager_id', $actor->getKey())->exists();
+            || $model->companies()->whereIn('companies.id', Company::managedBy($actor)->select('id'))->exists();
     }
 
     /**
