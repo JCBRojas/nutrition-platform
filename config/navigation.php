@@ -39,7 +39,7 @@ return [
         [
             'label' => 'Administración',
             'items' => [
-                ['id' => 'nav-empresas', 'label' => 'Empresas', 'route' => 'companies.index', 'icon' => 'building', 'can' => ['viewCompanies', 'manageCompanies']],
+                ['id' => 'nav-empresas', 'label' => 'Empresas', 'route' => 'companies.index', 'icon' => 'building', 'can' => ['viewCompanies', 'manageCompanies'], 'premium' => 'companies'],
                 ['id' => 'nav-usuarios', 'label' => 'Usuarios', 'route' => 'admin.users.index', 'active' => ['admin.users.*'], 'icon' => 'users', 'can' => 'viewUsers'],
                 ['id' => 'nav-roles', 'label' => 'Roles y permisos', 'route' => 'admin.roles.index', 'active' => ['admin.roles.*'], 'icon' => 'lock', 'can' => 'manageRoles'],
                 ['id' => 'nav-demos', 'label' => 'Solicitudes de demo', 'route' => 'admin.demo-requests.index', 'active' => ['admin.demo-requests.*'], 'icon' => 'message', 'can' => 'viewDemoRequests'],

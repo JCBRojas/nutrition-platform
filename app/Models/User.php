@@ -93,7 +93,8 @@ class User extends Authenticatable
             $this->hasRole('despachador') => route('dashboard.dispatch'),
             // El jefe de nutrición trabaja como nutricionista: inicia en las dietas activas
             $this->hasRole('jefe_nutricion') => route('dashboard.nutrition'),
-            $this->hasRole('jefe_despacho') => $premium('dispatch_log') ? route('dispatches.index') : route('companies.index'),
+            // Sin Premium sus pantallas (despachos del día, empresas) están bloqueadas: va a pagar el plan (NUT-RN-003-17)
+            $this->hasRole('jefe_despacho') => $premium('dispatch_log') ? route('dispatches.index') : route('subscription.index'),
             $this->hasRole('admin') => route('admin.users.index'),
             // Roles creados desde /admin/roles (p. ej. enfermería): según sus permisos
             $this->can('viewActiveDiets') => route('dashboard.nutrition'),
@@ -190,18 +191,35 @@ class User extends Authenticatable
             ->when($this->isDispatchManager(), fn ($q) => $q->orWhere('manager_id', $this->getKey())));
     }
 
-    /** Despachador sin ninguna empresa específica activa: no puede ver ninguna pantalla (NUT-RN-003-24) */
+    /**
+     * Despachador sin ninguna empresa específica activa: no puede ver ninguna pantalla (NUT-RN-003-24).
+     * Sin Premium todos trabajan en la predeterminada, así que no se exige (NUT-RN-003-18, -19).
+     */
     public function lacksRequiredCompany(): bool
     {
-        return $this->hasRole(self::DISPATCHER_ROLE)
+        return $this->hasMultipleCompanies()
+            && $this->hasRole(self::DISPATCHER_ROLE)
             && ! $this->hasRole(\App\Services\UserService::ADMIN_ROLE)
             && ! $this->companies()->where('is_active', true)->exists();
     }
 
-    /** Empresas que puede elegir en el selector: las accesibles y activas */
+    /**
+     * Empresas que puede elegir en el selector: las accesibles y activas. Sin Premium solo la
+     * predeterminada: los datos de las demás se conservan hasta renovar (NUT-RN-003-18, -19).
+     */
     public function selectableCompanies()
     {
+        if (! $this->hasMultipleCompanies()) {
+            return Company::where('is_default', true)->active();
+        }
+
         return $this->accessibleCompanies()->active()->orderBy('name');
+    }
+
+    /** Trabajar con varias empresas es función Premium; el admin la tiene siempre (NUT-RN-003-16) */
+    public function hasMultipleCompanies(): bool
+    {
+        return app(SubscriptionService::class)->hasFeature('companies', $this);
     }
 
     public function canAccessCompany(Company|int $company): bool

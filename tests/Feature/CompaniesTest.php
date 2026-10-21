@@ -24,6 +24,7 @@ class CompaniesTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->activatePremium(); // empresas es función Premium (NUT-RN-003-16)
         $this->withoutVite();
         $this->seed(RolesAndPermissionsSeeder::class);
         $this->jefeDespacho = User::role('jefe_despacho')->firstOrFail();
@@ -72,7 +73,6 @@ class CompaniesTest extends TestCase
     public function test_jefe_de_despacho_creates_a_company_and_it_is_audited(): void
     {
         $this->actingAs($this->jefeDespacho)->get(route('companies.index'))->assertOk()->assertSee('Nueva empresa');
-        $this->assertSame(route('companies.index'), $this->jefeDespacho->homeUrl());
 
         $this->fillForm(Livewire::actingAs($this->jefeDespacho)->test(CompaniesManager::class), 'Clínica Norte', '900.123.456-8')
             ->call('save')

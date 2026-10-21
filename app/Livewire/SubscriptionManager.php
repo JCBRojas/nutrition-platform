@@ -12,7 +12,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 /**
- * /suscripcion: plan de la institución, pago manual del premium (permiso manageSubscription)
+ * /suscripcion: plan del operador del despacho (NUT-RN-003-17), pago manual del premium (permiso manageSubscription)
  * y revisión de pagos, precios y activación manual (permiso approvePayments, admin).
  */
 #[Layout('layouts.app')]

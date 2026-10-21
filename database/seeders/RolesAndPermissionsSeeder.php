@@ -97,6 +97,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'viewUsers',      // solo despachadores de sus empresas (config security.assignable_roles)
             'createUsers',
             'editUsers',
+            'manageSubscription', // paga el Premium del operador del despacho (NUT-RN-003-17)
         ]);
 
         // Asignar permisos a Despachador

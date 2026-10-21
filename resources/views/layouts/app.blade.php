@@ -48,7 +48,9 @@
     <!-- Page Content -->
     <main class="main">
         @auth
-            <x-company-switcher />
+            @premium('companies')
+                <x-company-switcher />
+            @endpremium
         @endauth
         {{ $slot }}
     </main>

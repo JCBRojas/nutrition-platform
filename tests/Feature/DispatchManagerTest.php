@@ -161,7 +161,8 @@ class DispatchManagerTest extends TestCase
 
     public function test_manager_home_is_the_dispatch_log_with_premium(): void
     {
-        $this->assertSame(route('companies.index'), $this->manager->homeUrl());
+        // Sin Premium despachos y empresas están bloqueados: inicia en la suscripción (NUT-RN-003-17)
+        $this->assertSame(route('subscription.index'), $this->manager->homeUrl());
 
         $this->activatePremium();
         $this->assertSame(route('dispatches.index'), $this->manager->fresh()->homeUrl());

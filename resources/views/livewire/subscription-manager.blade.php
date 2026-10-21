@@ -10,7 +10,7 @@
         <div class="sb-head mb-4">
             <div>
                 <h2 class="card-title">Suscripción</h2>
-                <p class="sb-help">Plan de la institución. El plan Premium habilita {{ $featureList }}.</p>
+                <p class="sb-help">Plan del operador del despacho (lo paga el jefe de despacho, no cada empresa cliente). El plan Premium habilita {{ $featureList }}.</p>
             </div>
             <span @class(['sb-plan-badge', 'is-premium' => $isPremium])>
                 Plan {{ $isPremium ? 'Premium' : 'Básico' }}

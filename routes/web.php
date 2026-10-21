@@ -111,11 +111,13 @@ Route::middleware([
         Route::get('/reportes/mensual/excel', [ReportExportController::class, 'monthlyExcel'])->name('reports.monthly.excel');
     });
     // Cambio de la empresa activa (selector de la parte superior; 403 si no está asignada)
-    Route::post('/empresa-activa', [CompanyContextController::class, 'switch'])->name('company.switch');
+    // Empresas: función Premium (NUT-RN-003-16)
+    Route::post('/empresa-activa', [CompanyContextController::class, 'switch'])
+        ->middleware('premium:companies')->name('company.switch');
 
     // Empresas atendidas por el despacho (NUT-RN-003): ver o administrar
     Route::get('/empresas', CompaniesManager::class)
-        ->middleware('permission:viewCompanies|manageCompanies')->name('companies.index');
+        ->middleware(['permission:viewCompanies|manageCompanies', 'premium:companies'])->name('companies.index');
 
     // 🟣 ADMINISTRACIÓN
     Route::prefix('admin')->name('admin.')->group(function () {

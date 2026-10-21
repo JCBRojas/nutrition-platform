@@ -4,10 +4,13 @@ namespace Tests\Feature;
 
 use App\Livewire\SubscriptionManager;
 use App\Models\AuditLog;
+use App\Models\Company;
+use App\Models\Diet;
 use App\Models\Subscription;
 use App\Models\SubscriptionPayment;
 use App\Models\User;
 use App\Services\SubscriptionService;
+use App\Support\CurrentCompany;
 use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -205,5 +208,77 @@ class SubscriptionTest extends TestCase
         $this->subscriptions()->grant('monthly', $this->admin, 'Prueba');
         $this->subscriptions()->forget();
         $this->assertSame(route('dashboard.nutrition'), $this->jefe->homeUrl());
+    }
+
+    /* ===================== EMPRESAS (NUT-RN-003 §7, SCRUM-9) ===================== */
+
+    private function secondCompany(): Company
+    {
+        return Company::create(['name' => 'Clínica Beta', 'nit' => '860002964-4', 'contact_name' => 'B',
+            'contact_phone' => '+573001234567', 'contact_email' => 'b@example.com']);
+    }
+
+    public function test_companies_screen_and_selector_require_premium(): void
+    {
+        $manager = User::role('jefe_despacho')->firstOrFail();
+        $this->secondCompany();
+
+        $this->actingAs($manager)->get(route('companies.index'))
+            ->assertRedirect(route('subscription.index'))
+            ->assertSessionHas('premium_required');
+        $this->post(route('company.switch'), ['company_id' => Company::default()->id])->assertRedirect(route('subscription.index'));
+
+        $this->flushSession();
+        $this->actingAs($this->nutritionist)->get(route('dashboard.nutrition'))->assertOk()->assertDontSee('company-bar', false);
+
+        $this->activatePremium();
+        $this->actingAs($this->nutritionist)->get(route('dashboard.nutrition'))->assertOk()->assertSee('Cambiar empresa');
+        $this->flushSession();
+        $this->actingAs($manager)->get(route('companies.index'))->assertOk();
+    }
+
+    public function test_dispatch_manager_reports_the_premium_payment(): void
+    {
+        $manager = User::role('jefe_despacho')->firstOrFail();
+        $this->assertTrue($manager->can('manageSubscription'));
+        // Sin Premium sus pantallas están bloqueadas: inicia donde paga el plan
+        $this->assertSame(route('subscription.index'), $manager->homeUrl());
+
+        Livewire::actingAs($manager)->test(SubscriptionManager::class)
+            ->set('period', 'monthly')
+            ->set('method', 'transferencia')
+            ->set('reference', 'TRF-9')
+            ->set('receipt', UploadedFile::fake()->image('comprobante.jpg'))
+            ->call('submitPayment')
+            ->assertSet('noticeError', false);
+
+        $this->assertSame($manager->id, SubscriptionPayment::sole()->submitted_by);
+    }
+
+    public function test_expired_premium_keeps_data_and_pins_users_to_the_default_company(): void
+    {
+        $beta = $this->secondCompany();
+        $dispatcher = User::role('despachador')->firstOrFail();
+        $dispatcher->companies()->sync([$beta->id]);
+        $diet = Diet::create(['company_id' => $beta->id, 'habitation' => '202', 'name_patient' => 'Paciente', 'status' => Diet::ACTIVE]);
+
+        // Con Premium trabaja en su empresa
+        $this->activatePremium();
+        $this->actingAs($dispatcher)->get(route('dashboard.dispatch'))->assertOk();
+        $this->assertSame($beta->id, app(CurrentCompany::class)->id());
+
+        // Vence: queda en la predeterminada sin perder datos, y no se le bloquea la app
+        Subscription::query()->update(['ends_at' => now()->subMinute()]);
+        $this->subscriptions();
+        app(CurrentCompany::class)->forget();
+
+        $this->assertFalse($dispatcher->lacksRequiredCompany());
+        $this->assertSame([Company::default()->id], $dispatcher->selectableCompanies()->pluck('id')->all());
+        $this->assertSame(Company::default()->id, app(CurrentCompany::class)->id());
+        $this->assertDatabaseHas('diets', ['id' => $diet->id, 'company_id' => $beta->id]);
+        $this->assertTrue($beta->fresh()->is_active);
+
+        // El admin conserva todas las empresas
+        $this->assertCount(2, $this->admin->selectableCompanies()->get());
     }
 }
