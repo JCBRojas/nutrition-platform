@@ -33,16 +33,16 @@
     </div>
 
     <style>
-        .pa-card { max-width: 820px; background: var(--surface, #fff); border: 1px solid var(--border, #e2ddd6); border-radius: 12px; padding: 24px; }
+        .pa-card { max-width: 820px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
         .pa-intro { color: var(--text-muted); margin: 4px 0 14px; }
-        .pa-text { max-height: 52vh; overflow-y: auto; border: 1px solid var(--border, #e2ddd6); border-radius: 8px; padding: 4px 18px 14px; font-size: 14px; line-height: 1.55; }
+        .pa-text { max-height: 52vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 4px 18px 14px; font-size: 14px; line-height: 1.55; }
         .pa-text h2 { font-size: 15px; font-weight: 700; margin: 16px 0 4px; }
         .pa-text ul { list-style: disc; padding-left: 20px; }
         .pa-text .policy-meta { color: var(--text-muted); font-size: 12.5px; }
         .pa-form { margin-top: 16px; }
         .pa-check { display: flex; gap: 10px; align-items: flex-start; font-weight: 600; }
         .pa-check input { width: 18px; height: 18px; margin-top: 2px; }
-        .pa-error { color: #b42318; font-size: 13px; margin: 6px 0 0; }
+        .pa-error { color: var(--color-error); font-size: 13px; margin: 6px 0 0; }
         .pa-actions { margin: 14px 0 10px; }
     </style>
 </x-app-layout>

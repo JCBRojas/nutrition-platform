@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Política de datos · NutriTrack</title>
     <style>
-        :root { --bg: #f5f3ef; --surface: #fff; --text: #2f2a25; --muted: #6b645c; --border: #e2ddd6; --accent: #2a7d6f; }
-        @media (prefers-color-scheme: dark) { :root { --bg: #161412; --surface: #201d1a; --text: #ece7e1; --muted: #a8a097; --border: #3a3530; --accent: #5cc1ae; } }
+        :root { --bg: #EEF0FA; --surface: #FFFFFF; --text: #1F2340; --muted: #5E6384; --border: #DCDFF0; --accent: #5B4CC4; }
+        @media (prefers-color-scheme: dark) { :root { --bg: #1C1B33; --surface: #28264A; --text: #ECEBFA; --muted: #A9A7C9; --border: #3A3766; --accent: #A79DF0; } }
         * { box-sizing: border-box; }
         body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
         main { max-width: 760px; margin: 0 auto; padding: 32px 16px 48px; }

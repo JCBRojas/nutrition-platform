@@ -9,7 +9,7 @@
                     $isolated = $snapshot['isolationCounts']['Sí'] ?? 0;
                     $activeNow = $snapshot['totalActiveDiets'];
                     // Paleta categórica validada (orden fijo, una por tiempo de comida)
-                    $mealColors = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6'];
+                    $mealColors = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#0d8fa6', '#008300', '#6250d6'];
                     $chartDays = $census['days']->map(fn ($d) => $d['date']->format('d'))->values();
                     $chartSeries = collect(array_keys($mealLabels))
                         ->mapWithKeys(fn ($k) => [$k => $census['days']->pluck("meals.$k")->values()]);
@@ -279,7 +279,7 @@
                                 plugins: {
                                     legend: {
                                         position: 'bottom',
-                                        labels: { usePointStyle: true, pointStyle: 'circle', color: '#52514e', boxWidth: 8 },
+                                        labels: { usePointStyle: true, pointStyle: 'circle', color: '#5E6384', boxWidth: 8 },
                                     },
                                     tooltip: {
                                         filter: (item) => item.raw > 0,
@@ -290,13 +290,13 @@
                                     },
                                 },
                                 scales: {
-                                    x: { stacked: true, grid: { display: false }, ticks: { color: '#6b7280' } },
+                                    x: { stacked: true, grid: { display: false }, ticks: { color: '#5E6384' } },
                                     y: {
                                         stacked: true,
                                         beginAtZero: true,
-                                        grid: { color: '#eef0f3' },
+                                        grid: { color: '#E6E8F5' },
                                         border: { display: false },
-                                        ticks: { color: '#6b7280', precision: 0 },
+                                        ticks: { color: '#5E6384', precision: 0 },
                                     },
                                 },
                             },

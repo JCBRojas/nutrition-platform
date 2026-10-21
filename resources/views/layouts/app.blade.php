@@ -17,7 +17,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <link rel="stylesheet" href="{{ asset('assets/css/styleTree.css') }}" class="css">
     {{-- ?v= con la fecha del archivo: al cambiar el CSS, el navegador no usa la copia en caché --}}
+    <link rel="stylesheet" href="{{ asset('assets/css/theme.css') }}?v={{ filemtime(public_path('assets/css/theme.css')) }}">
     <link rel="stylesheet" href="{{ asset('assets/css/sidebar.css') }}?v={{ filemtime(public_path('assets/css/sidebar.css')) }}">
+    {{-- Menú contraído (preferencia del navegador): se aplica antes de pintar para que no salte --}}
+    <script>
+        try {
+            if (localStorage.getItem('nt-sidebar') === 'collapsed') document.documentElement.classList.add('sidebar-collapsed');
+        } catch (e) {}
+    </script>
 
 
     <!-- Scripts -->

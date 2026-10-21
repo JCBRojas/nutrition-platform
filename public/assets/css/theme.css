@@ -1,0 +1,29 @@
+/* ── TOKENS DE COLOR (NUT-CMP-001 · Paleta de colores) ──
+   Violeta como marca, sin rosa. Todo color nuevo de la interfaz sale de aquí; el contraste de
+   cada combinación de texto está medido en la página de Confluence (WCAG AA).
+   styleTree.css apunta sus variables antiguas (--accent, --blue, --amber…) a estos tokens. */
+:root {
+  --color-primario: #6C5DD3;
+  --color-primario-hover: #5A4BC2;
+  --color-texto-sobre-primario: #FFFFFF;
+  --color-marca-texto: #5B4CC4;
+  --color-secundario: #8B80E0;
+  --color-texto-sobre-secundario: #1F2340;
+  --color-primario-suave: #E8E5FB;
+  --color-primario-suave-texto: #4A3BB0;
+  --color-fondo: #EEF0FA;
+  --color-superficie: #FFFFFF;
+  --color-borde: #DCDFF0;
+  --color-texto: #1F2340;
+  --color-texto-suave: #5E6384;
+  --color-progreso: #1F8A4C;
+  --color-progreso-pista: #E6E8F5;
+  --color-exito: #166534;
+  --color-error: #B91C1C;
+  --color-advertencia: #92400E;
+  /* Fondos suaves de estado: su color de texto es el token sin «-suave» (≥ 5.6:1) */
+  --color-exito-suave: #E3F4EA;
+  --color-error-suave: #FDECEC;
+  --color-advertencia-suave: #FEF3E2;
+  --color-foco: rgba(108, 93, 211, .18);
+}

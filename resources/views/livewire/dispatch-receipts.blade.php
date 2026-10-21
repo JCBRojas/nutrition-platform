@@ -81,18 +81,18 @@
         x-text="toast"></div>
 
     <style>
-        .dr-panel { border: 1px solid #bfdbfe; border-left: 5px solid var(--blue); background: #eff6ff; border-radius: 10px; padding: 8px 12px; }
+        .dr-panel { border: 1px solid var(--color-borde); border-left: 5px solid var(--blue); background: var(--color-primario-suave); border-radius: 10px; padding: 8px 12px; }
         .dr-head { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; }
-        .dr-toggle { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 2px 0; cursor: pointer; color: #1e3a8a; }
+        .dr-toggle { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 2px 0; cursor: pointer; color: var(--color-primario-suave-texto); }
         .dr-chevron { transition: transform .15s; }
         .dr-chevron-open { transform: rotate(90deg); }
-        .dr-title { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; font-weight: 700; color: #1e3a8a; }
+        .dr-title { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; font-weight: 700; color: var(--color-primario-suave-texto); }
         .dr-help { font-size: 12px; color: var(--text-muted); }
         .dr-head .dr-confirm { margin-left: auto; }
-        .dr-body { margin-top: 8px; max-height: 196px; overflow: auto; border-radius: 8px; background: #fff; }
+        .dr-body { margin-top: 8px; max-height: 196px; overflow: auto; border-radius: 8px; background: var(--color-superficie); }
         .dr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .dr-table th { position: sticky; top: 0; z-index: 1; background: #f8fafc; text-align: left; font-size: 11.5px; font-weight: 600; color: var(--text-muted); padding: 5px 8px; border-bottom: 1px solid var(--border); }
-        .dr-table td { padding: 4px 8px; border-bottom: 1px solid #eef2f7; vertical-align: middle; }
+        .dr-table th { position: sticky; top: 0; z-index: 1; background: var(--color-progreso-pista); text-align: left; font-size: 11.5px; font-weight: 600; color: var(--text-muted); padding: 5px 8px; border-bottom: 1px solid var(--border); }
+        .dr-table td { padding: 4px 8px; border-bottom: 1px solid var(--color-borde); vertical-align: middle; }
         .dr-table .tag { margin: 0; }
         .dr-patient { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .dr-transfer { font-size: 11.5px; font-weight: 600; color: var(--blue); white-space: normal; }
@@ -100,7 +100,7 @@
         .dr-check { width: 32px; }
         .dr-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--blue); }
         .dr-checkbox:focus-visible, .dr-confirm:focus-visible, .dr-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-        .dr-row-selected td { background: #dbeafe; }
+        .dr-row-selected td { background: var(--color-primario-suave); }
         .dr-confirm { background: var(--blue); color: #fff; font-weight: 700; border: 0; }
         .dr-confirm[disabled] { opacity: .5; cursor: not-allowed; }
         .dr-toast { position: fixed; right: 20px; bottom: 20px; z-index: 300; max-width: min(360px, calc(100vw - 32px)); background: var(--text); color: #fff; padding: 12px 16px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.2); font-size: 13.5px; }

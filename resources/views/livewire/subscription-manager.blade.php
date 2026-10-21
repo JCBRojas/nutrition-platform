@@ -272,15 +272,15 @@
     <style>
         .sb-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
         .sb-help { margin: 2px 0 0; font-size: 13px; color: var(--text-muted); }
-        .sb-plan-badge { padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 700; background: var(--surface2, #f0ede8); color: var(--text); }
-        .sb-plan-badge.is-premium { background: #fef3c7; color: #92400e; }
+        .sb-plan-badge { padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 700; background: var(--surface2); color: var(--text); }
+        .sb-plan-badge.is-premium { background: var(--color-primario-suave); color: var(--color-primario-suave-texto); }
         .sb-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
-        .sb-plan { border: 1px solid var(--border, #e2ddd6); border-radius: 12px; padding: 18px; background: var(--surface, #fff); }
-        .sb-plan.is-current { border: 2px solid var(--accent, #2a7d6f); }
-        .sb-plan-premium { background: linear-gradient(180deg, #fffbeb 0, var(--surface, #fff) 60%); }
+        .sb-plan { border: 1px solid var(--border); border-radius: 12px; padding: 18px; background: var(--surface); }
+        .sb-plan.is-current { border: 2px solid var(--accent); }
+        .sb-plan-premium { background: linear-gradient(180deg, var(--color-primario-suave) 0, var(--surface) 60%); }
         .sb-plan-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
         .sb-plan h3 { margin: 0; font-size: 17px; font-weight: 700; }
-        .sb-current { background: var(--accent-light, #e6f4f1); color: var(--accent, #2a7d6f); font-weight: 600; }
+        .sb-current { background: var(--accent-light); color: var(--accent); font-weight: 600; }
         .sb-price { margin-top: 8px; font-size: 26px; font-weight: 700; }
         .sb-price small { font-size: 13px; font-weight: 500; color: var(--text-muted); }
         .sb-price-alt, .sb-meta { font-size: 12.5px; color: var(--text-muted); }
@@ -294,31 +294,31 @@
         .sb-field { display: grid; gap: 6px; border: 0; padding: 0; margin: 0; min-width: 0; }
         .sb-field legend, .sb-label { font-size: 12.5px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; }
         .sb-options { display: flex; flex-wrap: wrap; gap: 8px; }
-        .sb-option { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border, #e2ddd6); border-radius: 8px; cursor: pointer; font-size: 13.5px; }
-        .sb-option.is-selected { border-color: var(--accent, #2a7d6f); background: var(--accent-light, #e6f4f1); }
-        .sb-option input { accent-color: var(--accent, #2a7d6f); }
-        .sb-instructions { margin-top: 6px; padding: 10px 12px; border-radius: 8px; background: var(--surface2, #f6f4f1); font-size: 13px; line-height: 1.55; }
+        .sb-option { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 13.5px; }
+        .sb-option.is-selected { border-color: var(--accent); background: var(--accent-light); }
+        .sb-option input { accent-color: var(--accent); }
+        .sb-instructions { margin-top: 6px; padding: 10px 12px; border-radius: 8px; background: var(--surface2); font-size: 13px; line-height: 1.55; }
         .sb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-        .sb-error { color: #b42318; font-size: 12.5px; }
-        .sb-review { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--border, #e2ddd6); font-size: 13.5px; }
+        .sb-error { color: var(--color-error); font-size: 12.5px; }
+        .sb-review { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--border); font-size: 13.5px; }
         .sb-review:first-of-type { border-top: 0; }
         .sb-actions { display: flex; gap: 6px; flex-wrap: wrap; }
         .sb-reject { display: grid; gap: 6px; min-width: min(320px, 100%); }
-        .sb-danger { background: #b42318; color: #fff; border: 0; }
-        .sb-link { font-size: 12.5px; color: var(--blue, #2563eb); text-decoration: underline; }
+        .sb-danger { background: var(--color-error); color: #fff; border: 0; }
+        .sb-link { font-size: 12.5px; color: var(--blue); text-decoration: underline; }
         .sb-admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
         .sb-nowrap { white-space: nowrap; }
         .sb-previews { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
-        .sb-preview { margin: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--surface2, #f6f4f1); padding: 16px 16px 0; overflow: hidden; }
+        .sb-preview { margin: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--surface2); padding: 16px 16px 0; overflow: hidden; }
         .sb-preview figcaption { display: grid; gap: 4px; margin-bottom: 12px; }
         .sb-preview figcaption strong { font-size: 15px; }
         .sb-preview figcaption span { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
-        .sb-shot { display: block; margin-top: auto; border-radius: 10px 10px 0 0; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,.08); background: #fff; height: 230px; }
+        .sb-shot { display: block; margin-top: auto; border-radius: 10px 10px 0 0; overflow: hidden; box-shadow: 0 6px 20px rgba(31,35,64,.08); background: var(--color-superficie); height: 230px; }
         .sb-shot img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; transition: transform .25s ease; }
         .sb-shot:hover img { transform: scale(1.02); }
         @media (prefers-reduced-motion: reduce) { .sb-shot img { transition: none; } }
-        .sb-st-pending { background: #fef3c7; color: #92400e; }
-        .sb-st-approved { background: #ccfbf1; color: #0f766e; }
-        .sb-st-rejected { background: #fee2e2; color: #b42318; }
+        .sb-st-pending { background: var(--color-advertencia-suave); color: var(--color-advertencia); }
+        .sb-st-approved { background: var(--color-exito-suave); color: var(--color-exito); }
+        .sb-st-rejected { background: var(--color-error-suave); color: var(--color-error); }
     </style>
 </div>

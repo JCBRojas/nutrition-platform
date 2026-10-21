@@ -1,7 +1,10 @@
-/* ── MENÚ LATERAL ──
-   Se carga después de styleTree.css y reemplaza la barra superior por una barra lateral fija. */
+/* ── MENÚ LATERAL (NUT-CMP-002) ──
+   Se carga después de styleTree.css y theme.css; reemplaza la barra superior por una barra
+   lateral fija. Colores de la paleta NUT-CMP-001: sobre el violeta todo texto va en blanco
+   sólido (5.07:1); el blanco translúcido no alcanza 4.5:1, por eso no se usa opacidad en textos. */
 :root {
   --sidebar-w: 248px;
+  --sidebar-w-collapsed: 72px;
   --mobile-bar-h: 56px;
 }
 
@@ -18,24 +21,67 @@
   height: 100dvh;
   flex-direction: column;
   align-items: stretch;
-  background: var(--surface);
+  background: var(--color-primario);
+  color: var(--color-texto-sobre-primario);
   border-bottom: none;
-  border-right: 1px solid var(--border);
+  border-right: none;
   z-index: 100;
-  transition: transform .2s ease;
+  transition: transform .2s ease, width .2s ease;
+}
+
+/* Foco visible para quien navega con teclado */
+.sidebar a:focus-visible,
+.sidebar button:focus-visible {
+  outline: 2px solid var(--color-texto-sobre-primario);
+  outline-offset: 2px;
 }
 
 .sidebar-logo {
-  display: block;
-  padding: 22px 20px 18px;
-  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 22px 14px 18px 20px;
+  border-bottom: 1px solid var(--color-primario-hover);
+}
+
+.sidebar-brand {
+  min-width: 0;
+}
+
+.sidebar-logo h1 {
+  color: var(--color-texto-sobre-primario);
+}
+
+.sidebar-logo .dot {
+  background: var(--color-texto-sobre-primario);
+  box-shadow: none;
 }
 
 .sidebar-logo .subtitle {
   display: block;
   margin-top: 4px;
   font-size: 11.5px;
-  color: var(--text-muted);
+  color: var(--color-texto-sobre-primario);
+}
+
+.sidebar-collapse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--color-texto-sobre-primario);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-texto-sobre-primario);
+  cursor: pointer;
+  transition: background .15s, transform .2s;
+}
+
+.sidebar-collapse:hover {
+  background: var(--color-primario-hover);
 }
 
 .nav {
@@ -54,7 +100,7 @@
   padding: 14px 10px 6px;
   font-size: 10.5px;
   font-weight: 700;
-  color: #5c554d;
+  color: var(--color-texto-sobre-primario);
   text-transform: uppercase;
   letter-spacing: .8px;
 }
@@ -65,32 +111,63 @@
 
 .nav-item {
   display: flex;
+  align-items: center;
   height: auto;
   padding: 9px 12px;
   gap: 10px;
   margin-bottom: 0;
   border-bottom: none;
   border-radius: var(--radius-sm);
-  color: #2f2a25;
+  color: var(--color-texto-sobre-primario);
   font-weight: 500;
   white-space: normal;
   line-height: 1.3;
+  text-decoration: none;
 }
 
 .nav-item svg {
-  opacity: .85;
+  width: 16px;
+  height: 16px;
+  opacity: 1;
 }
 
 .nav-item:hover {
-  color: var(--text);
-  background: var(--surface2);
+  color: var(--color-texto-sobre-primario);
+  background: var(--color-primario-hover);
   border-bottom-color: transparent;
 }
 
-.nav-item.active {
-  color: var(--accent);
-  background: var(--accent-light);
+.nav-item.active,
+.nav-item.active:hover {
+  color: var(--color-primario-suave-texto);
+  background: var(--color-primario-suave);
   border-bottom-color: transparent;
+  font-weight: 600;
+}
+
+.nav-item.active svg {
+  color: var(--color-primario-suave-texto);
+}
+
+/* Funciones del plan Premium sin suscripción: el enlace lleva a /suscripcion */
+.nav-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  padding: 1px 7px;
+  border: 1px solid var(--color-texto-sobre-primario);
+  border-radius: 999px;
+  background: var(--color-primario-hover);
+  color: var(--color-texto-sobre-primario);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.nav-item.active .nav-lock {
+  border-color: var(--color-primario-suave-texto);
+  background: transparent;
+  color: var(--color-primario-suave-texto);
 }
 
 /* Usuario que inició sesión */
@@ -100,7 +177,7 @@
   margin-left: 0;
   padding: 12px 10px 14px;
   padding-bottom: max(14px, env(safe-area-inset-bottom));
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--color-primario-hover);
 }
 
 .user-info {
@@ -122,17 +199,20 @@
   transition: background .15s;
 }
 
-.user-profile-link:hover {
-  background: var(--surface2);
-}
-
+.user-profile-link:hover,
 .user-profile-link.active {
-  background: var(--accent-light);
+  background: var(--color-primario-hover);
 }
 
 .user-avatar {
   width: 34px;
   height: 34px;
+  background: var(--color-superficie);
+  color: var(--color-primario);
+}
+
+.user-avatar:hover {
+  box-shadow: none;
 }
 
 .user-meta {
@@ -143,7 +223,7 @@
   display: block;
   font-size: 13.5px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--color-texto-sobre-primario);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -153,23 +233,26 @@
   display: block;
   margin-top: 2px;
   font-size: 10.5px;
-  color: #5c554d;
+  color: var(--color-texto-sobre-primario);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .logout-btn {
+  display: flex;
+  align-items: center;
   width: 100%;
   justify-content: center;
   gap: 8px;
   padding: 9px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-texto-sobre-primario);
   border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--accent2);
+  background: transparent;
+  color: var(--color-texto-sobre-primario);
   font-size: 13.5px;
   font-weight: 600;
+  cursor: pointer;
 }
 
 .logout-btn svg {
@@ -178,9 +261,81 @@
 }
 
 .logout-btn:hover {
-  color: var(--accent2);
-  background: var(--accent2-light);
-  border-color: var(--accent2);
+  color: var(--color-texto-sobre-primario);
+  background: var(--color-primario-hover);
+  border-color: var(--color-texto-sobre-primario);
+}
+
+/* Modal de cierre de sesión */
+.logout-modal {
+  max-width: 420px;
+}
+
+.logout-modal .btn-danger {
+  background: var(--color-error);
+}
+
+/* ── Escritorio: menú contraído (solo íconos) ── */
+@media (min-width: 961px) {
+  .sidebar-collapsed {
+    --sidebar-w: var(--sidebar-w-collapsed);
+  }
+
+  /* Los textos quedan para lectores de pantalla y el title muestra el nombre al pasar el mouse */
+  .sidebar-collapsed .sidebar .nav-label,
+  .sidebar-collapsed .sidebar-logo .subtitle {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .sidebar-collapsed .sidebar-logo {
+    flex-direction: column;
+    align-items: center;
+    padding: 18px 10px 14px;
+  }
+
+  .sidebar-collapsed .sidebar-collapse {
+    transform: rotate(180deg);
+  }
+
+  .sidebar-collapsed .nav-section {
+    height: 1px;
+    margin: 10px 8px;
+    padding: 0;
+    background: var(--color-primario-hover);
+  }
+
+  .sidebar-collapsed .nav-item,
+  .sidebar-collapsed .user-profile-link,
+  .sidebar-collapsed .logout-btn {
+    position: relative;
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* El candado se reduce a un punto sobre el ícono */
+  .sidebar-collapsed .nav-lock {
+    position: absolute;
+    top: 3px;
+    right: 8px;
+    padding: 2px;
+  }
+
+  .sidebar-collapsed .logout-btn {
+    border-color: transparent;
+  }
+}
+
+@media (min-width: 961px) and (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .sidebar-collapse {
+    transition: none;
+  }
 }
 
 /* Contenido desplazado a la derecha del menú */
@@ -189,6 +344,7 @@
   margin-top: 0;
   min-height: 100vh;
   min-width: 0;
+  transition: margin-left .2s ease;
 }
 
 /* Tablas anchas: desplazamiento horizontal dentro de su contenedor (en móvil, con el dedo).
@@ -212,13 +368,22 @@
 }
 
 @media (max-width: 960px) {
+  /* Cerrado queda fuera del orden de tabulación (visibility) para que el teclado no entre en él */
   .sidebar {
     transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform .2s ease, visibility 0s linear .2s;
   }
 
   .sidebar.open {
     transform: translateX(0);
+    visibility: visible;
     box-shadow: var(--shadow-lg);
+    transition: transform .2s ease, visibility 0s;
+  }
+
+  .sidebar-collapse {
+    display: none;
   }
 
   .nav {
@@ -240,8 +405,8 @@
     right: 0;
     height: var(--mobile-bar-h);
     padding: 0 12px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
+    background: var(--color-superficie);
+    border-bottom: 1px solid var(--color-borde);
     z-index: 90;
   }
 
@@ -254,19 +419,24 @@
     border: none;
     border-radius: var(--radius-sm);
     background: transparent;
-    color: var(--text);
+    color: var(--color-texto);
     cursor: pointer;
   }
 
   .mobile-topbar .menu-toggle:hover {
-    background: var(--surface2);
+    background: var(--color-primario-suave);
+  }
+
+  .mobile-topbar .menu-toggle:focus-visible {
+    outline: 2px solid var(--color-primario);
+    outline-offset: 2px;
   }
 
   .mobile-topbar .brand {
     font-family: 'Syne', sans-serif;
     font-size: 16px;
     font-weight: 800;
-    color: var(--accent);
+    color: var(--color-marca-texto);
   }
 
   .mobile-topbar .user-avatar {
@@ -274,6 +444,15 @@
     width: 30px;
     height: 30px;
     font-size: 12px;
+    background: var(--color-primario);
+    color: var(--color-texto-sobre-primario);
+  }
+}
+
+@media (max-width: 960px) and (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .sidebar.open {
+    transition: none;
   }
 }
 
@@ -285,19 +464,4 @@
   .main {
     padding-top: 0 !important;
   }
-}
-
-/* Funciones del plan Premium sin suscripción: el enlace lleva a /suscripcion */
-.nav-item.is-locked { color: var(--text-muted); }
-.nav-lock {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  margin-left: auto;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: #fef3c7;
-  color: #92400e;
-  font-size: 10.5px;
-  font-weight: 700;
 }

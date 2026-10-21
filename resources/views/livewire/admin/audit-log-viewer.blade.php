@@ -87,9 +87,9 @@
         .al-nowrap { white-space: nowrap; }
         .al-meta { font-size: 11.5px; color: var(--text-muted); }
         .al-ua { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
-        .al-tag { background: var(--surface2, #f0ede8); color: var(--text); white-space: nowrap; }
-        .al-tag-warn { background: #fef3c7; color: #92400e; font-weight: 600; }
+        .al-tag { background: var(--surface2); color: var(--text); white-space: nowrap; }
+        .al-tag-warn { background: var(--color-advertencia-suave); color: var(--color-advertencia); font-weight: 600; }
         .al-details summary { cursor: pointer; font-size: 12px; color: var(--text-muted); }
-        .al-details pre { margin: 6px 0 0; padding: 8px; background: var(--surface2, #f6f4f1); border-radius: 6px; font-size: 11.5px; white-space: pre-wrap; max-width: 520px; }
+        .al-details pre { margin: 6px 0 0; padding: 8px; background: var(--surface2); border-radius: 6px; font-size: 11.5px; white-space: pre-wrap; max-width: 520px; }
     </style>
 </div>

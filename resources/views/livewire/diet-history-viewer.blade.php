@@ -13,8 +13,8 @@
         .vtable td { vertical-align: top; }
         .vtable tr.vrow-finish td { background: var(--blue-light); }
         .vtable tr.vrow-finish td:first-child { border-left: 3px solid var(--blue); }
-        .vtable tr.vrow-day td { background: #f0fdfa; }
-        .vtable tr.vrow-day td:first-child { border-left: 3px solid #0f766e; }
+        .vtable tr.vrow-day td { background: var(--color-exito-suave); }
+        .vtable tr.vrow-day td:first-child { border-left: 3px solid var(--color-exito); }
         .vtable td.hv-changed { box-shadow: inset 0 0 0 2px var(--amber); }
         .chip-removed { text-decoration: line-through; opacity: .75; background: var(--accent2-light); color: var(--accent2); }
         .chip-added { background: var(--accent-light); color: var(--accent); font-weight: 600; }

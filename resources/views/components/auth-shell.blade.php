@@ -30,49 +30,49 @@
 
     <style>
         :root {
-            --bg: #e9efec;
+            --bg: #EEF0FA;
             --surface: #ffffff;
-            --ink: #15302a;
-            --muted: #5b6f69;
-            --line: #c9d6d1;
-            --accent: #0f7b6c;
-            --accent-hover: #0b6559;
+            --ink: #1F2340;
+            --muted: #5E6384;
+            --line: #DCDFF0;
+            --accent: #5B4CC4;
+            --accent-hover: #4A3BB0;
             --on-accent: #ffffff;
-            --error-bg: #fbeaea;
-            --error-ink: #9b1c1c;
-            --focus: #0f7b6c;
-            --shadow: 0 1px 2px rgba(21, 48, 42, .06), 0 12px 32px -12px rgba(21, 48, 42, .18);
+            --error-bg: #FDECEC;
+            --error-ink: #B91C1C;
+            --focus: #6C5DD3;
+            --shadow: 0 1px 2px rgba(31, 35, 64, .06), 0 12px 32px -12px rgba(31, 35, 64, .18);
         }
 
         @media (prefers-color-scheme: dark) {
             :root:not([data-theme="light"]) {
-                --bg: #0e1a17;
-                --surface: #15241f;
-                --ink: #e4eeea;
-                --muted: #93a8a1;
-                --line: #24362f;
-                --accent: #3fbfa8;
-                --accent-hover: #5fd1bc;
-                --on-accent: #08231d;
-                --error-bg: #3a1a1a;
-                --error-ink: #f4b4b4;
-                --focus: #5fd1bc;
+                --bg: #1C1B33;
+                --surface: #28264A;
+                --ink: #ECEBFA;
+                --muted: #A9A7C9;
+                --line: #3A3766;
+                --accent: #A79DF0;
+                --accent-hover: #C9C2FA;
+                --on-accent: #1C1B33;
+                --error-bg: #3A1A1F;
+                --error-ink: #F87171;
+                --focus: #C9C2FA;
                 --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 16px 40px -16px rgba(0, 0, 0, .6);
             }
         }
 
         :root[data-theme="dark"] {
-            --bg: #0e1a17;
-            --surface: #15241f;
-            --ink: #e4eeea;
-            --muted: #93a8a1;
-            --line: #24362f;
-            --accent: #3fbfa8;
-            --accent-hover: #5fd1bc;
-            --on-accent: #08231d;
-            --error-bg: #3a1a1a;
-            --error-ink: #f4b4b4;
-            --focus: #5fd1bc;
+            --bg: #1C1B33;
+            --surface: #28264A;
+            --ink: #ECEBFA;
+            --muted: #A9A7C9;
+            --line: #3A3766;
+            --accent: #A79DF0;
+            --accent-hover: #C9C2FA;
+            --on-accent: #1C1B33;
+            --error-bg: #3A1A1F;
+            --error-ink: #F87171;
+            --focus: #C9C2FA;
             --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 16px 40px -16px rgba(0, 0, 0, .6);
         }
 
@@ -644,8 +644,8 @@
             margin-bottom: .5rem;
             padding: .125rem .5rem;
             border-radius: 999px;
-            background: #fef3c7;
-            color: #92400e;
+            background: #FEF3E2;
+            color: #92400E;
             font-size: .75rem;
             font-weight: 700;
         }
@@ -679,7 +679,7 @@
             border-radius: .875rem .875rem 0 0;
             overflow: hidden;
             background: #fff;
-            box-shadow: 0 -1px 0 color-mix(in srgb, var(--line) 70%, transparent), 0 18px 40px -20px rgba(21, 48, 42, .35);
+            box-shadow: 0 -1px 0 color-mix(in srgb, var(--line) 70%, transparent), 0 18px 40px -20px rgba(31, 35, 64, .35);
         }
 
         .sc-card.wide .sc-shot {
