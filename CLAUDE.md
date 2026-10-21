@@ -99,6 +99,7 @@ Nunca se edita un `DietHistory` existente (salvo el flag `modify`); todo cambio 
 | `nutricionista` | `createDiets`, `editDiets`, `viewDiets`, `viewReports`, `confirmReception`, `viewDispatches`, `viewActiveDiets`, `continueDiets` |
 | `enfermeria` (creado desde `/admin/roles`) | según la matriz; la migración `2026_10_22_000000_create_diet_days_table` le da `continueDiets` |
 | `despachador` | `viewDiets`, `confirmDelivery`, `viewDispatches`, `generateFiles` |
+| `jefe_despacho` | `manageCompanies`, `viewCompanies`, `viewDiets`, `viewDispatches`, `viewReports`, `generateFiles` |
 
 Convención de permisos: **camelCase verbo+Recurso**. Middleware alias registrados: `role`, `permission`, `role_or_permission`.
 
@@ -297,6 +298,15 @@ Detalle y lista de tareas de cada institución: `docs/seguridad/cumplimiento.md`
 - Pago **manual** (sin pasarela): transferencia, consignación, Nequi o Daviplata (datos para pagar en `.env`: `PAYMENT_BANK_DETAILS`, `PAYMENT_DEPOSIT_DETAILS`, `PAYMENT_NEQUI_DETAILS`, `PAYMENT_DAVIPLATA_DETAILS`). Quien tiene `manageSubscription` (admin y jefe de nutrición) reporta el pago con referencia y comprobante (JPG/PNG/PDF ≤ 5 MB, disco privado `local`, `subscription-receipts/`); solo uno pendiente a la vez. `approvePayments` (admin) aprueba (crea el periodo, que empieza cuando termina el vigente: renovar antes no pierde días) o rechaza con motivo, edita precios (`plan_prices`; iniciales `SUBSCRIPTION_MONTHLY_PRICE`/`SUBSCRIPTION_ANNUAL_PRICE`) y puede activar premium sin pago con un motivo.
 - Pantalla `/suscripcion` (`subscription.index`, `App\Livewire\SubscriptionManager`); debajo de los planes, «Así se ve el plan Premium» con las capturas de `public/images/premium/`; comprobante `subscription.receipt`. Todo queda en la auditoría (`payment_*`, `plan_price_updated`, `subscription_granted`).
 - Tests: `tests/Feature/SubscriptionTest.php`. Las pruebas que usan pantallas premium llaman `$this->activatePremium()` (`Tests\TestCase`).
+
+## 7f. Empresas atendidas por el despacho (NUT-RN-003, SCRUM-7)
+
+- Regla en Confluence: NUT-RN-003. Pendiente: selector y filtrado por empresa (SCRUM-8), Premium (SCRUM-9), precios y facturación por empresa (SCRUM-10).
+- `companies` (`App\Models\Company`): `name` único (150), `nit` único con dígito de verificación (`App\Rules\Nit`, algoritmo DIAN; se guarda sin puntos, p. ej. `900123456-8`), contacto (`contact_name`, `contact_phone` E.164, `contact_email`), `is_active`, `is_default`. **Nunca se borran:** se desactivan; la desactivada sale de los selectores (`User::selectableCompanies()`) pero conserva su historial. La predeterminada (`Company::default()`, migración `2026_10_27_000000_create_companies_tables`, nombre `DEFAULT_COMPANY_NAME`, NIT `DEFAULT_COMPANY_NIT`) no se desactiva.
+- `diets.company_id`: las dietas existentes quedan en la predeterminada; `Diet::creating` usa la predeterminada si no se indica empresa.
+- Pantalla `/empresas` (`companies.index`, `App\Livewire\CompaniesManager`, paginada): ver con `viewCompanies` o `manageCompanies`; crear, editar y desactivar solo `manageCompanies` (`App\Services\CompanyService`). Auditoría `company_created`, `company_updated`, `company_deactivated`. Inicio del `jefe_despacho`.
+- Acceso de usuarios (`/admin/usuarios`, visible con `viewCompanies`): «Todas» (`users.all_companies`, incluye las futuras) o empresas específicas (`company_user`); obligatorio uno de los dos (`UserService::syncCompanies`). El admin siempre tiene todas (`User::hasAllCompanies()`). Quien crea usuarios sin `viewCompanies` (jefe de nutrición) les da su mismo acceso. La migración dejó a los usuarios existentes con «Todas».
+- Tests: `tests/Feature/CompaniesTest.php`.
 
 ## 7c. Paginación de tablas
 

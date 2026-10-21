@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Actions\Fortify\PasswordValidationRules;
+use App\Models\Company;
 use App\Models\User;
 use App\Services\UserService;
 use App\Support\Pagination;
@@ -57,6 +58,11 @@ class UsersManager extends Component
 
     public array $roles = [];
 
+    /** Acceso a empresas (NUT-RN-003-05): todas, o las de $companies */
+    public bool $all_companies = false;
+
+    public array $companies = [];
+
     public function mount(): void
     {
         $this->authorize('viewAny', User::class);
@@ -94,6 +100,8 @@ class UsersManager extends Component
         $this->is_active = $user->is_active;
         $this->whatsapp_opt_in = $user->whatsapp_opt_in;
         $this->roles = $user->roles->pluck('name')->all();
+        $this->all_companies = $user->all_companies;
+        $this->companies = $user->companies->pluck('id')->map(fn ($id) => (string) $id)->all();
         $this->showForm = true;
     }
 
@@ -107,7 +115,18 @@ class UsersManager extends Component
             'roles.*.in' => 'No puedes asignar ese rol.',
             'email.unique' => 'Ya existe un usuario con este correo (puede estar eliminado: restáuralo).',
             'phone.regex' => 'Usa formato internacional, p. ej. +573001234567.',
+            'companies.*.exists' => 'La empresa elegida no existe.',
         ]);
+
+        if (! $this->assignsCompanies()) {
+            // Quien no administra empresas (p. ej. jefe de nutrición) no cambia el acceso; al crear, el
+            // usuario nuevo recibe el mismo acceso a empresas que quien lo crea
+            unset($data['all_companies'], $data['companies']);
+            if (! $user) {
+                $data['all_companies'] = auth()->user()->all_companies;
+                $data['companies'] = auth()->user()->companies()->pluck('companies.id')->all();
+            }
+        }
 
         try {
             $user ? $service->update($user, $data) : $service->create($data);
@@ -164,9 +183,18 @@ class UsersManager extends Component
             'whatsapp_opt_in' => ['boolean'],
             // Sin ser admin solo se asignan los roles permitidos (jefe de nutrición → despachador) y al menos uno
             'roles' => $this->assignable() === null ? ['array'] : ['required', 'array', 'min:1'],
+            'all_companies' => ['boolean'],
+            'companies' => ['array'],
+            'companies.*' => ['integer', Rule::exists('companies', 'id')],
             'roles.*' => ['string', Rule::exists('roles', 'name')->where('guard_name', UserService::GUARD),
                 ...($this->assignable() === null ? [] : [Rule::in($this->assignable())])],
         ];
+    }
+
+    /** Ve y asigna el acceso a empresas en el formulario */
+    private function assignsCompanies(): bool
+    {
+        return auth()->user()->can('viewCompanies');
     }
 
     /** null = puede asignar cualquier rol (admin) */
@@ -187,7 +215,7 @@ class UsersManager extends Component
 
     private function resetForm(): void
     {
-        $this->reset(['editingId', 'name', 'email', 'phone', 'password', 'password_confirmation', 'is_active', 'whatsapp_opt_in', 'roles']);
+        $this->reset(['editingId', 'name', 'email', 'phone', 'password', 'password_confirmation', 'is_active', 'whatsapp_opt_in', 'roles', 'all_companies', 'companies']);
         $this->resetErrorBag();
     }
 
@@ -200,7 +228,7 @@ class UsersManager extends Component
         }
 
         $users = User::query()
-            ->with('roles')
+            ->with(['roles', 'companies'])
             ->when($this->status === 'trashed', fn ($q) => $q->onlyTrashed())
             ->when($this->status === 'all', fn ($q) => $q->withTrashed())
             ->when($this->status === 'active', fn ($q) => $q->where('is_active', true))
@@ -217,6 +245,13 @@ class UsersManager extends Component
         return view('livewire.admin.users-manager', [
             'users' => $users,
             'allRoles' => $allRoles,
+            'assignsCompanies' => $this->assignsCompanies(),
+            // Activas, más las desactivadas que el usuario en edición ya tiene (para no quitárselas sin querer)
+            'companyOptions' => $this->assignsCompanies()
+                ? Company::query()
+                    ->where(fn ($q) => $q->where('is_active', true)->orWhereIn('id', $this->companies ?: [0]))
+                    ->orderBy('name')->get(['id', 'name', 'is_active'])
+                : collect(),
         ]);
     }
 }

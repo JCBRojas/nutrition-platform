@@ -37,6 +37,7 @@ class User extends Authenticatable
         'phone',
         'is_active',
         'whatsapp_opt_in',
+        'all_companies',
     ];
 
     /**
@@ -60,6 +61,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'is_active' => 'boolean',
         'whatsapp_opt_in' => 'boolean',
+        'all_companies' => 'boolean',
         'privacy_accepted_at' => 'datetime',
         'two_factor_confirmed_at' => 'datetime',
     ];
@@ -85,6 +87,7 @@ class User extends Authenticatable
             $this->hasRole('nutricionista') => route('dashboard.nutrition'),
             $this->hasRole('despachador') => route('dashboard.dispatch'),
             $this->hasRole('jefe_nutricion') => $premium('prices') ? route('prices.index') : route('diet.reports'),
+            $this->hasRole('jefe_despacho') => route('companies.index'),
             $this->hasRole('admin') => route('admin.users.index'),
             // Roles creados desde /admin/roles (p. ej. enfermería): según sus permisos
             $this->can('viewActiveDiets') => route('dashboard.nutrition'),
@@ -140,5 +143,38 @@ class User extends Authenticatable
     public function dietVersions()
     {
         return $this->hasMany(DietHistory::class, 'updated_by');
+    }
+
+    /* ===================== EMPRESAS (NUT-RN-003) ===================== */
+
+    /** Empresas asignadas una a una (sin efecto si all_companies) */
+    public function companies()
+    {
+        return $this->belongsToMany(Company::class);
+    }
+
+    /** Tiene acceso a todas las empresas, incluidas las que se creen después: admin o «Todas» */
+    public function hasAllCompanies(): bool
+    {
+        return $this->all_companies || $this->hasRole(\App\Services\UserService::ADMIN_ROLE);
+    }
+
+    /** Empresas que puede ver (incluye desactivadas, para su historial) */
+    public function accessibleCompanies()
+    {
+        return $this->hasAllCompanies()
+            ? Company::query()
+            : Company::whereHas('users', fn ($q) => $q->whereKey($this->getKey()));
+    }
+
+    /** Empresas que puede elegir en el selector: las accesibles y activas */
+    public function selectableCompanies()
+    {
+        return $this->accessibleCompanies()->active()->orderBy('name');
+    }
+
+    public function canAccessCompany(Company|int $company): bool
+    {
+        return $this->accessibleCompanies()->whereKey($company instanceof Company ? $company->getKey() : $company)->exists();
     }
 }

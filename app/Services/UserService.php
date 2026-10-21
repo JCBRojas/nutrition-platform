@@ -49,7 +49,8 @@ class UserService
             ]);
 
             $user->syncRoles($data['roles'] ?? []);
-            AuditLogger::log('user_created', "Creó el usuario {$user->email}", $user, ['roles' => $data['roles'] ?? []]);
+            $companies = $this->syncCompanies($user, $data);
+            AuditLogger::log('user_created', "Creó el usuario {$user->email}", $user, ['roles' => $data['roles'] ?? [], 'companies' => $companies]);
 
             return $user;
         });
@@ -88,11 +89,14 @@ class UserService
             $user->save();
             $previousRoles = $user->getRoleNames()->all();
             $user->syncRoles($roles);
+            $previousCompanies = $this->companyAccess($user);
+            $companies = $this->syncCompanies($user, $data);
 
             AuditLogger::log('user_updated', "Modificó el usuario {$user->email}", $user, [
                 'fields' => array_values(array_diff($changed, ['password'])),
                 'password_changed' => $passwordChanged,
                 'roles' => ['before' => $previousRoles, 'after' => $roles],
+                'companies' => ['before' => $previousCompanies, 'after' => $companies],
             ]);
 
             if (! $user->is_active) {
@@ -141,6 +145,34 @@ class UserService
         AuditLogger::log('user_restored', "Restauró el usuario {$user->email}", $user);
 
         return $user;
+    }
+
+    /**
+     * Acceso a empresas (NUT-RN-003-05): «Todas» (all_companies, incluye las futuras) o una o
+     * varias específicas. Sin las claves en $data no se modifica. Devuelve el acceso para la auditoría.
+     */
+    private function syncCompanies(User $user, array $data): string|array
+    {
+        if (! array_key_exists('all_companies', $data) && ! array_key_exists('companies', $data)) {
+            return $this->companyAccess($user);
+        }
+
+        $all = (bool) ($data['all_companies'] ?? false);
+        $ids = $all ? [] : array_values(array_unique(array_map('intval', $data['companies'] ?? [])));
+
+        if (! $all && $ids === []) {
+            throw ValidationException::withMessages(['companies' => 'Asigna al menos una empresa o marca «Todas las empresas».']);
+        }
+
+        $user->forceFill(['all_companies' => $all])->save();
+        $user->companies()->sync($ids);
+
+        return $this->companyAccess($user);
+    }
+
+    private function companyAccess(User $user): string|array
+    {
+        return $user->all_companies ? 'all' : $user->companies()->pluck('companies.id')->all();
     }
 
     private function ensureCanDeactivate(User $user): void

@@ -38,6 +38,7 @@ class Diet extends Model
     ];
 
     protected $fillable = [
+        'company_id',
         'habitation',
         'name_patient',
         'status',
@@ -53,6 +54,14 @@ class Diet extends Model
         'transfer_meals' => 'array',
         'transfer_date' => 'date',
     ];
+
+    /** Sin empresa indicada, la dieta queda en la predeterminada (NUT-RN-003-18) */
+    protected static function booted(): void
+    {
+        static::creating(function (Diet $diet) {
+            $diet->company_id ??= Company::default()?->id;
+        });
+    }
 
     /** En curso: activas y completadas (no canceladas ni finalizadas) */
     public function scopeActive($query)
@@ -102,6 +111,11 @@ class Diet extends Model
     public function statusLabel(): string
     {
         return self::STATUS_LABELS[$this->status] ?? 'Desconocido';
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
     }
 
     public function history()

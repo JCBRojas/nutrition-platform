@@ -37,6 +37,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'manageSubscription',
             'approvePayments',
             'viewDemoRequests',
+            'manageCompanies',
+            'viewCompanies',
         ];
 
         foreach ($permissions as $permission) {
@@ -48,6 +50,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $despachador = Role::firstOrCreate(['name' => 'despachador', 'guard_name' => 'web']);
         $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $jefe = Role::firstOrCreate(['name' => 'jefe_nutricion', 'guard_name' => 'web']);
+        $jefeDespacho = Role::firstOrCreate(['name' => 'jefe_despacho', 'guard_name' => 'web']);
 
         // Admin: todos los permisos
         $admin->syncPermissions(Permission::all());
@@ -73,6 +76,16 @@ class RolesAndPermissionsSeeder extends Seeder
             'manageSubscription',
             'viewUsers',   // solo despachadores (config security.assignable_roles)
             'createUsers',
+        ]);
+
+        // Asignar permisos a Jefe de despacho: registra las empresas que atiende la cocina (NUT-RN-003)
+        $jefeDespacho->syncPermissions([
+            'manageCompanies',
+            'viewCompanies',
+            'viewDiets',
+            'viewDispatches',
+            'viewReports',
+            'generateFiles',
         ]);
 
         // Asignar permisos a Despachador
@@ -133,5 +146,20 @@ class RolesAndPermissionsSeeder extends Seeder
         );
 
         $userJefe->assignRole($jefe);
+
+        // Crear usuario Jefe de despacho (contraseña: SEED_USER_PASSWORD o la generada arriba)
+        $userJefeDespacho = User::firstOrCreate(
+            ['email' => env('SEED_JEFE_DESPACHO_EMAIL', 'jefe.despacho@nutritrack.com')],
+            [
+                'name' => 'Jefe de Despacho',
+                'password' => Hash::make($password),
+            ]
+        );
+
+        $userJefeDespacho->assignRole($jefeDespacho);
+
+        // Usuarios demo: acceso a todas las empresas (NUT-RN-003-05)
+        User::whereIn('id', [$userNutricionista->id, $userDespachador->id, $userJefe->id, $userJefeDespacho->id])
+            ->update(['all_companies' => true]);
     }
 }

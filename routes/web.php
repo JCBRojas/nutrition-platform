@@ -10,6 +10,7 @@ use App\Livewire\Admin\AuditLogViewer;
 use App\Livewire\Admin\DemoRequestsViewer;
 use App\Livewire\Admin\RolesManager;
 use App\Livewire\Admin\UsersManager;
+use App\Livewire\CompaniesManager;
 use App\Livewire\DietHistoryViewer;
 use App\Livewire\DispatchLog;
 use App\Livewire\PricesManager;
@@ -107,6 +108,10 @@ Route::middleware([
         Route::get('/reportes/produccion', [DietController::class, 'index'])->name('reports.production');
         Route::get('/reportes/mensual/excel', [ReportExportController::class, 'monthlyExcel'])->name('reports.monthly.excel');
     });
+    // Empresas atendidas por el despacho (NUT-RN-003): ver o administrar
+    Route::get('/empresas', CompaniesManager::class)
+        ->middleware('permission:viewCompanies|manageCompanies')->name('companies.index');
+
     // 🟣 ADMINISTRACIÓN
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/usuarios', UsersManager::class)->middleware('permission:viewUsers')->name('users.index');

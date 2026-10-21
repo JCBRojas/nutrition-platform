@@ -14,7 +14,7 @@ class SidebarNavigationTest extends TestCase
 
     private const ALL_LINKS = [
         'nav-nutricional', 'nav-despacho', 'nav-despachos', 'nav-historial', 'nav-reporte',
-        'nav-precios', 'nav-suscripcion', 'nav-usuarios', 'nav-roles', 'nav-demos', 'nav-auditoria',
+        'nav-precios', 'nav-suscripcion', 'nav-empresas', 'nav-usuarios', 'nav-roles', 'nav-demos', 'nav-auditoria',
     ];
 
     protected function setUp(): void
@@ -45,11 +45,12 @@ class SidebarNavigationTest extends TestCase
     {
         return [
             'admin' => ['admin', ['nav-nutricional', 'nav-despachos', 'nav-historial', 'nav-reporte', 'nav-precios',
-                'nav-suscripcion', 'nav-usuarios', 'nav-roles', 'nav-demos', 'nav-auditoria']],
+                'nav-suscripcion', 'nav-empresas', 'nav-usuarios', 'nav-roles', 'nav-demos', 'nav-auditoria']],
             'nutricionista' => ['nutricionista', ['nav-nutricional', 'nav-despachos', 'nav-historial', 'nav-reporte']],
             'enfermeria' => ['enfermeria', ['nav-nutricional']],
             'despachador' => ['despachador', ['nav-despacho', 'nav-despachos', 'nav-historial', 'nav-reporte']],
             'jefe_nutricion' => ['jefe_nutricion', ['nav-historial', 'nav-reporte', 'nav-precios', 'nav-suscripcion', 'nav-usuarios']],
+            'jefe_despacho' => ['jefe_despacho', ['nav-despachos', 'nav-historial', 'nav-reporte', 'nav-empresas']],
         ];
     }
 

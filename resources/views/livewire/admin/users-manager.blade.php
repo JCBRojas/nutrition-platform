@@ -62,6 +62,9 @@
                             <th>Correo</th>
                             <th>Teléfono</th>
                             <th>Roles</th>
+                            @if ($assignsCompanies)
+                                <th>Empresas</th>
+                            @endif
                             <th>WhatsApp</th>
                             <th>Estado</th>
                             <th class="text-right">Acciones</th>
@@ -80,6 +83,15 @@
                                         <span>—</span>
                                     @endforelse
                                 </td>
+                                @if ($assignsCompanies)
+                                    <td>
+                                        @if ($user->hasAllCompanies())
+                                            <span class="badge badge-success">Todas</span>
+                                        @else
+                                            {{ $user->companies->pluck('name')->join(', ') ?: '—' }}
+                                        @endif
+                                    </td>
+                                @endif
                                 <td>{{ $user->whatsapp_opt_in ? 'Sí' : 'No' }}</td>
                                 <td>
                                     @if ($user->trashed())
@@ -117,7 +129,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="empty">No hay usuarios con estos filtros</td>
+                                <td colspan="{{ $assignsCompanies ? 8 : 7 }}" class="empty">No hay usuarios con estos filtros</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -176,6 +188,29 @@
                             @error('roles.*') <div class="form-hint text-red-600">{{ $message }}</div> @enderror
                         </div>
                     </div>
+
+                    @if ($assignsCompanies)
+                        <fieldset class="form-group" style="border:0;padding:0;margin:0 0 14px">
+                            <legend style="font-weight:600;font-size:13px;margin-bottom:6px">Empresas <span class="req">*</span></legend>
+                            <label style="display:inline-flex;align-items:center;gap:6px;font-weight:400;margin-bottom:6px">
+                                <input type="checkbox" wire:model.live="all_companies"> Todas las empresas (incluye las que se creen después)
+                            </label>
+                            @unless ($all_companies)
+                                <div>
+                                    @forelse ($companyOptions as $c)
+                                        <label style="display:inline-flex;align-items:center;gap:6px;margin-right:12px;font-weight:400">
+                                            <input type="checkbox" value="{{ $c->id }}" wire:model="companies">
+                                            {{ $c->name }}@unless ($c->is_active) <span class="form-hint">(desactivada)</span>@endunless
+                                        </label>
+                                    @empty
+                                        <div class="form-hint">No hay empresas activas.</div>
+                                    @endforelse
+                                </div>
+                            @endunless
+                            @error('companies') <div class="form-hint text-red-600">{{ $message }}</div> @enderror
+                            @error('companies.*') <div class="form-hint text-red-600">{{ $message }}</div> @enderror
+                        </fieldset>
+                    @endif
 
                     <div class="form-row">
                         <div class="form-group">

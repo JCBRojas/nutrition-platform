@@ -43,6 +43,9 @@ class AuditLog extends Model
         'payment_approved' => 'Pago de suscripción aprobado',
         'payment_rejected' => 'Pago de suscripción rechazado',
         'subscription_granted' => 'Premium activado manualmente',
+        'company_created' => 'Empresa creada',
+        'company_updated' => 'Empresa modificada',
+        'company_deactivated' => 'Empresa desactivada',
     ];
 
     protected $fillable = ['user_id', 'event', 'description', 'subject_type', 'subject_id', 'meta', 'ip', 'user_agent'];

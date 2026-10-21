@@ -39,6 +39,7 @@ return [
         [
             'label' => 'Administración',
             'items' => [
+                ['id' => 'nav-empresas', 'label' => 'Empresas', 'route' => 'companies.index', 'icon' => 'building', 'can' => ['viewCompanies', 'manageCompanies']],
                 ['id' => 'nav-usuarios', 'label' => 'Usuarios', 'route' => 'admin.users.index', 'active' => ['admin.users.*'], 'icon' => 'users', 'can' => 'viewUsers'],
                 ['id' => 'nav-roles', 'label' => 'Roles y permisos', 'route' => 'admin.roles.index', 'active' => ['admin.roles.*'], 'icon' => 'lock', 'can' => 'manageRoles'],
                 ['id' => 'nav-demos', 'label' => 'Solicitudes de demo', 'route' => 'admin.demo-requests.index', 'active' => ['admin.demo-requests.*'], 'icon' => 'message', 'can' => 'viewDemoRequests'],
@@ -56,6 +57,7 @@ return [
         'activity' => '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
         'dollar' => '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>',
         'card' => '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>',
+        'building' => '<rect x="4" y="2" width="16" height="20" rx="1"/><path d="M9 22v-4h6v4"/><line x1="8" y1="6" x2="8" y2="6.01"/><line x1="12" y1="6" x2="12" y2="6.01"/><line x1="16" y1="6" x2="16" y2="6.01"/><line x1="8" y1="10" x2="8" y2="10.01"/><line x1="12" y1="10" x2="12" y2="10.01"/><line x1="16" y1="10" x2="16" y2="10.01"/><line x1="8" y1="14" x2="8" y2="14.01"/><line x1="12" y1="14" x2="12" y2="14.01"/><line x1="16" y1="14" x2="16" y2="14.01"/>',
         'users' => '<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>',
         'lock' => '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>',
         'message' => '<path d="M4 4h16v12H5.2L4 17.2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="13" y2="12"/>',
@@ -68,6 +70,7 @@ return [
         'nutricionista' => 'Nutricionista',
         'despachador' => 'Despachador',
         'jefe_nutricion' => 'Jefe de nutrición',
+        'jefe_despacho' => 'Jefe de despacho',
         'enfermeria' => 'Enfermería',
     ],
 
