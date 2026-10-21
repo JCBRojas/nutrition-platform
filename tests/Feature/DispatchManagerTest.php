@@ -134,6 +134,39 @@ class DispatchManagerTest extends TestCase
         $this->assertSame([$own->id], $user->companies()->pluck('companies.id')->all());
     }
 
+    public function test_manager_can_assign_all_his_companies_at_once(): void
+    {
+        $one = $this->companyOf($this->manager, 'Clínica Uno', '900123456-8');
+        $two = $this->companyOf($this->manager, 'Clínica Dos', '860002964-4');
+        $own = Company::managedBy($this->manager)->active()->pluck('id')->all(); // incluye la predeterminada
+
+        Livewire::actingAs($this->manager)->test(UsersManager::class)
+            ->call('create')
+            ->assertSee('Todas mis empresas')
+            ->set('name', 'Despachador de todas')
+            ->set('email', 'todas.mias@example.com')
+            ->set('password', 'Secreta-2026')
+            ->set('password_confirmation', 'Secreta-2026')
+            ->set('roles', ['despachador'])
+            ->call('toggleOwnCompanies')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $user = User::where('email', 'todas.mias@example.com')->firstOrFail();
+        $this->assertFalse($user->all_companies);
+        $this->assertEqualsCanonicalizing($own, $user->companies()->pluck('companies.id')->all());
+        $this->assertContains($one->id, $own);
+        $this->assertContains($two->id, $own);
+    }
+
+    public function test_manager_home_is_the_dispatch_log_with_premium(): void
+    {
+        $this->assertSame(route('companies.index'), $this->manager->homeUrl());
+
+        $this->activatePremium();
+        $this->assertSame(route('dispatches.index'), $this->manager->fresh()->homeUrl());
+    }
+
     public function test_manager_cannot_assign_other_roles(): void
     {
         $own = $this->companyOf($this->manager, 'Clínica Propia', '900123456-8');

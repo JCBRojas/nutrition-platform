@@ -68,14 +68,21 @@ class RolesAndPermissionsSeeder extends Seeder
             'continueDiets',
         ]);
 
-        // Asignar permisos a Jefe de nutrición
+        // Asignar permisos a Jefe de nutrición: lo mismo que el nutricionista y, además, descarga
+        // reportes y crea nutricionistas; conserva precios y suscripción
         $jefe->syncPermissions([
+            'createDiets',
+            'editDiets',
             'viewDiets',
             'viewReports',
+            'confirmReception',
+            'viewDispatches',
+            'viewActiveDiets',
+            'continueDiets',
             'generateFiles',
             'managePrices',
             'manageSubscription',
-            'viewUsers',   // solo despachadores (config security.assignable_roles)
+            'viewUsers',   // solo nutricionistas (config security.assignable_roles)
             'createUsers',
         ]);
 

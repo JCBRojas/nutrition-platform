@@ -91,8 +91,9 @@ class User extends Authenticatable
         return match (true) {
             $this->hasRole('nutricionista') => route('dashboard.nutrition'),
             $this->hasRole('despachador') => route('dashboard.dispatch'),
-            $this->hasRole('jefe_nutricion') => $premium('prices') ? route('prices.index') : route('diet.reports'),
-            $this->hasRole('jefe_despacho') => route('companies.index'),
+            // El jefe de nutrición trabaja como nutricionista: inicia en las dietas activas
+            $this->hasRole('jefe_nutricion') => route('dashboard.nutrition'),
+            $this->hasRole('jefe_despacho') => $premium('dispatch_log') ? route('dispatches.index') : route('companies.index'),
             $this->hasRole('admin') => route('admin.users.index'),
             // Roles creados desde /admin/roles (p. ej. enfermería): según sus permisos
             $this->can('viewActiveDiets') => route('dashboard.nutrition'),

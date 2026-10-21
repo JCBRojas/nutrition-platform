@@ -49,7 +49,7 @@ class SidebarNavigationTest extends TestCase
             'nutricionista' => ['nutricionista', ['nav-nutricional', 'nav-despachos', 'nav-historial', 'nav-reporte']],
             'enfermeria' => ['enfermeria', ['nav-nutricional']],
             'despachador' => ['despachador', ['nav-despacho', 'nav-despachos', 'nav-historial', 'nav-reporte']],
-            'jefe_nutricion' => ['jefe_nutricion', ['nav-historial', 'nav-reporte', 'nav-precios', 'nav-suscripcion', 'nav-usuarios']],
+            'jefe_nutricion' => ['jefe_nutricion', ['nav-nutricional', 'nav-despachos', 'nav-historial', 'nav-reporte', 'nav-precios', 'nav-suscripcion', 'nav-usuarios']],
             'jefe_despacho' => ['jefe_despacho', ['nav-despachos', 'nav-historial', 'nav-reporte', 'nav-empresas', 'nav-usuarios']],
         ];
     }

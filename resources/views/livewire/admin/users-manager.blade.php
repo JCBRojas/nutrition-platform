@@ -198,6 +198,15 @@
                                 </label>
                                 <div class="form-hint" style="margin-bottom:6px">A los despachadores y jefes de despacho se les asignan empresas específicas.</div>
                             @endif
+                            @if ($offersOwnCompanies && $companyOptions->where('is_active', true)->isNotEmpty())
+                                @php
+                                    $ownIds = $companyOptions->where('is_active', true)->pluck('id')->map(fn ($id) => (string) $id)->all();
+                                    $allOwn = array_diff($ownIds, $companies) === [];
+                                @endphp
+                                <label style="display:inline-flex;align-items:center;gap:6px;font-weight:400;margin-bottom:6px">
+                                    <input type="checkbox" wire:click="toggleOwnCompanies" @checked($allOwn)> Todas mis empresas
+                                </label>
+                            @endif
                             @unless ($all_companies)
                                 <div>
                                     @forelse ($companyOptions as $c)

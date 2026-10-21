@@ -54,10 +54,9 @@ class PricesAndHistoryTest extends TestCase
 
     /* ===================== PRECIOS ===================== */
 
-    public function test_only_jefe_can_manage_prices_and_lands_there_after_login(): void
+    public function test_only_jefe_can_manage_prices(): void
     {
         $this->actingAs($this->jefe)->get(route('prices.index'))->assertOk()->assertSee('Precios vigentes hoy');
-        $this->assertSame(route('prices.index'), $this->jefe->homeUrl());
 
         $this->flushSession();
         $this->actingAs($this->nutritionist)->get(route('prices.index'))->assertForbidden();

@@ -10,9 +10,9 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * El jefe de nutrición crea usuarios solo con rol despachador y solo ve a los despachadores.
+ * El jefe de nutrición crea usuarios solo con rol nutricionista y solo ve a los nutricionistas.
  */
-class JefeCreatesDispatchersTest extends TestCase
+class JefeCreatesNutritionistsTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -37,32 +37,48 @@ class JefeCreatesDispatchersTest extends TestCase
             ->set('roles', $roles);
     }
 
-    public function test_jefe_creates_a_dispatcher(): void
+    public function test_jefe_creates_a_nutritionist(): void
     {
-        Livewire::actingAs($this->jefe)->test(UsersManager::class)->call('create')->assertSet('roles', ['despachador']);
+        Livewire::actingAs($this->jefe)->test(UsersManager::class)->call('create')->assertSet('roles', ['nutricionista']);
 
-        $this->form(['despachador'])->call('save')->assertHasNoErrors();
+        $this->form(['nutricionista'])->call('save')->assertHasNoErrors();
 
-        $this->assertTrue(User::where('email', 'noche@hospital.co')->firstOrFail()->hasRole('despachador'));
+        $this->assertTrue(User::where('email', 'noche@hospital.co')->firstOrFail()->hasRole('nutricionista'));
     }
 
     public function test_jefe_cannot_assign_other_roles(): void
     {
         $this->form(['admin'])->call('save')->assertHasErrors('roles.0');
+        $this->form(['despachador'])->call('save')->assertHasErrors('roles.0'); // los crea el jefe de despacho
         $this->form([])->call('save')->assertHasErrors('roles');
 
         $this->assertNull(User::where('email', 'noche@hospital.co')->first());
     }
 
-    public function test_jefe_only_sees_dispatchers_and_cannot_edit(): void
+    public function test_jefe_only_sees_nutritionists_and_cannot_edit(): void
     {
         $admin = User::role('admin')->firstOrFail();
         $dispatcher = User::role('despachador')->firstOrFail();
+        $nutritionist = User::role('nutricionista')->firstOrFail();
 
         Livewire::actingAs($this->jefe)->test(UsersManager::class)
-            ->assertSee($dispatcher->email)
+            ->assertSee($nutritionist->email)
             ->assertDontSee($admin->email)
-            ->call('edit', $dispatcher->id)->assertForbidden();
+            ->assertDontSee($dispatcher->email)
+            ->call('edit', $nutritionist->id)->assertForbidden();
+    }
+
+    public function test_jefe_works_as_nutritionist_and_downloads_reports(): void
+    {
+        $this->assertTrue($this->jefe->can('createDiets'));
+        $this->assertTrue($this->jefe->can('editDiets'));
+        $this->assertTrue($this->jefe->can('confirmReception'));
+        $this->assertTrue($this->jefe->can('continueDiets'));
+        $this->assertTrue($this->jefe->can('generateFiles'));
+        $this->assertSame(route('dashboard.nutrition'), $this->jefe->homeUrl());
+
+        $this->actingAs($this->jefe)->get(route('dashboard.nutrition'))->assertOk();
+        $this->actingAs($this->jefe)->get(route('reports.monthly.excel'))->assertOk();
     }
 
     public function test_admin_still_assigns_any_role(): void

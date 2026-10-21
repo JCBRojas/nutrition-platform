@@ -15,10 +15,10 @@ return [
     'trusted_proxies' => env('TRUSTED_PROXIES'),
 
     // Roles que puede asignar quien administra usuarios sin ser admin (el admin asigna todos).
-    // El jefe de nutrición crea despachadores y solo ve a los usuarios con esos roles.
+    // El jefe de nutrición crea nutricionistas y solo ve a los usuarios con esos roles.
     // El jefe de despacho crea despachadores de sus empresas (NUT-RN-003-23).
     'assignable_roles' => [
-        'jefe_nutricion' => ['despachador'],
+        'jefe_nutricion' => ['nutricionista'],
         'jefe_despacho' => ['despachador'],
     ],
 

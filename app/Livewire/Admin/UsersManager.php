@@ -218,6 +218,15 @@ class UsersManager extends Component
         return Company::managedBy(auth()->user())->pluck('id')->all();
     }
 
+    /** Jefe de despacho: «Todas mis empresas» marca (o desmarca) todas sus empresas activas */
+    public function toggleOwnCompanies(): void
+    {
+        abort_unless($this->isDispatchManager(), 403);
+
+        $own = Company::managedBy(auth()->user())->active()->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $this->companies = array_diff($own, $this->companies) === [] ? [] : $own;
+    }
+
     /** null = puede asignar cualquier rol (admin) */
     private function assignable(): ?array
     {
@@ -269,6 +278,7 @@ class UsersManager extends Component
             'allRoles' => $allRoles,
             'assignsCompanies' => $this->assignsCompanies(),
             'offersAllCompanies' => ! $this->isDispatchManager(),
+            'offersOwnCompanies' => $this->isDispatchManager(),
             // Activas, más las desactivadas que el usuario en edición ya tiene (para no quitárselas sin querer)
             'companyOptions' => $this->assignsCompanies()
                 ? Company::query()

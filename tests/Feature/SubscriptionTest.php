@@ -197,12 +197,13 @@ class SubscriptionTest extends TestCase
         $this->actingAs($this->nutritionist)->get(route('subscription.receipt', $payment))->assertForbidden();
     }
 
-    public function test_jefe_lands_on_reports_in_basic_and_on_prices_in_premium(): void
+    public function test_jefe_lands_on_active_diets_with_or_without_premium(): void
     {
-        $this->assertSame(route('diet.reports'), $this->jefe->homeUrl());
+        // El jefe de nutrición trabaja como nutricionista: siempre inicia en las dietas activas
+        $this->assertSame(route('dashboard.nutrition'), $this->jefe->homeUrl());
 
         $this->subscriptions()->grant('monthly', $this->admin, 'Prueba');
         $this->subscriptions()->forget();
-        $this->assertSame(route('prices.index'), $this->jefe->homeUrl());
+        $this->assertSame(route('dashboard.nutrition'), $this->jefe->homeUrl());
     }
 }
