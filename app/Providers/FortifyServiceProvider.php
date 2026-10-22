@@ -7,6 +7,7 @@ use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Http\Responses\LoginResponse;
+use App\Models\EmailDomain;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -97,6 +98,17 @@ class FortifyServiceProvider extends ServiceProvider
             if (! $user || ! Hash::check($request->password, $user->password)) {
                 RateLimiter::hit($throttleKey);
                 AuditLogger::log('login_failed', "Intento fallido con {$username}", $user, ['email' => $username, 'reason' => $user ? 'contraseña' : 'usuario inexistente'], $user?->id);
+
+                throw ValidationException::withMessages([
+                    Fortify::username() => 'Credenciales incorrectas.',
+                ]);
+            }
+
+            // NUT-RN-002-01/-04: dominio no autorizado → mismo mensaje que credenciales inválidas
+            if (! EmailDomain::allows($user->email)) {
+                RateLimiter::hit($throttleKey);
+                $domain = EmailDomain::of($user->email);
+                AuditLogger::log('login_blocked_domain', "Ingreso rechazado: dominio {$domain} no autorizado", $user, ['domain' => $domain], $user->id);
 
                 throw ValidationException::withMessages([
                     Fortify::username() => 'Credenciales incorrectas.',

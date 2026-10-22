@@ -12,9 +12,14 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
-        // La aceptación de la política y el 2FA obligatorio se prueban en ComplianceTest;
-        // en el resto de pruebas los usuarios del seeder no los tienen.
-        config(['security.privacy.required' => false, 'security.two_factor_roles' => [], 'security.force_https' => false]);
+        // La aceptación de la política y el 2FA obligatorio se prueban en ComplianceTest, y los dominios
+        // de correo en EmailDomainsTest; en el resto de pruebas los usuarios del seeder no los tienen.
+        config([
+            'security.privacy.required' => false,
+            'security.two_factor_roles' => [],
+            'security.force_https' => false,
+            'security.seed_admin_email_domain' => false,
+        ]);
     }
 
     /** Plan Premium vigente para la institución (amplio para que travelTo no lo deje fuera) */

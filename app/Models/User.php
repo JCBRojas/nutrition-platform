@@ -131,6 +131,14 @@ class User extends Authenticatable
      */
     public function sendPasswordResetNotification($token): void
     {
+        // NUT-RN-002-04: dominio no autorizado → no se envía el enlace (sin revelarlo en el formulario)
+        if (! EmailDomain::allows($this->email)) {
+            $domain = EmailDomain::of($this->email);
+            AuditLogger::log('login_blocked_domain', "Recuperación rechazada: dominio {$domain} no autorizado", $this, ['domain' => $domain, 'flow' => 'password_reset'], $this->id);
+
+            return;
+        }
+
         try {
             parent::sendPasswordResetNotification($token);
         } catch (TransportExceptionInterface $e) {

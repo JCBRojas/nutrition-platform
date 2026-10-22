@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Models\Company;
+use App\Models\EmailDomain;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class UserService
@@ -34,6 +36,11 @@ class UserService
             ->flatten()->unique()->values()->all();
     }
 
+        return collect(config('security.visible_roles', []))
+            ->only($actor->getRoleNames()->all())
+            ->flatten()->merge($assignable)->unique()->values()->all();
+    }
+
     /**
      * $actor puede editar a $model: sin restricción de roles (admin) siempre; si no, solo usuarios
      * con roles que puede asignar y, si es jefe de despacho, de alguna de sus empresas (NUT-RN-003-23).
@@ -54,11 +61,23 @@ class UserService
             || $model->companies()->whereIn('companies.id', Company::managedBy($actor)->select('id'))->exists();
     }
 
+    /** NUT-RN-002-05: no se crea un usuario ni se le cambia el correo a un dominio no autorizado */
+    private function ensureDomainAllowed(string $email): void
+    {
+        if (! EmailDomain::allows($email)) {
+            throw ValidationException::withMessages([
+                'email' => 'El dominio '.EmailDomain::of($email).' no está autorizado para iniciar sesión (lo autoriza el administrador en «Dominios de correo»).',
+            ]);
+        }
+    }
+
     /**
      * Crear usuario con sus roles
      */
     public function create(array $data): User
     {
+        $this->ensureDomainAllowed($data['email']);
+
         return DB::transaction(function () use ($data) {
             $user = User::create([
                 'name' => $data['name'],
@@ -82,6 +101,10 @@ class UserService
      */
     public function update(User $user, array $data): User
     {
+        if (Str::lower($data['email']) !== Str::lower($user->email)) {
+            $this->ensureDomainAllowed($data['email']);
+        }
+
         return DB::transaction(function () use ($user, $data) {
             $roles = $data['roles'] ?? [];
 

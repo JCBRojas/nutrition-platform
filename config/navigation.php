@@ -41,6 +41,7 @@ return [
             'items' => [
                 ['id' => 'nav-empresas', 'label' => 'Empresas', 'route' => 'companies.index', 'icon' => 'building', 'can' => ['viewCompanies', 'manageCompanies'], 'premium' => 'companies'],
                 ['id' => 'nav-usuarios', 'label' => 'Usuarios', 'route' => 'admin.users.index', 'active' => ['admin.users.*'], 'icon' => 'users', 'can' => 'viewUsers'],
+                ['id' => 'nav-dominios', 'label' => 'Dominios de correo', 'route' => 'admin.email-domains.index', 'active' => ['admin.email-domains.*'], 'icon' => 'at', 'can' => 'manageEmailDomains'],
                 ['id' => 'nav-roles', 'label' => 'Roles y permisos', 'route' => 'admin.roles.index', 'active' => ['admin.roles.*'], 'icon' => 'lock', 'can' => 'manageRoles'],
                 ['id' => 'nav-demos', 'label' => 'Solicitudes de demo', 'route' => 'admin.demo-requests.index', 'active' => ['admin.demo-requests.*'], 'icon' => 'message', 'can' => 'viewDemoRequests'],
                 ['id' => 'nav-auditoria', 'label' => 'Auditoría', 'route' => 'admin.audit.index', 'active' => ['admin.audit.*'], 'icon' => 'shield', 'can' => 'viewAuditLog'],
@@ -50,6 +51,7 @@ return [
 
     // Contenido de cada ícono (SVG 24×24 con trazo); lo dibuja <x-nav-item>
     'icons' => [
+        'at' => '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 006 0v-1a10 10 0 10-3.92 7.94"/>',
         'grid' => '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
         'clipboard' => '<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/>',
         'truck' => '<path d="M1 3h15v13H1zM16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',

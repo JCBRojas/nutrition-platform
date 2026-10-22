@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Company;
+use App\Models\EmailDomain;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -40,6 +41,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'viewDemoRequests',
             'manageCompanies',
             'viewCompanies',
+            'manageEmailDomains',
         ];
 
         foreach ($permissions as $permission) {
@@ -147,6 +149,12 @@ class RolesAndPermissionsSeeder extends Seeder
         );
 
         $userAdmin->assignRole($admin);
+
+        // NUT-RN-002-07: en la instalación inicial (lista vacía) se autoriza el dominio del admin para que
+        // no quede sin acceso. Si la lista ya tiene dominios, no se toca (el admin la administra).
+        if (config('security.seed_admin_email_domain') && ! EmailDomain::query()->exists()) {
+            EmailDomain::create(['domain' => EmailDomain::of($userAdmin->email), 'is_active' => true]);
+        }
 
         // Crear usuario Jefe de nutrición (contraseña: SEED_USER_PASSWORD o la generada arriba)
         $userJefe = User::firstOrCreate(

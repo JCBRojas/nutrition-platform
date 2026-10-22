@@ -46,6 +46,10 @@ class AuditLog extends Model
         'company_created' => 'Empresa creada',
         'company_updated' => 'Empresa modificada',
         'company_deactivated' => 'Empresa desactivada',
+        'email_domain_created' => 'Dominio de correo agregado',
+        'email_domain_updated' => 'Dominio de correo modificado',
+        'email_domain_deleted' => 'Dominio de correo eliminado',
+        'login_blocked_domain' => 'Ingreso rechazado por dominio de correo',
         'dispatch_not_arrived' => 'Despacho reportado como no recibido',
         'dispatch_cancelled' => 'Despacho anulado por cocina',
     ];

@@ -22,6 +22,10 @@ return [
         'jefe_despacho' => ['despachador'],
     ],
 
+    // NUT-RN-002-07: al sembrar con la lista de dominios vacía, autorizar el dominio de SEED_ADMIN_EMAIL.
+    // Desde ese momento solo ingresan los correos de dominios autorizados (ver /admin/dominios).
+    'seed_admin_email_domain' => (bool) env('SEED_ADMIN_EMAIL_DOMAIN', true),
+
     // Roles que deben tener la verificación en dos pasos (2FA) activa para usar la plataforma.
     // Con TWO_FACTOR_ENABLED=false no se exige a nadie (ver config/fortify.php).
     'two_factor_roles' => env('TWO_FACTOR_ENABLED', true)

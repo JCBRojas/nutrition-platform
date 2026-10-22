@@ -9,6 +9,7 @@ use App\Http\Controllers\ReportExportController;
 use App\Http\Controllers\SubscriptionController;
 use App\Livewire\Admin\AuditLogViewer;
 use App\Livewire\Admin\DemoRequestsViewer;
+use App\Livewire\Admin\EmailDomainsManager;
 use App\Livewire\Admin\RolesManager;
 use App\Livewire\Admin\UsersManager;
 use App\Livewire\CompaniesManager;
@@ -124,6 +125,7 @@ Route::middleware([
         Route::get('/usuarios', UsersManager::class)->middleware('permission:viewUsers')->name('users.index');
         Route::get('/roles', RolesManager::class)->middleware('permission:manageRoles')->name('roles.index');
         Route::get('/auditoria', AuditLogViewer::class)->middleware('permission:viewAuditLog')->name('audit.index');
+        Route::get('/dominios', EmailDomainsManager::class)->middleware('permission:manageEmailDomains')->name('email-domains.index');
         Route::get('/solicitudes-demo', DemoRequestsViewer::class)->middleware('permission:viewDemoRequests')->name('demo-requests.index');
     });
 
