@@ -125,6 +125,8 @@ class DietController extends Controller
 
         return view('reports-diets-nutricion', [
             'census' => $census,
+            // SCRUM-16: lo programado (arriba) frente a lo recibido, que es lo que cuenta en el Excel y la facturación
+            'receivedTrays' => $reports->monthlyCensus($month, receivedOnly: true)['totalTrays'],
             'history' => $reports->monthlyHistory($month, 6),
             'snapshot' => $reports->currentSnapshot(),
             'mealLabels' => DietReportService::mealLabels(),

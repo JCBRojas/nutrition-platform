@@ -118,6 +118,31 @@ class NutritionReportTest extends TestCase
         $this->assertSame(2, $census['totals']['desayuno']); // 1 y 2 de octubre
     }
 
+    public function test_daily_average_uses_only_days_with_diets(): void
+    {
+        // SCRUM-16: dos dietas creadas hoy (día 15): el promedio es 2, no 2 / 15 días
+        $this->diet('2026-10-15 07:00:00', ['almuerzo']);
+        $this->diet('2026-10-15 07:00:00', ['cena']);
+
+        $census = app(DietReportService::class)->monthlyCensus(CarbonImmutable::parse('2026-10-01'));
+
+        $this->assertSame(15, $census['daysCounted']);
+        $this->assertSame(1, $census['daysWithDiets']);
+        $this->assertSame(2.0, (float) $census['avgDailyDiets']);
+    }
+
+    public function test_report_shows_scheduled_and_received_trays(): void
+    {
+        // SCRUM-16: lo programado (sin despachar) se distingue de lo recibido, que es lo que cuenta en Excel y facturación
+        config(['dispatch.required_from' => '2026-10-01']);
+        $this->diet('2026-10-15 07:00:00', ['almuerzo']);
+
+        $this->actingAs($this->nutritionist)->get(route('diet.reports', ['mes' => '2026-10']))
+            ->assertOk()
+            ->assertSeeInOrder(['Bandejas programadas', '1', 'Bandejas recibidas', '0'])
+            ->assertSee('en 1 día(s) con dietas', false);
+    }
+
     public function test_report_page_renders_for_both_roles(): void
     {
         $this->diet('2026-10-01 08:00:00', ['desayuno']);

@@ -47,14 +47,19 @@
                 {{-- ===================== KPIs ===================== --}}
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-label">Bandejas del mes</div>
+                        <div class="stat-label">Bandejas programadas</div>
                         <div class="stat-value">{{ number_format($census['totalTrays'], 0, ',', '.') }}</div>
-                        <div class="stat-sub">Suma de todos los tiempos de comida</div>
+                        <div class="stat-sub">Tiempos de comida de las dietas vigentes (producción)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Bandejas recibidas</div>
+                        <div class="stat-value">{{ number_format($receivedTrays, 0, ',', '.') }}</div>
+                        <div class="stat-sub">Despachadas y con recepción confirmada: las que cuentan en el Excel y la facturación</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Promedio diario</div>
                         <div class="stat-value">{{ number_format($census['avgDailyDiets'], 1, ',', '.') }}</div>
-                        <div class="stat-sub">Dietas vigentes por día</div>
+                        <div class="stat-sub">Dietas por día, en {{ $census['daysWithDiets'] }} día(s) con dietas</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Pacientes en el mes</div>

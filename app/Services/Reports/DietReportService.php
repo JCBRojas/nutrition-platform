@@ -251,6 +251,8 @@ class DietReportService
         }
 
         $dietDays = $days->sum('diets');
+        // SCRUM-16: el promedio se calcula sobre los días con al menos una dieta, no sobre todos los días del mes
+        $daysWithDiets = $days->where('diets', '>', 0)->count();
         arsort($consistency);
         arsort($specifications);
 
@@ -261,7 +263,8 @@ class DietReportService
             'totals' => $totals,
             'totalTrays' => array_sum($totals),
             'dietDays' => $dietDays,
-            'avgDailyDiets' => $days->isEmpty() ? 0 : round($dietDays / $days->count(), 1),
+            'daysWithDiets' => $daysWithDiets,
+            'avgDailyDiets' => $daysWithDiets === 0 ? 0 : round($dietDays / $daysWithDiets, 1),
             'isolationDays' => $isolationDays,
             'consistency' => $consistency,
             'specifications' => $specifications,

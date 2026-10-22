@@ -34,7 +34,7 @@
             <div class="stat-card amber">
                 <div class="stat-label">Sin confirmar</div>
                 <div class="stat-value">{{ $totals['dispatched'] - $totals['received'] }}</div>
-                <div class="stat-sub">No cuentan en reportes ni facturación</div>
+                <div class="stat-sub">No cuentan en la facturación ni en el Excel del reporte</div>
             </div>
         </div>
 
