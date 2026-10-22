@@ -3,6 +3,8 @@
 namespace App\Livewire;
 
 use App\Models\Diet;
+use App\Models\DietDispatch;
+use App\Models\DietDispatchVoid;
 use App\Models\DietHistory;
 use App\Services\DietDayService;
 use App\Services\DietService;
@@ -10,6 +12,7 @@ use App\Services\DispatchService;
 use App\Support\Pagination;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -51,6 +54,11 @@ class DietsManager extends Component
 
     /** Total de dietas con cambios sin confirmar (título de la pestaña del navegador) */
     public int $pendingCount = 0;
+
+    /** Despacho que se va a anular (modal abierto) y su motivo */
+    public ?int $voidingId = null;
+
+    public string $voidReason = '';
 
     private ?Collection $pendingCache = null;
 
@@ -166,6 +174,44 @@ class DietsManager extends Component
         $this->dispatch('diet-dispatched', message: $message);
     }
 
+    /* ===================== ANULAR DESPACHO ===================== */
+
+    /** Cocina se equivocó: anula un despacho que aún no se recibe */
+    public function startCancelDispatch(int $dispatchId): void
+    {
+        abort_unless(auth()->user()?->can('confirmDelivery'), 403);
+
+        $this->voidingId = $dispatchId;
+        $this->voidReason = '';
+        $this->resetValidation();
+    }
+
+    public function closeCancelDispatch(): void
+    {
+        $this->reset('voidingId', 'voidReason');
+        $this->resetValidation();
+    }
+
+    public function confirmCancelDispatch(DispatchService $dispatches): void
+    {
+        abort_unless(auth()->user()?->can('confirmDelivery'), 403);
+        $this->validate(['voidReason' => ['nullable', 'string', 'max:255']]);
+
+        try {
+            $void = $dispatches->voidDispatch((int) $this->voidingId, DietDispatchVoid::CANCELLED, $this->voidReason, auth()->id());
+        } catch (ValidationException $e) {
+            // Se recibió o se anuló mientras el modal estaba abierto
+            $this->closeCancelDispatch();
+            $this->dispatch('diet-dispatched', message: collect($e->errors())->flatten()->first());
+
+            return;
+        }
+        $this->closeCancelDispatch();
+
+        $meal = mb_strtolower(DispatchService::meals()[$void->meal] ?? $void->meal);
+        $this->dispatch('diet-dispatched', message: "Despacho anulado: {$meal} de la hab. {$void->diet?->habitation}. Puedes volver a despacharlo.");
+    }
+
     /* ===================== RENDER ===================== */
 
     public function render()
@@ -198,12 +244,18 @@ class DietsManager extends Component
         $dispatches = $this->tab === 'active'
             ? $dispatchService->dispatchesFor($diets->getCollection()->pluck('id')->all(), $this->meal)
             : collect();
+        $voids = $this->tab === 'active'
+            ? $dispatchService->voidsFor($diets->getCollection()->pluck('id')->all(), $this->meal)
+            : collect();
         $authorized = $this->tab === 'active'
             ? app(DietDayService::class)->authorizedIds($diets->getCollection()->pluck('id')->all())
             : [];
-        $diets->getCollection()->each(function (Diet $diet) use ($dispatches, $dispatchService, $authorized) {
+        $diets->getCollection()->each(function (Diet $diet) use ($dispatches, $voids, $dispatchService, $authorized) {
             $diet->authorized_for_day = in_array($diet->id, $authorized, true);
             $diet->dispatch_record = $dispatches->get($diet->id);
+            // Nutrición reportó que no llegó: aviso para volver a despacharlo
+            $void = $diet->dispatch_record ? null : $voids->get($diet->id);
+            $diet->dispatch_missing = $void?->isNotArrived() ? $void : null;
             $diet->dispatch_block = $this->tab === 'active' ? $dispatchService->blockReason($diet, $this->meal) : null;
         });
         $dispatchable = $diets->getCollection()
@@ -216,12 +268,21 @@ class DietsManager extends Component
         $pending = $this->pending();
         $this->pendingCount = $pending->count();
 
+        // Si el despacho ya no está sin recibir (se recibió o se anuló en otra pestaña), se cierra el modal
+        $voiding = $this->voidingId
+            ? DietDispatch::pendingReceipt()->with(['diet', 'dispatchedBy'])->find($this->voidingId)
+            : null;
+        if ($this->voidingId && ! $voiding) {
+            $this->reset('voidingId', 'voidReason');
+        }
+
         return view('livewire.diet-manager', [
             'diets' => $diets,
             'pending' => $pending,
             'meals' => DispatchService::meals(),
             'delivery' => $this->tab === 'active' ? $dispatchService->statusByDiet($diets->getCollection()->pluck('id')->all()) : [],
             'dispatchable' => $dispatchable,
+            'voiding' => $voiding,
             'counts' => [
                 'active' => Diet::active()->count(),
                 'closed' => Diet::whereIn('status', [Diet::CANCELLED, Diet::FINISHED])->count(),

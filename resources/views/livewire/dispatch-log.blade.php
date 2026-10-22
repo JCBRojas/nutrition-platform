@@ -127,6 +127,43 @@
 
             {{ $rows->onEachSide(1)->links('pagination.table', ['livewire' => true]) }}
         </div>
+
+        {{-- Anulados por cocina o reportados como no recibidos: no se facturan --}}
+        @if ($voids->isNotEmpty())
+            <div class="card dl-voids">
+                <h2 class="dl-voids-title">Anulados o no llegaron ({{ $voids->count() }})</h2>
+                <div class="table-responsive">
+                    <table class="table-wrap">
+                        <thead>
+                            <tr>
+                                <th>Hab.</th>
+                                <th>Paciente</th>
+                                <th>Tiempo</th>
+                                <th>Despachó</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($voids as $v)
+                                <tr wire:key="dlv-{{ $v->id }}">
+                                    <td><span class="room-badge">{{ $v->diet?->habitation }}</span></td>
+                                    <td>{{ $v->diet?->name_patient }}</td>
+                                    <td><span class="tag tag-tiempo">{{ $meals[$v->meal] ?? $v->meal }}</span></td>
+                                    <td>
+                                        {{ $v->dispatchedBy?->name ?? '—' }}
+                                        <div class="dl-meta">{{ $v->dispatched_at->format('g:i a') }}</div>
+                                    </td>
+                                    <td>
+                                        <span class="dl-void">{{ $v->label() }}</span>
+                                        <div class="dl-meta">{{ $v->voidedBy?->name ?? '—' }} · {{ $v->voided_at->format('g:i a') }}{{ $v->reason ? ' · '.$v->reason : '' }}</div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
     </div>
 
     <style>
@@ -152,6 +189,9 @@
         .dl-meta { font-size: 11.5px; color: var(--text-muted); }
         .dl-ok { font-weight: 700; color: var(--dieta-entregado); font-size: 12.5px; }
         .dl-wait { font-weight: 600; color: var(--amber); font-size: 12.5px; }
+        .dl-void { font-weight: 700; color: var(--color-error); font-size: 12.5px; }
+        .dl-voids { margin-top: 16px; }
+        .dl-voids-title { margin: 0; padding: 12px 16px 4px; font-size: 14px; font-weight: 700; }
         @media (max-width: 640px) { .dl-search { max-width: none; flex: 1 1 100%; } .dl-legend { margin-left: 0; } }
     </style>
 </div>

@@ -46,6 +46,8 @@ class AuditLog extends Model
         'company_created' => 'Empresa creada',
         'company_updated' => 'Empresa modificada',
         'company_deactivated' => 'Empresa desactivada',
+        'dispatch_not_arrived' => 'Despacho reportado como no recibido',
+        'dispatch_cancelled' => 'Despacho anulado por cocina',
     ];
 
     protected $fillable = ['user_id', 'event', 'description', 'subject_type', 'subject_id', 'meta', 'ip', 'user_agent'];

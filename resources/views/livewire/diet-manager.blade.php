@@ -180,6 +180,9 @@
                                 @if ($tab === 'active')
                                     @php $record = $diet->dispatch_record; @endphp
                                     <td class="dm-check">
+                                        @if ($diet->dispatch_missing)
+                                            <span class="dm-missing" title="{{ $diet->dispatch_missing->reason }}">No llegó: vuelve a despacharla</span>
+                                        @endif
                                         @if ($record)
                                             <span @class(['dm-dispatch-state', 'dm-received' => $record->isReceived()])>
                                                 {{ $record->isReceived() ? 'Recibida' : 'Despachada' }}
@@ -187,6 +190,14 @@
                                             <div class="dm-meta">
                                                 {{ $record->isReceived() ? $record->received_at->format('g:i a') : $record->dispatched_at->format('g:i a').' · esperando recepción' }}
                                             </div>
+                                            @if (! $record->isReceived())
+                                                @can('confirmDelivery')
+                                                    <button type="button" class="btn btn-sm dm-void-btn" wire:click="startCancelDispatch({{ $record->id }})"
+                                                        aria-label="Anular despacho: habitación {{ $diet->habitation }}">
+                                                        Anular despacho
+                                                    </button>
+                                                @endcan
+                                            @endif
                                         @elseif ($diet->dispatch_block)
                                             <span class="dm-meta" title="{{ $diet->dispatch_block }}">{{ $diet->dispatch_block }}</span>
                                         @else
@@ -291,6 +302,11 @@
         </div>
     </div>
 
+    @if ($voiding)
+        <x-modal-void-dispatch :dispatch="$voiding" :kind="\App\Models\DietDispatchVoid::CANCELLED" :meals="$meals"
+            confirm="confirmCancelDispatch" cancel="closeCancelDispatch" />
+    @endif
+
     {{-- Aviso breve (nuevo cambio / confirmación) --}}
     <div class="dm-toast" role="status" aria-live="polite" x-show="toast" x-cloak x-transition
         x-effect="if (toast) { clearTimeout(window.dmToastTimer); window.dmToastTimer = setTimeout(() => toast = null, 5000) }"
@@ -363,6 +379,10 @@
         .dm-checkbox { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); }
         .dm-dispatch-state { display: inline-block; font-size: 12px; font-weight: 700; color: var(--blue); }
         .dm-dispatch-state.dm-received { color: var(--color-exito); }
+        .dm-missing { display: block; margin-bottom: 4px; font-size: 11.5px; font-weight: 700; color: var(--color-error); }
+        .dm-void-btn { margin-top: 4px; padding: 1px 8px; font-size: 11.5px; background: var(--color-superficie); color: var(--btn-danger); border: 1px solid var(--btn-danger); }
+        .dm-void-btn:hover { background: var(--btn-danger); color: var(--btn-danger-texto); }
+        .dm-void-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         .dm-row-selected td { background: var(--color-exito-suave); }
         @media (prefers-reduced-motion: reduce) { .dm-dot, .dm-alert-flash { animation: none; } }
         @media (max-width: 640px) { .dm-search { max-width: none; width: 100%; } .dm-alert-list { grid-template-columns: 1fr; } }

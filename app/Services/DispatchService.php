@@ -4,12 +4,14 @@ namespace App\Services;
 
 use App\Models\Diet;
 use App\Models\DietDispatch;
+use App\Models\DietDispatchVoid;
 use App\Services\Reports\DietReportService;
 use App\Support\LiveUpdates;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Despacho de dietas por tiempo de comida y confirmación de recepción.
@@ -19,6 +21,8 @@ use Illuminate\Support\Facades\DB;
  * 2. El nutricionista lo ve en su panel y confirma la recepción (received_at).
  *    Al recibirse todos los tiempos del día, la dieta queda Completada (DietDayService).
  * 3. BillingService solo factura los días completados (antes, los tiempos recibidos).
+ * 4. Si no llegó, el nutricionista lo reporta; si cocina se equivocó, el despachador lo anula
+ *    (voidDispatch). Mientras no se haya recibido, ese tiempo se puede volver a despachar.
  *
  * Solo se despacha una dieta autorizada para el día: por su creación o por «Continuar dieta».
  */
@@ -244,6 +248,75 @@ class DispatchService
                 'completed' => $this->days->evaluateDispatches($dispatches, $userId),
             ];
         });
+    }
+
+    /**
+     * Saca un despacho que no se recibió: el nutricionista reporta que no llegó
+     * (DietDispatchVoid::NOT_ARRIVED) o el despachador lo anula por error (CANCELLED).
+     * Queda la copia en diet_dispatch_voids y ese tiempo se puede volver a despachar.
+     * Un despacho ya recibido no se anula.
+     */
+    public function voidDispatch(int $dispatchId, string $kind, ?string $reason, int $userId): DietDispatchVoid
+    {
+        abort_unless(array_key_exists($kind, DietDispatchVoid::LABELS), 422, 'Tipo de anulación no válido.');
+
+        return DB::transaction(function () use ($dispatchId, $kind, $reason, $userId) {
+            $dispatch = DietDispatch::with('diet')->lockForUpdate()->find($dispatchId);
+
+            if (! $dispatch) {
+                throw ValidationException::withMessages(['dispatch' => 'El despacho ya no está disponible.']);
+            }
+            if ($dispatch->isReceived()) {
+                throw ValidationException::withMessages(['dispatch' => 'El despacho ya se recibió: no se puede anular.']);
+            }
+
+            $void = DietDispatchVoid::create([
+                ...$dispatch->only(['diet_id', 'diet_history_id', 'service_date', 'meal', 'dispatched_by', 'dispatched_at']),
+                'kind' => $kind,
+                'reason' => trim((string) $reason) ?: null,
+                'voided_by' => $userId,
+                'voided_at' => now(),
+            ]);
+            $dispatch->delete();
+            LiveUpdates::touch(LiveUpdates::DISPATCH, $dispatch->diet?->company_id);
+
+            // Sin el motivo (texto libre): la auditoría no lleva datos clínicos
+            $meal = mb_strtolower(self::meals()[$dispatch->meal] ?? $dispatch->meal);
+            AuditLogger::log(
+                $kind === DietDispatchVoid::NOT_ARRIVED ? 'dispatch_not_arrived' : 'dispatch_cancelled',
+                ($kind === DietDispatchVoid::NOT_ARRIVED ? 'Reportó que no llegó ' : 'Anuló el despacho de ')
+                    ."{$meal} de la hab. {$dispatch->diet?->habitation} ({$dispatch->service_date->toDateString()})",
+                $void,
+                ['diet_id' => $dispatch->diet_id, 'meal' => $dispatch->meal, 'service_date' => $dispatch->service_date->toDateString()],
+            );
+
+            return $void;
+        });
+    }
+
+    /** Última anulación del día y tiempo, por diet_id (aviso «No llegó» al despachador) */
+    public function voidsFor(array $dietIds, string $meal, ?CarbonInterface $date = null): Collection
+    {
+        return DietDispatchVoid::whereIn('diet_id', $dietIds)
+            ->whereDate('service_date', CarbonImmutable::parse($date ?? now())->toDateString())
+            ->where('meal', $meal)
+            ->orderBy('voided_at')
+            ->get()
+            ->keyBy('diet_id');
+    }
+
+    /** Despachos anulados o que no llegaron en un día (módulo "Despachos del día") */
+    public function dayVoids(CarbonInterface $date, string $meal = '', string $search = ''): Collection
+    {
+        return DietDispatchVoid::query()
+            ->whereDate('service_date', $date->toDateString())
+            ->when($meal !== '', fn ($q) => $q->where('meal', $meal))
+            ->when($search !== '', fn ($q) => $q->whereHas('diet', fn ($q) => $q
+                ->where('habitation', 'like', "%{$search}%")
+                ->orWhere('name_patient', 'like', "%{$search}%")))
+            ->with(['diet', 'dispatchedBy', 'voidedBy'])
+            ->latest('voided_at')
+            ->get();
     }
 
     /**

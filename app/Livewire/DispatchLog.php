@@ -12,7 +12,7 @@ use Livewire\WithPagination;
 
 /**
  * Despachos del día (nutricionista y despachador): qué despachó cocina y qué se
- * recibió, por fecha y tiempo de comida.
+ * recibió, por fecha y tiempo de comida; aparte, los anulados y los que no llegaron.
  */
 #[Layout('layouts.app')]
 class DispatchLog extends Component
@@ -78,6 +78,8 @@ class DispatchLog extends Component
             'rows' => $rows,
             'day' => $date,
             'summary' => $dispatches->daySummary($date),
+            // Anulados por cocina o que no llegaron (no tienen estado de recepción: se ocultan al filtrar por estado)
+            'voids' => $this->status === '' ? $dispatches->dayVoids($date, $this->meal, trim($this->search)) : collect(),
             'meals' => DispatchService::meals(),
         ]);
     }

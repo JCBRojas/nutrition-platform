@@ -44,6 +44,9 @@
                             <th>Servicio</th>
                             <th>Despachado</th>
                             <th>Despachó</th>
+                            @can('confirmReception')
+                                <th><span class="sr-only">Acciones</span></th>
+                            @endcan
                         </tr>
                     </thead>
                     <tbody>
@@ -68,12 +71,25 @@
                                     {{ $d->dispatched_at->format('g:i a') }}
                                 </td>
                                 <td class="dr-when">{{ $d->dispatchedBy?->name ?? '—' }}</td>
+                                @can('confirmReception')
+                                    <td class="dr-actions">
+                                        <button type="button" class="btn btn-sm btn-ghost dr-missing" wire:click="startNotArrived({{ $d->id }})"
+                                            aria-label="No llegó: habitación {{ $d->diet?->habitation }}, {{ $meals[$d->meal] ?? $d->meal }}">
+                                            No llegó
+                                        </button>
+                                    </td>
+                                @endcan
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
         </section>
+    @endif
+
+    @if ($voiding)
+        <x-modal-void-dispatch :dispatch="$voiding" :kind="\App\Models\DietDispatchVoid::NOT_ARRIVED" :meals="$meals"
+            confirm="confirmNotArrived" cancel="cancelNotArrived" />
     @endif
 
     <div class="dr-toast" role="status" aria-live="polite" x-show="toast" x-cloak x-transition
@@ -98,6 +114,8 @@
         .dr-transfer { font-size: 11.5px; font-weight: 600; color: var(--blue); white-space: normal; }
         .dr-when { white-space: nowrap; font-size: 12px; color: var(--text-muted); }
         .dr-check { width: 32px; }
+        .dr-actions { width: 1%; white-space: nowrap; text-align: right; }
+        .dr-missing { padding: 2px 10px; font-size: 12px; }
         .dr-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--blue); }
         .dr-checkbox:focus-visible, .dr-confirm:focus-visible, .dr-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         .dr-row-selected td { background: var(--color-primario-suave); }
