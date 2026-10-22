@@ -25,11 +25,15 @@
                 <div class="form-group">
                     <label>Habitación <span class="req">*</span></label>
                     <input type="text" id="f-habitacion" name="habitation" placeholder="Ej. 205"
+                        value="{{ old('habitation') }}" required
+                        maxlength="{{ \App\Http\Requests\StoreDietRequest::HABITATION_MAX }}"
                         oninput="checkDuplicate()" />
                 </div>
                 <div class="form-group">
                     <label>Nombre del Paciente <span class="req">*</span></label>
-                    <input type="text" id="f-paciente" name="name_patient" placeholder="Nombre completo" />
+                    <input type="text" id="f-paciente" name="name_patient" placeholder="Nombre completo"
+                        value="{{ old('name_patient') }}" required
+                        maxlength="{{ \App\Http\Requests\StoreDietRequest::NAME_MAX }}" />
                 </div>
             </div>
             <!-- ══════════════════════════════════════════════

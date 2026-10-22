@@ -9,6 +9,11 @@ class StoreDietRequest extends FormRequest
 {
     use NormalizesIsolation;
 
+    /** Longitud máxima de la habitación y del nombre del paciente (también maxlength en el formulario) */
+    public const HABITATION_MAX = 50;
+
+    public const NAME_MAX = 150;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -29,8 +34,11 @@ class StoreDietRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'habitation' => 'nullable|string',
-            'name_patient' => 'nullable|string',
+            // Obligatorios al registrar (SCRUM-11; TrimStrings deja en null los de solo espacios) y con
+            // límite (SCRUM-12: antes, 500 por «Data too long»). Una versión nueva no los cambia: no se validan
+            // (así una dieta antigua con un texto más largo se sigue pudiendo editar)
+            'habitation' => $this->route('diet') ? 'nullable' : ['required', 'string', 'max:'.self::HABITATION_MAX],
+            'name_patient' => $this->route('diet') ? 'nullable' : ['required', 'string', 'max:'.self::NAME_MAX],
             'timeFood.*' => 'nullable|string',
             'consistency.*' => 'nullable|string',
             'specifications.*' => 'nullable|string',
@@ -44,6 +52,10 @@ class StoreDietRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'habitation.required' => 'Escribe la habitación.',
+            'habitation.max' => 'La habitación no puede tener más de :max caracteres.',
+            'name_patient.required' => 'Escribe el nombre del paciente.',
+            'name_patient.max' => 'El nombre del paciente no puede tener más de :max caracteres.',
             'billing_type.required' => 'Elige el tipo de dieta (facturación).',
             'billing_type.in' => 'El tipo de dieta elegido no es válido.',
             'isolation.in' => 'El aislamiento debe ser Sí o No.',
