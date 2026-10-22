@@ -6,8 +6,8 @@ use Illuminate\Validation\Rule;
 
 /**
  * Tiempos de comida, consistencias y especificaciones de una dieta: solo claves de los
- * catálogos de config/ (SCRUM-17). Los tiempos son obligatorios: sin ninguno la dieta
- * nunca se despacha.
+ * catálogos de config/ (SCRUM-17). Las tres listas son obligatorias: sin tiempos la dieta
+ * nunca se despacha, y cocina necesita la consistencia y la especificación.
  */
 trait ValidatesDietCatalog
 {
@@ -33,9 +33,9 @@ trait ValidatesDietCatalog
         return [
             'timeFood' => ['required', 'array', 'min:1'],
             'timeFood.*' => ['string', 'distinct', Rule::in(array_keys(config('timeFood.labels')))],
-            'consistency' => ['nullable', 'array'],
+            'consistency' => ['required', 'array', 'min:1'],
             'consistency.*' => ['string', 'distinct', Rule::in(array_keys(config('consistency.labels')))],
-            'specifications' => ['nullable', 'array'],
+            'specifications' => ['required', 'array', 'min:1'],
             'specifications.*' => ['string', 'distinct', Rule::in(array_keys(config('specifications.labels')))],
         ];
     }
@@ -46,6 +46,10 @@ trait ValidatesDietCatalog
             'timeFood.required' => 'Elige al menos un tiempo de comida.',
             'timeFood.min' => 'Elige al menos un tiempo de comida.',
             'timeFood.*.in' => 'Elige los tiempos de comida de la lista.',
+            'consistency.required' => 'Elige al menos una consistencia.',
+            'consistency.min' => 'Elige al menos una consistencia.',
+            'specifications.required' => 'Elige al menos una especificación.',
+            'specifications.min' => 'Elige al menos una especificación.',
             'consistency.*.in' => 'Elige las consistencias de la lista.',
             'specifications.*.in' => 'Elige las especificaciones de la lista.',
         ];

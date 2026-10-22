@@ -186,3 +186,61 @@ function removeChip(key, val, csId) {
     selections[key] = selections[key].filter((v) => v !== val);
     renderChips(csId, key);
 }
+
+// ══════════════════════════════════════════════
+//  VALIDACIÓN AL ENVIAR (registrar y editar)
+//  El servidor valida lo mismo (StoreDietRequest); esto solo avisa antes de enviar.
+// ══════════════════════════════════════════════
+const REQUIRED_CHIPS = {
+    timeFood: "Elige al menos un tiempo de comida.",
+    consistency: "Elige al menos una consistencia.",
+    specifications: "Elige al menos una especificación.",
+};
+
+// Igual que App\Rules\NoHtml: etiquetas, comentarios o instrucciones («<b>», «</p>», «<!--»)
+const HTML_PATTERN = /<\s*[\/!?a-z]/i;
+
+function showFieldError(anchor, message) {
+    let error = anchor.nextElementSibling;
+    if (!error || !error.classList.contains("field-error")) {
+        error = document.createElement("p");
+        error.className = "field-error";
+        error.setAttribute("role", "alert");
+        anchor.after(error);
+    }
+    error.textContent = message;
+}
+
+function clearFieldErrors(form) {
+    form.querySelectorAll(".field-error").forEach((el) => el.remove());
+}
+
+document.addEventListener("submit", (e) => {
+    const form = e.target;
+    const hiddenLists = form.querySelectorAll('[id^="hidden-"]');
+    if (hiddenLists.length === 0) return; // no es un formulario de dieta
+
+    clearFieldErrors(form);
+    let first = null;
+
+    hiddenLists.forEach((hidden) => {
+        const key = hidden.id.replace(/^hidden-(edit-)?/, "").split("-")[0];
+        if (REQUIRED_CHIPS[key] && !hidden.querySelector("input")) {
+            const select = hidden.previousElementSibling ?? hidden;
+            showFieldError(select, REQUIRED_CHIPS[key]);
+            first ??= select;
+        }
+    });
+
+    form.querySelectorAll('input[type="text"], textarea').forEach((field) => {
+        if (HTML_PATTERN.test(field.value)) {
+            showFieldError(field, "No se permite código HTML (etiquetas como <b> o <script>).");
+            first ??= field;
+        }
+    });
+
+    if (first) {
+        e.preventDefault();
+        first.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+});

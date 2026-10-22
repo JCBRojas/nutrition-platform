@@ -176,11 +176,11 @@ class BillingTest extends TestCase
     public function test_diet_form_requires_billing_type(): void
     {
         $this->actingAs($this->nutritionist)
-            ->post(route('dietas.create'), ['habitation' => '102', 'name_patient' => 'Nuevo', 'timeFood' => ['desayuno']])
+            ->post(route('dietas.create'), ['habitation' => '102', 'name_patient' => 'Nuevo', 'timeFood' => ['desayuno'], 'consistency' => ['normal'], 'specifications' => ['hiposodica']])
             ->assertSessionHasErrors('billing_type');
 
         $this->actingAs($this->nutritionist)
-            ->post(route('dietas.create'), ['habitation' => '102', 'name_patient' => 'Nuevo', 'timeFood' => ['desayuno'], 'billing_type' => 'hiperproteica'])
+            ->post(route('dietas.create'), ['habitation' => '102', 'name_patient' => 'Nuevo', 'timeFood' => ['desayuno'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'billing_type' => 'hiperproteica'])
             ->assertSessionHasNoErrors();
 
         $this->assertSame('hiperproteica', Diet::where('name_patient', 'Nuevo')->first()->currentVersion->billing_type);

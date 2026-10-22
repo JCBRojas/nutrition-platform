@@ -48,7 +48,7 @@
             ══════════════════════════════════════════════ -->
 
             <div class="form-group">
-                <label>Tiempo de comida</label>
+                <label>Tiempo de comida <span class="req">*</span></label>
 
                 <div class="chip-select blue-focus" id="cs-timeFood" onclick="toggleChipSelect('cs-timeFood')">
 
@@ -71,7 +71,7 @@
             ══════════════════════════════════════════════ -->
 
             <div class="form-group">
-                <label>Consistencia</label>
+                <label>Consistencia <span class="req">*</span></label>
 
                 <div class="chip-select blue-focus" id="cs-consistency" onclick="toggleChipSelect('cs-consistency')">
 
@@ -95,7 +95,7 @@
             ══════════════════════════════════════════════ -->
 
             <div class="form-group">
-                <label>Especificaciones</label>
+                <label>Especificaciones <span class="req">*</span></label>
 
                 <div class="chip-select blue-focus" id="cs-specifications"
                     onclick="toggleChipSelect('cs-specifications')">

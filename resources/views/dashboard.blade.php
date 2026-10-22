@@ -29,6 +29,8 @@
         </div>
     </div>
 <style>
+    /* Errores de validación del formulario de dieta (modal-render-chips.js) */
+    .field-error { margin: 4px 0 0; font-size: 12.5px; font-weight: 600; color: var(--color-error); }
     /* Acciones de fila: en una sola línea, alineadas a la derecha, mismo alto */
     .row-actions { display: flex; justify-content: flex-end; align-items: center; gap: 6px; flex-wrap: nowrap; }
     .row-actions form { display: contents; }

@@ -337,6 +337,7 @@ Skill `.claude/skills/table-pagination`: 15 por página, parámetros `page` y `p
 ## 8. Convenciones
 
 - Lógica de negocio en `app/Services`; controladores y componentes Livewire delgados.
+- Texto libre de formularios (habitación, paciente, observaciones, motivo) con `App\Rules\NoHtml` (rechaza etiquetas; un «<» suelto se permite). Al registrar o versionar una dieta, tiempos de comida, consistencia y especificaciones son obligatorios (`ValidatesDietCatalog`); `modal-render-chips.js` avisa lo mismo antes de enviar. Consultas: siempre Eloquent/Query Builder con parámetros enlazados; en `*Raw` usar `?`, nunca interpolar datos del usuario.
 - Escrituras multi-tabla en `DB::transaction`; eventos que disparan efectos externos con `afterCommit`.
 - Autorización: middleware `permission:` en rutas + `authorize()` en FormRequest/Policy; preferir **permisos** sobre roles.
 - Catálogos nuevos → archivo en `config/` con `labels` y `colors`.

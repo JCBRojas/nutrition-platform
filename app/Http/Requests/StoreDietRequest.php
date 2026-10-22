@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Http\Requests\Concerns\NormalizesIsolation;
 use App\Http\Requests\Concerns\ValidatesDietCatalog;
 use App\Models\Diet;
+use App\Rules\NoHtml;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -49,15 +50,26 @@ class StoreDietRequest extends FormRequest
             // Obligatorios al registrar (SCRUM-11; TrimStrings deja en null los de solo espacios) y con
             // límite (SCRUM-12: antes, 500 por «Data too long»). Una versión nueva no los cambia: no se validan
             // (así una dieta antigua con un texto más largo se sigue pudiendo editar)
-            'habitation' => $this->route('diet') ? 'nullable' : ['required', 'string', 'max:'.self::HABITATION_MAX],
-            'name_patient' => $this->route('diet') ? 'nullable' : ['required', 'string', 'max:'.self::NAME_MAX],
+            // Ningún texto libre admite código HTML (NoHtml)
+            'habitation' => $this->route('diet') ? ['nullable', new NoHtml] : ['required', 'string', 'max:'.self::HABITATION_MAX, new NoHtml],
+            'name_patient' => $this->route('diet') ? ['nullable', new NoHtml] : ['required', 'string', 'max:'.self::NAME_MAX, new NoHtml],
             ...$this->catalogRules(),
             // Habitación compartida: se registra otra dieta activa en la misma habitación solo si se confirma
             'allow_duplicate_room' => ['nullable', 'boolean'],
-            'observations' => 'nullable|string',
+            'observations' => ['nullable', 'string', new NoHtml],
             'isolation' => $this->isolationRules(),
             'billing_type' => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Services\BillingService::selectableTypes()))],
-            'changes' => 'nullable|string',
+            'changes' => ['nullable', 'string', new NoHtml],
+        ];
+    }
+
+    public function attributes(): array
+    {
+        return [
+            'habitation' => 'habitación',
+            'name_patient' => 'nombre del paciente',
+            'observations' => 'observaciones',
+            'changes' => 'motivo del cambio',
         ];
     }
 

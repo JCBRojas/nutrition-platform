@@ -14,6 +14,7 @@ class DietIsolationTest extends TestCase
     use RefreshDatabase;
 
     private User $nutritionist;
+
     private Diet $diet;
 
     protected function setUp(): void
@@ -23,7 +24,7 @@ class DietIsolationTest extends TestCase
         $this->seed(RolesAndPermissionsSeeder::class);
         $this->nutritionist = User::role('nutricionista')->first();
         $this->diet = app(DietService::class)->createDiet(
-            ['habitation' => '101', 'name_patient' => 'Paciente', 'timeFood' => ['desayuno']],
+            ['habitation' => '101', 'name_patient' => 'Paciente', 'timeFood' => ['desayuno'], 'consistency' => ['normal'], 'specifications' => ['hiposodica']],
             $this->nutritionist->id,
         );
     }
@@ -31,7 +32,7 @@ class DietIsolationTest extends TestCase
     private function update(array $data)
     {
         return $this->actingAs($this->nutritionist)
-            ->put(route('dietas.update', $this->diet), $data + ['timeFood' => ['desayuno'], 'changes' => 'aislado', 'billing_type' => 'normal']);
+            ->put(route('dietas.update', $this->diet), $data + ['timeFood' => ['desayuno'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'changes' => 'aislado', 'billing_type' => 'normal']);
     }
 
     /** @dataProvider accepted */

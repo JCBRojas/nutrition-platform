@@ -14,6 +14,7 @@ use Tests\TestCase;
  * sin habitación o nombre (SCRUM-11) y textos demasiado largos (SCRUM-12) dan
  * un mensaje de validación, no un error 500. Dietas imposibles (SCRUM-17): sin tiempo de
  * comida, con valores fuera del catálogo o duplicadas en la habitación sin confirmarlo.
+ * También: consistencia y especificación obligatorias y ningún texto con código HTML.
  */
 class DietValidationTest extends TestCase
 {
@@ -32,7 +33,7 @@ class DietValidationTest extends TestCase
     private function register(array $data)
     {
         return $this->actingAs($this->nutritionist)->post(route('dietas.create'), [
-            'habitation' => '101', 'name_patient' => 'Paciente', 'timeFood' => ['desayuno'], 'billing_type' => 'normal', ...$data,
+            'habitation' => '101', 'name_patient' => 'Paciente', 'timeFood' => ['desayuno'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'billing_type' => 'normal', ...$data,
         ]);
     }
 
@@ -84,12 +85,12 @@ class DietValidationTest extends TestCase
     public function test_new_version_does_not_require_room_or_name(): void
     {
         $diet = app(DietService::class)->createDiet(
-            ['habitation' => '102', 'name_patient' => 'Paciente', 'timeFood' => ['desayuno'], 'billing_type' => 'normal'],
+            ['habitation' => '102', 'name_patient' => 'Paciente', 'timeFood' => ['desayuno'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'billing_type' => 'normal'],
             $this->nutritionist->id,
         );
 
         $this->actingAs($this->nutritionist)
-            ->put(route('dietas.update', $diet->id), ['timeFood' => ['almuerzo'], 'billing_type' => 'normal'])
+            ->put(route('dietas.update', $diet->id), ['timeFood' => ['almuerzo'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'billing_type' => 'normal'])
             ->assertSessionHasNoErrors();
 
         $this->assertSame(2, $diet->history()->count());
@@ -143,7 +144,7 @@ class DietValidationTest extends TestCase
     public function test_room_of_a_closed_diet_can_be_reused(): void
     {
         $diet = app(DietService::class)->createDiet(
-            ['habitation' => '998', 'name_patient' => 'Anterior', 'timeFood' => ['desayuno'], 'billing_type' => 'normal'],
+            ['habitation' => '998', 'name_patient' => 'Anterior', 'timeFood' => ['desayuno'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'billing_type' => 'normal'],
             $this->nutritionist->id,
         );
         app(DietService::class)->cancelDiet($diet, $this->nutritionist->id);
@@ -154,7 +155,7 @@ class DietValidationTest extends TestCase
     public function test_new_version_also_requires_a_catalog_meal(): void
     {
         $diet = app(DietService::class)->createDiet(
-            ['habitation' => '103', 'name_patient' => 'Paciente', 'timeFood' => ['desayuno'], 'billing_type' => 'normal'],
+            ['habitation' => '103', 'name_patient' => 'Paciente', 'timeFood' => ['desayuno'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'billing_type' => 'normal'],
             $this->nutritionist->id,
         );
 
@@ -177,5 +178,52 @@ class DietValidationTest extends TestCase
             ->assertOk()
             ->assertSee('window.ntActiveRooms = ["997"]', false)
             ->assertSee('Registrar de todas formas');
+    }
+
+    public function test_consistency_and_specifications_are_required(): void
+    {
+        $this->register(['consistency' => [], 'specifications' => []])
+            ->assertSessionHasErrors([
+                'consistency' => 'Elige al menos una consistencia.',
+                'specifications' => 'Elige al menos una especificación.',
+            ]);
+        $this->register(['timeFood' => null])->assertSessionHasErrors(['timeFood' => 'Elige al menos un tiempo de comida.']);
+
+        $this->assertSame(0, Diet::count());
+    }
+
+    public function test_html_is_rejected_in_free_text(): void
+    {
+        $this->register([
+            'habitation' => '<b>',
+            'name_patient' => '<script>alert(1)</script>',
+            'observations' => 'Sin sal <img src=x onerror=alert(1)>',
+            'changes' => '</p>',
+        ])->assertSessionHasErrors([
+            'habitation' => 'El campo habitación no puede contener código HTML (etiquetas como <b> o <script>).',
+            'name_patient', 'observations', 'changes',
+        ]);
+        $this->assertSame(0, Diet::count());
+
+        // Caso del informe de QA: etiqueta seguida de texto y espacios
+        $this->register(['name_patient' => '<img src=x onerror=alert(1)>QA    '])->assertSessionHasErrors('name_patient');
+        $this->assertSame(0, Diet::count());
+
+        // Un «<» suelto no es HTML
+        $this->register(['observations' => 'Glucosa < 70: avisar'])->assertSessionHasNoErrors();
+        $this->assertSame(1, Diet::count());
+    }
+
+    public function test_html_is_rejected_when_editing(): void
+    {
+        $this->register([])->assertSessionHasNoErrors();
+        $diet = Diet::firstOrFail();
+
+        $this->actingAs($this->nutritionist)->put(route('dietas.update', $diet), [
+            'timeFood' => ['desayuno'], 'consistency' => ['normal'], 'specifications' => [],
+            'billing_type' => 'normal', 'observations' => '<iframe src="x">',
+        ])->assertSessionHasErrors(['observations', 'specifications']);
+
+        $this->assertSame(1, $diet->history()->count());
     }
 }

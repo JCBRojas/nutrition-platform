@@ -29,7 +29,7 @@ class NutritionDashboardTest extends TestCase
     {
         foreach (range(1, $count) as $i) {
             app(DietService::class)->createDiet(
-                ['habitation' => (string) (100 + $i), 'name_patient' => "Paciente {$i}", 'timeFood' => ['desayuno'], 'billing_type' => 'normal'],
+                ['habitation' => (string) (100 + $i), 'name_patient' => "Paciente {$i}", 'timeFood' => ['desayuno'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'billing_type' => 'normal'],
                 $this->nutritionist->id,
             );
         }
@@ -49,7 +49,7 @@ class NutritionDashboardTest extends TestCase
         $editor = User::role('jefe_nutricion')->firstOrFail();
         $editor->forceFill(['phone' => '3009998877', 'privacy_accepted_at' => now(), 'privacy_version' => '2026-10-16'])->save();
         $diet = app(DietService::class)->createDiet(
-            ['habitation' => '501', 'name_patient' => 'Paciente 501', 'timeFood' => ['desayuno'], 'billing_type' => 'normal'],
+            ['habitation' => '501', 'name_patient' => 'Paciente 501', 'timeFood' => ['desayuno'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'billing_type' => 'normal'],
             $editor->id,
         );
 
@@ -141,7 +141,7 @@ class NutritionDashboardTest extends TestCase
 
         // Otro usuario registra y cancela dietas mientras la página está abierta
         $diet = app(DietService::class)->createDiet(
-            ['habitation' => '900', 'name_patient' => 'Paciente Nuevo', 'timeFood' => ['almuerzo'], 'billing_type' => 'normal'],
+            ['habitation' => '900', 'name_patient' => 'Paciente Nuevo', 'timeFood' => ['almuerzo'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'billing_type' => 'normal'],
             $this->nutritionist->id,
         );
         $component->call('$refresh')
@@ -200,7 +200,7 @@ class NutritionDashboardTest extends TestCase
         Role::create(['name' => 'enfermeria', 'guard_name' => 'web'])->givePermissionTo(['viewActiveDiets', 'editDiets']);
         $nurse->assignRole('enfermeria');
 
-        $data = ['timeFood' => ['almuerzo'], 'billing_type' => 'normal', 'isolation' => 'No', 'changes' => 'con_cambios'];
+        $data = ['timeFood' => ['almuerzo'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'billing_type' => 'normal', 'isolation' => 'No', 'changes' => 'con_cambios'];
 
         $this->actingAs($nurse)->put(route('dietas.update', $diet), $data)->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame(2, $diet->history()->max('version'));

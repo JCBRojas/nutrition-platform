@@ -69,7 +69,7 @@ class CompanyIsolationTest extends TestCase
     {
         return app(DietService::class)->createDiet(
             ['company_id' => $company->id, 'habitation' => $room, 'name_patient' => "Paciente {$room}",
-                'timeFood' => ['desayuno', 'almuerzo'], 'billing_type' => 'normal'],
+                'timeFood' => ['desayuno', 'almuerzo'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'billing_type' => 'normal'],
             $this->nutritionist->id,
         );
     }
@@ -85,7 +85,7 @@ class CompanyIsolationTest extends TestCase
     private function pendingChange(Diet $diet): void
     {
         app(DietService::class)->createNewVersion($diet,
-            ['habitation' => $diet->habitation, 'name_patient' => $diet->name_patient, 'timeFood' => ['almuerzo'], 'billing_type' => 'normal'],
+            ['habitation' => $diet->habitation, 'name_patient' => $diet->name_patient, 'timeFood' => ['almuerzo'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'billing_type' => 'normal'],
             $this->nutritionist->id);
     }
 
@@ -139,7 +139,7 @@ class CompanyIsolationTest extends TestCase
 
     public function test_requests_on_a_diet_of_another_company_are_forbidden(): void
     {
-        $data = ['habitation' => '202', 'name_patient' => 'X', 'timeFood' => ['cena'], 'billing_type' => 'normal'];
+        $data = ['habitation' => '202', 'name_patient' => 'X', 'timeFood' => ['cena'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'billing_type' => 'normal'];
 
         $this->actingAs($this->nutritionist)->put(route('dietas.update', $this->dietB), $data)->assertForbidden();
         $this->actingAs($this->nutritionist)->patch(route('diets.canceled', $this->dietB))->assertForbidden();
@@ -159,14 +159,14 @@ class CompanyIsolationTest extends TestCase
     {
         $this->useCompany($this->nutritionist, $this->b);
 
-        $this->post(route('dietas.create'), ['habitation' => '303', 'name_patient' => 'Nuevo', 'timeFood' => ['desayuno'], 'billing_type' => 'normal'])
+        $this->post(route('dietas.create'), ['habitation' => '303', 'name_patient' => 'Nuevo', 'timeFood' => ['desayuno'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'billing_type' => 'normal'])
             ->assertRedirect();
 
         $diet = Diet::where('habitation', '303')->firstOrFail();
         $this->assertSame($this->b->id, $diet->company_id);
 
         // Una versión nueva no cambia la empresa
-        $this->put(route('dietas.update', $diet), ['habitation' => '303', 'name_patient' => 'Nuevo', 'timeFood' => ['cena'], 'billing_type' => 'normal']);
+        $this->put(route('dietas.update', $diet), ['habitation' => '303', 'name_patient' => 'Nuevo', 'timeFood' => ['cena'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'billing_type' => 'normal']);
         $this->assertSame($this->b->id, $diet->fresh()->company_id);
         $this->assertSame([$this->b->id], $diet->history()->with('diet')->get()->pluck('diet.company_id')->unique()->values()->all());
 
