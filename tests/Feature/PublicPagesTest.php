@@ -29,15 +29,16 @@ class PublicPagesTest extends TestCase
         'consent' => '1',
     ];
 
-    public function test_login_shows_demo_button_showcase_and_footer(): void
+    public function test_login_shows_demo_button_and_footer_without_showcase(): void
     {
         $this->get('/login')
             ->assertOk()
             ->assertSee(route('demo.create'))
             ->assertSee('Solicitar demo')
-            ->assertSee('Así se ve NutriTrack por dentro.')
-            ->assertSee('images/demo/dietas.jpg')
-            ->assertSee('Productos')
+            ->assertDontSee('Así se ve NutriTrack por dentro.')
+            ->assertDontSee('images/demo/dietas.jpg')
+            ->assertDontSee('Productos')
+            ->assertDontSee('¿Olvidaste tu contraseña?')
             ->assertSee('Contacto')
             ->assertSee(config('landing.contact.email'));
     }

@@ -1,4 +1,4 @@
-@props(['title', 'showcase' => false])
+@props(['title'])
 @php
     $contact = config('landing.contact');
     $onDemoPage = request()->routeIs('demo.*');
@@ -510,8 +510,7 @@
             margin-top: 1.75rem;
         }
 
-        .cta,
-        .cta-ghost {
+        .cta {
             display: inline-flex;
             align-items: center;
             gap: .5rem;
@@ -533,20 +532,7 @@
             color: var(--btn-primary-texto);
         }
 
-        .cta-ghost {
-            border: 1.5px solid var(--btn-ghost);
-            background: var(--btn-ghost-fondo);
-            color: var(--btn-ghost);
-        }
-
-        .cta-ghost:hover {
-            border-color: var(--btn-ghost);
-            background: var(--btn-ghost);
-            color: var(--btn-ghost-texto-hover);
-        }
-
-        .cta svg,
-        .cta-ghost svg {
+        .cta svg {
             width: 1.125rem;
             height: 1.125rem;
         }
@@ -556,173 +542,6 @@
             margin: 1.25rem 0 0;
             font-size: .9375rem;
             color: var(--muted);
-        }
-
-        /* ---------- Vitrina de la plataforma (capturas) ---------- */
-        .showcase {
-            max-width: 1120px;
-            margin: 0 auto;
-            padding: 3rem clamp(1rem, 4vw, 3rem) 1rem;
-        }
-
-        .showcase-head {
-            max-width: 680px;
-            margin-bottom: 2rem;
-        }
-
-        .eyebrow {
-            font-size: .875rem;
-            font-weight: 700;
-            letter-spacing: .06em;
-            text-transform: uppercase;
-            color: var(--accent);
-            margin: 0 0 .5rem;
-        }
-
-        .showcase-head h2 {
-            font-size: clamp(1.75rem, 3.6vw, 2.5rem);
-            line-height: 1.15;
-            margin: 0 0 .75rem;
-        }
-
-        .showcase-head p {
-            color: var(--muted);
-            margin: 0;
-            font-size: 1.0625rem;
-        }
-
-        .sc-grid {
-            display: grid;
-            grid-template-columns: repeat(6, minmax(0, 1fr));
-            gap: 1.25rem;
-        }
-
-        .sc-card {
-            grid-column: span 3;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            background: color-mix(in srgb, var(--surface) 55%, var(--bg));
-            border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
-            border-radius: 1.25rem;
-            padding: 1.75rem 1.75rem 0;
-            overflow: hidden;
-            scroll-margin-top: 1.5rem;
-        }
-
-        .sc-card.wide {
-            grid-column: span 6;
-            flex-direction: row;
-            align-items: stretch;
-            gap: 2rem;
-        }
-
-        .sc-card.third {
-            grid-column: span 2;
-        }
-
-        .sc-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .sc-card.wide .sc-top {
-            flex: 0 0 34%;
-            flex-direction: column;
-            justify-content: center;
-            padding-bottom: 1.75rem;
-        }
-
-        .sc-card h3 {
-            margin: 0;
-            font-size: clamp(1.25rem, 2.2vw, 1.625rem);
-            line-height: 1.2;
-        }
-
-        .sc-card.third h3 {
-            font-size: 1.1875rem;
-        }
-
-        .sc-card .sc-sub {
-            display: block;
-            margin-top: .5rem;
-            font-size: .9375rem;
-            font-weight: 400;
-            color: var(--muted);
-            line-height: 1.5;
-        }
-
-        .sc-badge {
-            display: inline-block;
-            margin-bottom: .5rem;
-            padding: .125rem .5rem;
-            border-radius: 999px;
-            background: #FEF3E2;
-            color: #92400E;
-            font-size: .75rem;
-            font-weight: 700;
-        }
-
-        .sc-arrow {
-            flex: 0 0 auto;
-            display: grid;
-            place-items: center;
-            width: 2.5rem;
-            height: 2.5rem;
-            border-radius: 50%;
-            background: var(--ink);
-            color: var(--bg);
-            transition: transform .2s ease, background .15s;
-        }
-
-        .sc-arrow:hover {
-            background: var(--accent);
-            color: var(--on-accent);
-            transform: translateX(3px);
-        }
-
-        .sc-arrow svg {
-            width: 1.125rem;
-            height: 1.125rem;
-        }
-
-        .sc-shot {
-            margin-top: auto;
-            height: 18rem;
-            border-radius: .875rem .875rem 0 0;
-            overflow: hidden;
-            background: #fff;
-            box-shadow: 0 -1px 0 color-mix(in srgb, var(--line) 70%, transparent), 0 18px 40px -20px rgba(31, 35, 64, .35);
-        }
-
-        .sc-card.wide .sc-shot {
-            flex: 1 1 auto;
-            height: 22rem;
-            margin-top: 0;
-            align-self: flex-end;
-        }
-
-        .sc-card.third .sc-shot {
-            height: 13rem;
-        }
-
-        /* La captura se muestra ampliada (solo la esquina superior izquierda), como un detalle legible */
-        .sc-shot img {
-            display: block;
-            width: 165%;
-            max-width: none;
-            height: auto;
-        }
-
-        .sc-card.wide .sc-shot img {
-            width: 120%;
-        }
-
-        .sc-card.third .sc-shot img {
-            width: 190%;
         }
 
         /* ---------- Pie del sitio ---------- */
@@ -737,7 +556,7 @@
             margin: 0 auto;
             padding: 2.5rem clamp(1rem, 4vw, 3rem) 1.5rem;
             display: grid;
-            grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr));
+            grid-template-columns: 1.4fr repeat(2, minmax(0, 1fr));
             gap: 2rem;
         }
 
@@ -786,29 +605,6 @@
         }
 
         @media (max-width: 860px) {
-            .sc-card,
-            .sc-card.third,
-            .sc-card.wide {
-                grid-column: span 6;
-            }
-
-            .sc-card.wide {
-                flex-direction: column;
-                gap: 0;
-            }
-
-            .sc-card.wide .sc-top {
-                flex-basis: auto;
-                padding-bottom: 0;
-                margin-bottom: 1.5rem;
-            }
-
-            .sc-shot,
-            .sc-card.wide .sc-shot,
-            .sc-card.third .sc-shot {
-                height: 14rem;
-            }
-
             .footer-inner {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
@@ -819,12 +615,6 @@
 
             .cta-row {
                 justify-content: center;
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .sc-arrow {
-                transition: none;
             }
         }
 
@@ -912,7 +702,7 @@
             </div>
 
             <h1 id="brand-title" class="brand-name">NutriTrack</h1>
-            <p class="tagline">Control total de las dietas hospitalarias, en tiempo real.</p>
+            <p class="tagline">Control total de las dietas, en tiempo real.</p>
             <p class="description">
                 Desde la prescripción nutricional hasta la entrega al paciente, NutriTrack centraliza todo el proceso en una sola plataforma. El equipo de nutrición actualiza las dietas, cocina recibe los cambios al instante y cada servicio queda registrado y confirmado, mejorando la seguridad alimentaria, la trazabilidad y la gestión administrativa.
             </p>
@@ -947,9 +737,6 @@
                         Solicitar demo
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="13 6 19 12 13 18" /></svg>
                     </a>
-                    @if ($showcase)
-                        <a href="#plataforma" class="cta-ghost">Ver la plataforma</a>
-                    @endif
                 </div>
             @endunless
         </section>
@@ -963,88 +750,13 @@
         </section>
     </main>
 
-    {{-- ===================== VITRINA (capturas reales de la plataforma) ===================== --}}
-    @if ($showcase)
-        @php
-            $arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="13 6 19 12 13 18" /></svg>';
-        @endphp
-        <section class="showcase" id="plataforma" aria-labelledby="showcase-title">
-            <div class="showcase-head">
-                <p class="eyebrow">La plataforma</p>
-                <h2 id="showcase-title">Así se ve NutriTrack por dentro.</h2>
-                <p>Nutrición, cocina y administración trabajan sobre la misma información, al mismo tiempo.</p>
-            </div>
-
-            <div class="sc-grid">
-                <article class="sc-card" id="producto-dietas">
-                    <div class="sc-top">
-                        <h3>Prescribe y versiona cada dieta en un solo lugar.</h3>
-                        <a href="{{ route('demo.create') }}" class="sc-arrow" aria-label="Solicitar demo del panel de dietas">{!! $arrow !!}</a>
-                    </div>
-                    <div class="sc-shot"><img src="{{ asset('images/demo/dietas.jpg') }}" alt="Panel de dietas activas con tiempos de comida, consistencia y estado del día" loading="lazy"></div>
-                </article>
-
-                <article class="sc-card" id="producto-despacho">
-                    <div class="sc-top">
-                        <h3>Cocina recibe los cambios al instante.</h3>
-                        <a href="{{ route('demo.create') }}" class="sc-arrow" aria-label="Solicitar demo del despacho de cocina">{!! $arrow !!}</a>
-                    </div>
-                    <div class="sc-shot"><img src="{{ asset('images/demo/despacho.jpg') }}" alt="Pantalla de despacho de cocina con las dietas listas para despachar" loading="lazy"></div>
-                </article>
-
-                <article class="sc-card wide" id="producto-reportes">
-                    <div class="sc-top">
-                        <div>
-                            <p class="eyebrow">Reportes</p>
-                            <h3>Cada bandeja servida, contada y lista para reportar.
-                                <span class="sc-sub">Producción diaria por tiempo de comida, pacientes del mes y Excel en un clic.</span>
-                            </h3>
-                        </div>
-                        <a href="{{ route('demo.create') }}" class="sc-arrow" aria-label="Solicitar demo de los reportes">{!! $arrow !!}</a>
-                    </div>
-                    <div class="sc-shot"><img src="{{ asset('images/demo/reporte.jpg') }}" alt="Reporte nutricional con la producción diaria en barras y el total del mes por tiempo de comida" loading="lazy"></div>
-                </article>
-
-                <article class="sc-card third" id="producto-facturacion">
-                    <div class="sc-top">
-                        <h3><span class="sc-badge">Premium</span><br>Facturación del mes en un clic.</h3>
-                    </div>
-                    <div class="sc-shot"><img src="{{ asset('images/premium/facturacion.png') }}" alt="Precios por tipo de dieta y facturación del mes" loading="lazy"></div>
-                </article>
-
-                <article class="sc-card third" id="producto-despachos-dia">
-                    <div class="sc-top">
-                        <h3><span class="sc-badge">Premium</span><br>Despachos y entregas del día.</h3>
-                    </div>
-                    <div class="sc-shot"><img src="{{ asset('images/premium/despachos.png') }}" alt="Despachos del día por tiempo de comida y su estado de entrega" loading="lazy"></div>
-                </article>
-
-                <article class="sc-card third" id="producto-historial">
-                    <div class="sc-top">
-                        <h3><span class="sc-badge">Premium</span><br>Trazabilidad de cada cambio.</h3>
-                    </div>
-                    <div class="sc-shot"><img src="{{ asset('images/premium/historial.png') }}" alt="Historial de cambios de la dieta de un paciente" loading="lazy"></div>
-                </article>
-            </div>
-        </section>
-    @endif
-
     {{-- ===================== PIE DEL SITIO ===================== --}}
     <footer class="site-footer">
         <div class="footer-inner">
             <div class="footer-brand">
                 <strong>NutriTrack</strong>
-                <p>Gestión de dietas hospitalarias, de la prescripción a la bandeja.</p>
+                <p>Gestión de dietas, de la prescripción a la bandeja.</p>
             </div>
-            <nav class="footer-col" aria-labelledby="footer-products">
-                <h3 id="footer-products">Productos</h3>
-                <ul>
-                    <li><a href="{{ route('login') }}#producto-dietas">Panel de dietas</a></li>
-                    <li><a href="{{ route('login') }}#producto-despacho">Despacho de cocina</a></li>
-                    <li><a href="{{ route('login') }}#producto-reportes">Reportes</a></li>
-                    <li><a href="{{ route('login') }}#producto-facturacion">Plan Premium</a></li>
-                </ul>
-            </nav>
             <div class="footer-col">
                 <h3 id="footer-contact">Contacto</h3>
                 <ul aria-labelledby="footer-contact">

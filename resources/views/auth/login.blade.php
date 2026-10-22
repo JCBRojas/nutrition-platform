@@ -1,4 +1,4 @@
-<x-auth-shell title="Iniciar sesión" :showcase="true">
+<x-auth-shell title="Iniciar sesión">
     <h2 id="login-title">Iniciar sesión</h2>
     <p class="lead">Usa el correo y la contraseña de tu cuenta.</p>
 
@@ -31,10 +31,6 @@
                 <input type="checkbox" name="remember" @checked(old('remember'))>
                 Recordarme
             </label>
-
-            @if (Route::has('password.request'))
-                <a href="{{ route('password.request') }}">¿Olvidaste tu contraseña?</a>
-            @endif
         </div>
 
         <button type="submit" class="submit">Iniciar sesión</button>

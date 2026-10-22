@@ -122,7 +122,7 @@ class PasswordResetTest extends TestCase
         foreach (['/login', '/forgot-password'] as $page) {
             $this->get($page)
                 ->assertOk()
-                ->assertSee('Control total de las dietas hospitalarias, en tiempo real.')
+                ->assertSee('Control total de las dietas, en tiempo real.')
                 ->assertDontSee('Próximo servicio');
         }
     }
