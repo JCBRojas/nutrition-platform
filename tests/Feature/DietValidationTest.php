@@ -12,7 +12,8 @@ use Tests\TestCase;
 /**
  * Validación del registro de dietas en el servidor (informe de calidad 21/10/2026):
  * sin habitación o nombre (SCRUM-11) y textos demasiado largos (SCRUM-12) dan
- * un mensaje de validación, no un error 500.
+ * un mensaje de validación, no un error 500. Dietas imposibles (SCRUM-17): sin tiempo de
+ * comida, con valores fuera del catálogo o duplicadas en la habitación sin confirmarlo.
  */
 class DietValidationTest extends TestCase
 {
@@ -102,5 +103,79 @@ class DietValidationTest extends TestCase
             ->assertSee('name="habitation" placeholder="Ej. 205"', false)
             ->assertSee('maxlength="4"', false)
             ->assertSee('maxlength="150"', false);
+    }
+
+    public function test_at_least_one_catalog_meal_is_required(): void
+    {
+        $this->register(['timeFood' => null])
+            ->assertSessionHasErrors(['timeFood' => 'Elige al menos un tiempo de comida.']);
+        $this->register(['timeFood' => []])->assertSessionHasErrors('timeFood');
+
+        // Valores inventados enviados directamente al servidor
+        $this->register(['timeFood' => ['banquete']])
+            ->assertSessionHasErrors(['timeFood.0' => 'Hay un tiempo de comida que no existe en el catálogo.']);
+        $this->register(['consistency' => ['gelatinosa']])->assertSessionHasErrors('consistency.0');
+        $this->register(['specifications' => ['sin_sal_magica']])->assertSessionHasErrors('specifications.0');
+
+        $this->assertSame(0, Diet::count());
+    }
+
+    public function test_legacy_meal_keys_are_normalized(): void
+    {
+        $this->register(['timeFood' => ['media_manana', 'Desayuno', 'mediamanana']])->assertSessionHasNoErrors();
+
+        $this->assertSame(['mediamanana', 'desayuno'], Diet::firstOrFail()->currentVersion->timeFood);
+    }
+
+    public function test_room_with_an_active_diet_needs_confirmation(): void
+    {
+        $this->register(['habitation' => '999'])->assertSessionHasNoErrors();
+
+        $this->register(['habitation' => '999', 'name_patient' => 'Otro'])
+            ->assertSessionHasErrors(['habitation' => 'La habitación 999 ya tiene una dieta activa. Edítala o, si es una habitación compartida, marca «Registrar de todas formas».']);
+        $this->assertSame(1, Diet::count());
+
+        // Habitación compartida, confirmada
+        $this->register(['habitation' => '999', 'name_patient' => 'Otro', 'allow_duplicate_room' => '1'])->assertSessionHasNoErrors();
+        $this->assertSame(2, Diet::where('habitation', '999')->count());
+    }
+
+    public function test_room_of_a_closed_diet_can_be_reused(): void
+    {
+        $diet = app(DietService::class)->createDiet(
+            ['habitation' => '998', 'name_patient' => 'Anterior', 'timeFood' => ['desayuno'], 'billing_type' => 'normal'],
+            $this->nutritionist->id,
+        );
+        app(DietService::class)->cancelDiet($diet, $this->nutritionist->id);
+
+        $this->register(['habitation' => '998'])->assertSessionHasNoErrors();
+    }
+
+    public function test_new_version_also_requires_a_catalog_meal(): void
+    {
+        $diet = app(DietService::class)->createDiet(
+            ['habitation' => '103', 'name_patient' => 'Paciente', 'timeFood' => ['desayuno'], 'billing_type' => 'normal'],
+            $this->nutritionist->id,
+        );
+
+        $this->actingAs($this->nutritionist)
+            ->put(route('dietas.update', $diet->id), ['timeFood' => [], 'billing_type' => 'normal'])
+            ->assertSessionHasErrors('timeFood');
+        $this->actingAs($this->nutritionist)
+            ->put(route('dietas.update', $diet->id), ['timeFood' => ['banquete'], 'billing_type' => 'normal'])
+            ->assertSessionHasErrors('timeFood.0');
+
+        $this->assertSame(1, $diet->history()->count());
+    }
+
+    public function test_form_warns_about_rooms_with_an_active_diet(): void
+    {
+        $this->register(['habitation' => '997'])->assertSessionHasNoErrors();
+
+        $this->activatePremium();
+        $this->actingAs($this->nutritionist)->get(route('dashboard.nutrition'))
+            ->assertOk()
+            ->assertSee('window.ntActiveRooms = ["997"]', false)
+            ->assertSee('Registrar de todas formas');
     }
 }

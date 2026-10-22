@@ -55,6 +55,8 @@ class DietController extends Controller
             'specLabels' => config('specifications.labels'),
             'consistencyLabels' => config('consistency.labels'),
             'foodLabels' => config('timeFood.labels'),
+            // Aviso de habitación con dieta activa en el formulario de registro (SCRUM-17)
+            'activeRooms' => Diet::active()->distinct()->pluck('habitation')->all(),
         ]);
     }
 

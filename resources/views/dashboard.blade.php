@@ -22,7 +22,7 @@
             @can('createDiets')
                 <div class="overlay" id="modalOverlay">
                     <x-modal-create-diets :specLabels="$specLabels" :consistencyLabels="$consistencyLabels"
-                        :foodLabels="$foodLabels"></x-modal-create-diets>
+                        :foodLabels="$foodLabels" :activeRooms="$activeRooms"></x-modal-create-diets>
                 </div>
             @endcan
 

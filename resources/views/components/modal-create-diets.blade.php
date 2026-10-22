@@ -19,7 +19,14 @@
                     <line x1="12" y1="8" x2="12" y2="12" />
                     <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
-                <span id="dupWarningText"></span>
+                <div>
+                    <span id="dupWarningText"></span>
+                    {{-- SCRUM-17: otra dieta activa en la misma habitación solo si se confirma (habitación compartida) --}}
+                    <label class="dup-confirm">
+                        <input type="checkbox" name="allow_duplicate_room" value="1" @checked(old('allow_duplicate_room'))>
+                        Registrar de todas formas (habitación compartida)
+                    </label>
+                </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -162,3 +169,23 @@
         </div>
     </form>
 </div>
+
+{{-- Aviso mientras se escribe la habitación; el servidor vuelve a comprobarlo al registrar --}}
+<script>
+    window.ntActiveRooms = @json($activeRooms ?? []);
+
+    function checkDuplicate() {
+        const room = (document.getElementById('f-habitacion')?.value || '').trim();
+        const banner = document.getElementById('dupWarning');
+        if (!banner) return;
+        const taken = room !== '' && window.ntActiveRooms.includes(room);
+        banner.style.display = taken ? '' : 'none';
+        if (taken) {
+            document.getElementById('dupWarningText').textContent =
+                `La habitación ${room} ya tiene una dieta activa. Si es otro paciente en una habitación compartida, confírmalo; si no, edita la dieta existente.`;
+        }
+    }
+</script>
+<style>
+    .dup-confirm { display: flex; gap: 6px; align-items: center; margin-top: 6px; font-weight: 600; }
+</style>
