@@ -17,6 +17,7 @@
         .pm-hist td:first-child { padding-left: 44px; }
         .pm-total td { font-weight: 700; border-top: 2px solid var(--border); }
         .pm-missing { color: var(--amber); font-weight: 600; }
+        .pm-zero { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 600; }
         .pm-side { display: flex; flex-direction: column; gap: 20px; position: sticky; top: 16px; }
         .pm-warn { border-left: 3px solid var(--amber); background: var(--amber-light); padding: 10px 14px; font-size: 13px; border-radius: 0 8px 8px 0; }
         .pm-warn ul { margin: 6px 0 0; padding-left: 18px; }
@@ -123,6 +124,12 @@
                                                         <label for="validFrom">Vigente desde</label>
                                                         <input id="validFrom" type="date" wire:model="validFrom">
                                                     </div>
+                                                    @if ($confirmZero || str_contains($errors->first('price'), '$ 0'))
+                                                        {{-- SCRUM-26: el $ 0 se confirma de forma explícita --}}
+                                                        <label class="pm-zero">
+                                                            <input type="checkbox" wire:model="confirmZero"> Confirmo que no se cobra ($ 0)
+                                                        </label>
+                                                    @endif
                                                     <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Guardar precio</button>
                                                     <button type="button" class="btn btn-ghost" wire:click="cancel">Cancelar</button>
                                                 </form>

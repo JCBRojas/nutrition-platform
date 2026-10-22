@@ -51,6 +51,28 @@ class ValidationMessagesTest extends TestCase
             ->assertDontSee('valid from');
     }
 
+    public function test_zero_price_needs_explicit_confirmation(): void
+    {
+        // SCRUM-26: $ 0 no se guarda sin aviso
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $this->activatePremium();
+
+        $component = Livewire::actingAs(User::role('jefe_nutricion')->firstOrFail())->test(PricesManager::class)
+            ->call('edit', 'normal', 'desayuno')
+            ->set('price', '0')
+            ->call('save')
+            ->assertHasErrors('price')
+            ->assertSee('Confirmo que no se cobra ($ 0)');
+        $this->assertSame(0, \App\Models\ServicePrice::count());
+
+        $component->set('confirmZero', true)->call('save')->assertHasNoErrors();
+        $this->assertSame(0.0, (float) \App\Models\ServicePrice::firstOrFail()->price);
+
+        // Un precio mayor que 0 no pide confirmación
+        $component->call('edit', 'normal', 'almuerzo')->set('price', '15000')->call('save')->assertHasNoErrors();
+        $this->assertSame(2, \App\Models\ServicePrice::count());
+    }
+
     public function test_demo_form_beds_message_is_in_spanish(): void
     {
         $this->withoutVite();

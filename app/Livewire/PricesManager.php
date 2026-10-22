@@ -23,6 +23,9 @@ class PricesManager extends Component
 
     public string $validFrom = '';
 
+    /** SCRUM-26: un precio de $ 0 solo se guarda con confirmación explícita */
+    public bool $confirmZero = false;
+
     /** Filtros de la tabla */
     #[Url(as: 'tipo', except: '')]
     public string $typeFilter = '';
@@ -50,6 +53,7 @@ class PricesManager extends Component
         $this->editService = $service;
         $this->price = '';
         $this->validFrom = now()->toDateString();
+        $this->confirmZero = false;
         $this->resetErrorBag();
     }
 
@@ -60,11 +64,18 @@ class PricesManager extends Component
         // Acepta "15.000", "15000" o "15000,50"
         $this->price = str_replace(',', '.', str_replace(['.', ' ', '$'], '', $this->price));
 
+        $this->withValidator(fn ($validator) => $validator->after(function ($validator) {
+            if (! $validator->errors()->has('price') && is_numeric($this->price) && (float) $this->price == 0.0 && ! $this->confirmZero) {
+                $validator->errors()->add('price', 'Un precio de $ 0 significa que este servicio no se cobra. Si es correcto, marca «Confirmo que no se cobra» y guarda de nuevo.');
+            }
+        }));
+
         $data = $this->validate([
             'editType' => ['required', Rule::in(array_keys(BillingService::types()))],
             'editService' => ['required', Rule::in(BillingService::types()[$this->editType]['services'] ?? [])],
             'price' => ['required', 'numeric', 'min:0', 'max:9999999999'],
             'validFrom' => ['required', 'date_format:Y-m-d'],
+            'confirmZero' => ['boolean'],
         ], [
             'price.numeric' => 'Escribe el precio en pesos, sin letras. Ejemplo: 15000.',
             'editService.in' => 'Ese tipo de dieta no factura este servicio.',
@@ -75,6 +86,7 @@ class PricesManager extends Component
         $label = BillingService::types()[$data['editType']]['name'].' / '.BillingService::serviceLabel($data['editService']);
         AuditLogger::log('price_updated', "Precio de {$label}: {$data['price']} desde {$data['validFrom']}", null, [
             'company_id' => app(CurrentCompany::class)->id(), 'billing_type' => $data['editType'], 'service' => $data['editService'], 'price' => (float) $data['price'], 'valid_from' => $data['validFrom'],
+            'confirmed_zero' => (float) $data['price'] == 0.0,
         ]);
         $this->cancel();
         session()->flash('success', "Precio de {$label} guardado.");
@@ -82,7 +94,7 @@ class PricesManager extends Component
 
     public function cancel(): void
     {
-        $this->reset(['editType', 'editService', 'price']);
+        $this->reset(['editType', 'editService', 'price', 'confirmZero']);
         $this->validFrom = now()->toDateString();
         $this->resetErrorBag();
     }
