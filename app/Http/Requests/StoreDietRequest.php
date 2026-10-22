@@ -65,13 +65,13 @@ class StoreDietRequest extends FormRequest
     {
         return [
             'habitation.required' => 'Escribe la habitación.',
-            'habitation.max' => 'La habitación no puede tener más de :max caracteres.',
+            'habitation.max' => 'Escribe la habitación con :max caracteres como máximo.',
             'name_patient.required' => 'Escribe el nombre del paciente.',
-            'name_patient.max' => 'El nombre del paciente no puede tener más de :max caracteres.',
+            'name_patient.max' => 'Escribe el nombre del paciente con :max caracteres como máximo.',
             ...$this->catalogMessages(),
             'billing_type.required' => 'Elige el tipo de dieta (facturación).',
-            'billing_type.in' => 'El tipo de dieta elegido no es válido.',
-            'isolation.in' => 'El aislamiento debe ser Sí o No.',
+            'billing_type.in' => 'Elige un tipo de dieta de la lista.',
+            'isolation.in' => 'Elige Sí o No en aislamiento.',
         ];
     }
 

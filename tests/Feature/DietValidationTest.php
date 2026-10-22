@@ -62,8 +62,8 @@ class DietValidationTest extends TestCase
     {
         $this->register(['habitation' => str_repeat('1', 300), 'name_patient' => str_repeat('a', 300)])
             ->assertSessionHasErrors([
-                'habitation' => 'La habitación no puede tener más de 4 caracteres.',
-                'name_patient' => 'El nombre del paciente no puede tener más de 150 caracteres.',
+                'habitation' => 'Escribe la habitación con 4 caracteres como máximo.',
+                'name_patient' => 'Escribe el nombre del paciente con 150 caracteres como máximo.',
             ]);
 
         // Justo en el límite (4) se acepta; con 5 no
@@ -113,7 +113,7 @@ class DietValidationTest extends TestCase
 
         // Valores inventados enviados directamente al servidor
         $this->register(['timeFood' => ['banquete']])
-            ->assertSessionHasErrors(['timeFood.0' => 'Hay un tiempo de comida que no existe en el catálogo.']);
+            ->assertSessionHasErrors(['timeFood.0' => 'Elige los tiempos de comida de la lista.']);
         $this->register(['consistency' => ['gelatinosa']])->assertSessionHasErrors('consistency.0');
         $this->register(['specifications' => ['sin_sal_magica']])->assertSessionHasErrors('specifications.0');
 

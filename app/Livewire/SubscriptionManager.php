@@ -61,8 +61,8 @@ class SubscriptionManager extends Component
         ], [
             'reference.required' => 'Escribe el número de referencia o de la transacción.',
             'receipt.required' => 'Adjunta el comprobante de pago.',
-            'receipt.mimes' => 'El comprobante debe ser una imagen (JPG o PNG) o un PDF.',
-            'receipt.max' => 'El comprobante no debe superar 5 MB.',
+            'receipt.mimes' => 'Adjunta el comprobante como imagen (JPG o PNG) o PDF.',
+            'receipt.max' => 'Adjunta un comprobante de 5 MB o menos.',
         ]);
 
         $this->attempt(function () use ($subscriptions) {
@@ -110,7 +110,7 @@ class SubscriptionManager extends Component
         $this->prices = array_map(fn ($p) => str_replace(['.', ' ', '$', ','], '', (string) $p), $this->prices);
         $this->validate(
             collect(config('subscriptions.periods'))->mapWithKeys(fn ($_, $period) => ["prices.{$period}" => ['required', 'integer', 'min:1', 'max:9999999999']])->all(),
-            ['prices.*.integer' => 'Escribe el precio en pesos, sin letras. Ejemplo: 250000.', 'prices.*.min' => 'El precio debe ser mayor que 0.']
+            ['prices.*.integer' => 'Escribe el precio en pesos, sin letras. Ejemplo: 250000.', 'prices.*.min' => 'Escribe un precio mayor que 0.']
         );
 
         $current = $subscriptions->prices();

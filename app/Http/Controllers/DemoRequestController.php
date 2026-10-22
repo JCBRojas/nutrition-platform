@@ -38,7 +38,8 @@ class DemoRequestController extends Controller
             'institution.required' => 'Escribe el nombre de la institución.',
             'phone.required' => 'Escribe un teléfono de contacto.',
             'phone.regex' => 'Escribe un teléfono válido, por ejemplo +57 300 123 4567.',
-            'beds.integer' => 'El número de camas debe ser un número.',
+            'beds.integer' => 'Escribe el número de camas en cifras, por ejemplo 120.',
+            'beds.min' => 'Escribe un número de camas de 1 o más.',
             'consent.accepted' => 'Debes autorizar el uso de tus datos para que te contactemos.',
         ]);
 

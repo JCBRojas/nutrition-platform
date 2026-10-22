@@ -131,7 +131,7 @@ class DietService
         $allowed = array_keys(app(DispatchService::class)->transferCandidates($diet));
 
         if (mb_strlen($destination) > 150) {
-            throw ValidationException::withMessages(['transfer.destination' => 'El destino admite máximo 150 caracteres.']);
+            throw ValidationException::withMessages(['transfer.destination' => 'Escribe el destino con 150 caracteres como máximo.']);
         }
         if ($meals === [] || array_diff($meals, $allowed) !== []) {
             throw ValidationException::withMessages(['transfer.meals' => 'Elige los tiempos de hoy que se deben enviar al destino (solo los que cocina aún no despacha).']);

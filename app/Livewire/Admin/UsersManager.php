@@ -116,7 +116,7 @@ class UsersManager extends Component
             'roles.required' => 'Elige el rol del usuario.',
             'roles.*.in' => 'No puedes asignar ese rol.',
             'email.unique' => 'Ya existe un usuario con este correo (puede estar eliminado: restáuralo).',
-            'companies.*.exists' => 'La empresa elegida no existe.',
+            'companies.*.exists' => 'Elige una empresa de la lista.',
         ]);
 
         if (! $this->assignsCompanies()) {

@@ -45,9 +45,9 @@ trait ValidatesDietCatalog
         return [
             'timeFood.required' => 'Elige al menos un tiempo de comida.',
             'timeFood.min' => 'Elige al menos un tiempo de comida.',
-            'timeFood.*.in' => 'Hay un tiempo de comida que no existe en el catálogo.',
-            'consistency.*.in' => 'Hay una consistencia que no existe en el catálogo.',
-            'specifications.*.in' => 'Hay una especificación que no existe en el catálogo.',
+            'timeFood.*.in' => 'Elige los tiempos de comida de la lista.',
+            'consistency.*.in' => 'Elige las consistencias de la lista.',
+            'specifications.*.in' => 'Elige las especificaciones de la lista.',
         ];
     }
 }
