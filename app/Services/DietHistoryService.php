@@ -108,6 +108,81 @@ class DietHistoryService
         ], array_values($keys));
     }
 
+    /** Nombre de cada campo en el resumen del último cambio */
+    public const FIELD_LABELS = [
+        'timeFood' => 'tiempos de comida',
+        'consistency' => 'consistencia',
+        'specifications' => 'especificaciones',
+        'billing_type' => 'tipo de dieta',
+        'observations' => 'observaciones',
+        'isolation' => 'aislamiento',
+    ];
+
+    /**
+     * Resumen del último cambio real de una dieta para el despachador (SCRUM-28), p. ej.
+     * «Cambió tipo de dieta y tiempos de comida», «Cancelada» o «Creación». Antes se mostraba
+     * diet_histories.changes, que casi siempre queda vacío («Sin tipo»). Las copias del día
+     * (completada, continuada) no cuentan como cambio. Usa $diet->history si ya está cargado.
+     */
+    public function lastChangeLabel(Diet $diet): string
+    {
+        $versions = $diet->relationLoaded('history') ? $diet->history->sortBy('version')->values() : $diet->history()->orderBy('version')->get();
+        $labels = config('changes.labels');
+
+        for ($i = $versions->count() - 1; $i >= 0; $i--) {
+            $version = $versions[$i];
+            if (in_array($version->changes, Diet::DAY_CHANGES, true)) {
+                continue;
+            }
+            if (in_array($version->changes, Diet::CLOSING_CHANGES, true)) {
+                return $labels[$version->changes];
+            }
+            if ($i === 0) {
+                return 'Creación';
+            }
+
+            $changed = $this->changedFields($versions[$i - 1], $version);
+            if ($changed !== []) {
+                return 'Cambió '.$this->joinList(array_map(fn ($f) => self::FIELD_LABELS[$f], $changed));
+            }
+            // Versión sin diferencias: vale el tipo elegido a mano, si lo hay
+            if ($version->changes && $version->changes !== 'NA' && isset($labels[$version->changes])) {
+                return $labels[$version->changes];
+            }
+        }
+
+        return 'Creación';
+    }
+
+    /** Campos que difieren entre dos versiones */
+    private function changedFields($old, $new): array
+    {
+        $changed = [];
+        foreach (self::LIST_FIELDS as $field) {
+            $a = $this->normalize($field, $old->{$field});
+            $b = $this->normalize($field, $new->{$field});
+            sort($a);
+            sort($b);
+            if ($a !== $b) {
+                $changed[] = $field;
+            }
+        }
+        foreach (self::SCALAR_FIELDS as $field) {
+            if (trim((string) $old->{$field}) !== trim((string) $new->{$field})) {
+                $changed[] = $field;
+            }
+        }
+
+        return $changed;
+    }
+
+    private function joinList(array $items): string
+    {
+        $last = array_pop($items);
+
+        return $items === [] ? $last : implode(', ', $items).' y '.$last;
+    }
+
     /**
      * timeFood guardado como 'media_manana' o 'mediamanana' → misma clave
      */

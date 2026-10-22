@@ -7,6 +7,7 @@ use App\Models\DietDispatch;
 use App\Models\DietDispatchVoid;
 use App\Models\DietHistory;
 use App\Services\DietDayService;
+use App\Services\DietHistoryService;
 use App\Services\DietService;
 use App\Services\DispatchService;
 use App\Support\Pagination;
@@ -235,8 +236,10 @@ class DietsManager extends Component
             ->latest('updated_at')
             ->paginate($this->perPage);
 
-        $diets->getCollection()->each(function (Diet $diet) {
+        $history = app(DietHistoryService::class);
+        $diets->getCollection()->each(function (Diet $diet) use ($history) {
             $diet->pending_changes = $diet->has_pending ? $this->changesSinceConfirmed($diet) : [];
+            $diet->last_change = $history->lastChangeLabel($diet); // columna «Último cambio» (SCRUM-28)
         });
 
         // Estado de despacho de cada dieta de la página en el tiempo elegido
@@ -323,8 +326,9 @@ class DietsManager extends Component
     {
         return $this->pendingCache ??= Diet::query()
             ->whereHas('history', fn (Builder $q) => $q->where('modify', 'si'))
-            ->with('currentVersion.updatedBy')
+            ->with(['currentVersion.updatedBy', 'history'])
             ->get()
+            ->each(fn (Diet $d) => $d->last_change = app(DietHistoryService::class)->lastChangeLabel($d))
             ->sortByDesc(fn (Diet $d) => $d->currentVersion?->created_at)
             ->values();
     }

@@ -56,7 +56,7 @@
                                 <span class="room-badge">{{ $p->habitation }}</span>
                                 <span class="dm-alert-who">{{ $p->name_patient }}</span>
                                 <span @class(['tag', 'dm-type-closing' => $closing, 'dm-type' => ! $closing])>
-                                    {{ $p->isActive() ? $changeLabel($v) : ($p->status === \App\Models\Diet::FINISHED ? ($transferText($p) ? 'Alta: enviar '.$transferText($p) : 'Alta: no despachar') : 'Cancelada: no despachar') }}
+                                    {{ $p->isActive() ? ($p->last_change ?? $changeLabel($v)) : ($p->status === \App\Models\Diet::FINISHED ? ($transferText($p) ? 'Alta: enviar '.$transferText($p) : 'Alta: no despachar') : 'Cancelada: no despachar') }}
                                 </span>
                                 <span class="dm-meta">{{ $v?->created_at?->format('g:i a') }}</span>
                                 <button type="button" class="btn btn-sm dm-confirm" wire:click="confirmChanges({{ $p->id }})"
@@ -264,7 +264,7 @@
                                         @endisset
                                     </td>
                                     <td class="dm-last">
-                                        <span class="tag dm-type">{{ $changeLabel($v) }}</span>
+                                        <span class="tag dm-type">{{ $diet->last_change ?? $changeLabel($v) }}</span>
                                     </td>
                                 @else
                                     <td>{{ $v?->observations ?: '—' }}</td>
