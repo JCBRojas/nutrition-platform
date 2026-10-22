@@ -55,7 +55,7 @@
     <td>{{ $diet->currentVersion->changes ?? 'N/A' }}</td>
 
     <td class="text-right">
-        <button class="btn btn-primary btn-sm" onclick="openEditModal({{$diet->id }}, {{$diet->currentVersion}} )">
+        <button class="btn btn-primary btn-sm" onclick='openEditModal({{ $diet->id }}, @json($diet->editPayload()))'>
             Editar
         </button>
     </td>

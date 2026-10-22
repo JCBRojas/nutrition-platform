@@ -172,4 +172,28 @@ class Diet extends Model
     {
         return $this->hasOne(DietHistory::class, 'diet_id')->latestOfMany('version');
     }
+
+    /**
+     * Datos que el botón «Editar dieta» lleva en el HTML (openEditModal): solo campos de la dieta
+     * y de su versión actual. Nunca el modelo completo: con la relación updatedBy cargada
+     * exponía correo, teléfono, 2FA y aceptación de la política de quien editó (SCRUM-18).
+     */
+    public function editPayload(): array
+    {
+        $v = $this->currentVersion;
+
+        return [
+            'habitation' => $this->habitation,
+            'name_patient' => $this->name_patient,
+            'current_version' => [
+                'timeFood' => $v?->timeFood ?? [],
+                'consistency' => $v?->consistency ?? [],
+                'specifications' => $v?->specifications ?? [],
+                'observations' => $v?->observations,
+                'changes' => $v?->changes,
+                'billing_type' => $v?->billing_type,
+                'isolation' => $v?->isolation,
+            ],
+        ];
+    }
 }

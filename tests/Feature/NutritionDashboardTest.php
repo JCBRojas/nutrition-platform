@@ -43,6 +43,29 @@ class NutritionDashboardTest extends TestCase
             ->getContent();
     }
 
+    public function test_edit_button_does_not_expose_the_editors_personal_data(): void
+    {
+        // SCRUM-18: la dieta la editó otro usuario; su correo, teléfono, 2FA y política no van en el HTML
+        $editor = User::role('jefe_nutricion')->firstOrFail();
+        $editor->forceFill(['phone' => '3009998877', 'privacy_accepted_at' => now(), 'privacy_version' => '2026-10-16'])->save();
+        $diet = app(DietService::class)->createDiet(
+            ['habitation' => '501', 'name_patient' => 'Paciente 501', 'timeFood' => ['desayuno'], 'billing_type' => 'normal'],
+            $editor->id,
+        );
+
+        Livewire::actingAs($this->nutritionist)->test(NutritionDiets::class)
+            ->assertSee('openEditModal('.$diet->id, false)
+            ->assertSee('"name_patient":"Paciente 501"', false)
+            ->assertDontSee($editor->email)
+            ->assertDontSee('3009998877')
+            ->assertDontSee('privacy_accepted_at')
+            ->assertDontSee('two_factor')
+            ->assertDontSee('updated_by');
+
+        $this->assertArrayNotHasKey('phone', $editor->fresh()->toArray());
+        $this->assertArrayNotHasKey('privacy_accepted_at', $editor->fresh()->toArray());
+    }
+
     public function test_edit_modals_survive_the_auto_refresh(): void
     {
         $this->createDiets(2);

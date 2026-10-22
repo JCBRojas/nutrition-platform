@@ -198,7 +198,7 @@ Cocina podrá despacharla el día siguiente." }}"
                                         @can('editDiets')
                                         <button type="button" class="btn btn-success btn-sm btn-icon" title="Editar dieta"
                                             aria-label="Editar dieta de {{ $diet->name_patient }}"
-                                            onclick='openEditModal({{ $diet->id }}, @json($diet))'>
+                                            onclick='openEditModal({{ $diet->id }}, @json($diet->editPayload()))'>
                                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
                                         </button>
                                         {{-- Alta y cancelación: el modal informa lo despachado sin recibir y el envío a otro lugar --}}

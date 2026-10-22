@@ -55,6 +55,11 @@ class User extends Authenticatable
         'remember_token',
         'two_factor_recovery_codes',
         'two_factor_secret',
+        // Datos personales y de seguridad que no deben llegar al HTML si un modelo se serializa (SCRUM-18)
+        'phone',
+        'two_factor_confirmed_at',
+        'privacy_accepted_at',
+        'privacy_version',
     ];
 
     /**
