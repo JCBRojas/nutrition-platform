@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Diet;
 use App\Models\DietDay;
 use App\Models\DietDispatch;
+use App\Models\Scopes\CompanyScope;
 use App\Services\Reports\DietReportService;
 use App\Support\LiveUpdates;
 use Carbon\CarbonImmutable;
@@ -195,9 +196,11 @@ class DietDayService
     {
         $date = self::day($date);
 
+        // Las dietas ya se filtran por empresa: en las subconsultas de días se quita el filtro,
+        // porque vuelve a consultar `diets` y MySQL no deja leer la tabla que se actualiza (error 1093)
         $count = Diet::where('status', Diet::COMPLETED)
-            ->whereHas('days', fn ($q) => $q->on($date)->authorized())
-            ->whereDoesntHave('days', fn ($q) => $q->on($date)->completed())
+            ->whereHas('days', fn ($q) => $q->withoutGlobalScope(CompanyScope::class)->on($date)->authorized())
+            ->whereDoesntHave('days', fn ($q) => $q->withoutGlobalScope(CompanyScope::class)->on($date)->completed())
             ->update(['status' => Diet::ACTIVE]);
 
         if ($count > 0) {

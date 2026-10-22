@@ -116,6 +116,19 @@ class PricesAndHistoryTest extends TestCase
         $this->assertFalse($timeline[0]['fields']['timeFood']['changed']);
     }
 
+    public function test_non_numeric_query_values_do_not_break_the_page(): void
+    {
+        // Antes: TypeError (500) al asignar el texto a las propiedades int de Livewire
+        $this->actingAs($this->nutritionist)->get(route('diets.history', ['dieta' => 'abc']))
+            ->assertOk()->assertSee('Selecciona una dieta');
+
+        $this->actingAs($this->nutritionist)->get(route('diets.history', ['per_page' => 'abc']))
+            ->assertOk();
+
+        $this->actingAs($this->nutritionist)->get(route('dashboard.nutrition', ['per_page' => 'abc']))
+            ->assertOk();
+    }
+
     public function test_history_page_shows_selected_diet_for_both_roles(): void
     {
         $diet = $this->diet('2026-10-01 08:00:00', ['desayuno']);

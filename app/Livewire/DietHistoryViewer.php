@@ -16,8 +16,9 @@ class DietHistoryViewer extends Component
 {
     use WithPagination;
 
+    /** Llega como texto desde ?dieta=; mount() lo deja en un entero o null */
     #[Url(as: 'dieta', except: null)]
-    public ?int $dietId = null;
+    public int|string|null $dietId = null;
 
     #[Url(as: 'q', except: '')]
     public string $search = '';
@@ -30,6 +31,9 @@ class DietHistoryViewer extends Component
 
     public function mount(): void
     {
+        // ?dieta= no numérico (p. ej. «abc»): sin dieta seleccionada, en lugar de un error 500
+        $this->dietId = ctype_digit((string) $this->dietId) && (int) $this->dietId > 0 ? (int) $this->dietId : null;
+
         if ($this->dietId) {
             Diet::findAccessible($this->dietId); // ?dieta= de otra empresa: 403
             $this->auditView(); // abierto desde ?dieta=
