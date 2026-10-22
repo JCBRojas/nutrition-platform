@@ -37,7 +37,7 @@
             <div class="filter-group">
                 <select class="filter-select" wire:model.live="role">
                     <option value="">Todos los roles</option>
-                    @foreach ($allRoles as $r)
+                    @foreach ($filterRoles as $r)
                         <option value="{{ $r }}">{{ ucfirst($r) }}</option>
                     @endforeach
                 </select>
@@ -124,6 +124,9 @@
                                                 Eliminar
                                             </button>
                                         @endcan
+                                        @if (auth()->user()->cannot('update', $user) && auth()->user()->cannot('delete', $user))
+                                            <span style="color:var(--color-texto-suave);font-size:12px">Solo lectura</span>
+                                        @endif
                                     @endif
                                 </td>
                             </tr>
@@ -175,7 +178,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Teléfono (WhatsApp)</label>
-                            <input type="tel" wire:model="phone" placeholder="+573001234567">
+                            <input type="tel" wire:model="phone" inputmode="numeric" maxlength="14" placeholder="3001234567">
                             @error('phone') <div class="form-hint text-red-600">{{ $message }}</div> @enderror
                         </div>
                         <div class="form-group">

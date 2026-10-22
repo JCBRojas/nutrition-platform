@@ -36,6 +36,17 @@ class UserService
             ->flatten()->unique()->values()->all();
     }
 
+    /**
+     * Roles de los usuarios que $actor ve en el listado: los que puede asignar más los de solo lectura
+     * de config security.visible_roles (el jefe de despacho ve los nutricionistas). null = todos.
+     */
+    public static function visibleRoles(User $actor): ?array
+    {
+        $assignable = self::assignableRoles($actor);
+        if ($assignable === null) {
+            return null;
+        }
+
         return collect(config('security.visible_roles', []))
             ->only($actor->getRoleNames()->all())
             ->flatten()->merge($assignable)->unique()->values()->all();

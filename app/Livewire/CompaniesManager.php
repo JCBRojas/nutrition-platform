@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Company;
 use App\Models\Scopes\CompanyScope;
 use App\Models\User;
+use App\Rules\LocalPhone;
 use App\Rules\Nit;
 use App\Services\CompanyService;
 use App\Support\Pagination;
@@ -103,11 +104,11 @@ class CompaniesManager extends Component
 
         $this->name = trim($this->name);
         $this->nit = Nit::normalize($this->nit);
+        $this->contact_phone = LocalPhone::normalize($this->contact_phone);
 
         $data = $this->validate($this->rules(), [
             'name.unique' => 'Ya existe una empresa con este nombre.',
             'nit.unique' => 'Ya existe una empresa con este NIT.',
-            'contact_phone.regex' => 'Usa formato internacional, p. ej. +573001234567.',
         ], [
             'name' => 'nombre',
             'nit' => 'NIT',
@@ -158,7 +159,7 @@ class CompaniesManager extends Component
             'name' => ['required', 'string', 'max:150', Rule::unique('companies', 'name')->ignore($this->editingId)],
             'nit' => ['required', 'string', new Nit, Rule::unique('companies', 'nit')->ignore($this->editingId)],
             'contact_name' => ['required', 'string', 'max:120'],
-            'contact_phone' => ['required', 'regex:/^\+[1-9]\d{7,14}$/'],
+            'contact_phone' => ['required', new LocalPhone],
             'contact_email' => ['required', 'email', 'max:160'],
             'manager_id' => $this->isManager() ? ['nullable'] : ['required', 'integer', Rule::in($this->managerOptions()->pluck('id'))],
         ];

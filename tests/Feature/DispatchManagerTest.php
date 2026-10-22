@@ -33,7 +33,7 @@ class DispatchManagerTest extends TestCase
 
     private function companyOf(User $manager, string $name, string $nit): Company
     {
-        $company = new Company(['name' => $name, 'nit' => $nit, 'contact_name' => 'C', 'contact_phone' => '+573001234567', 'contact_email' => 'c@example.com']);
+        $company = new Company(['name' => $name, 'nit' => $nit, 'contact_name' => 'C', 'contact_phone' => '3001234567', 'contact_email' => 'c@example.com']);
         $company->manager_id = $manager->id;
         $company->save();
 
@@ -54,7 +54,7 @@ class DispatchManagerTest extends TestCase
             ->set('name', $name)
             ->set('nit', $nit)
             ->set('contact_name', 'Ana')
-            ->set('contact_phone', '+573001234567')
+            ->set('contact_phone', '3001234567')
             ->set('contact_email', 'ana@example.com');
     }
 
@@ -214,10 +214,47 @@ class DispatchManagerTest extends TestCase
     {
         $own = $this->companyOf($this->manager, 'Clínica Propia', '900123456-8');
 
+        $this->newDispatcherForm(Livewire::actingAs($this->manager)->test(UsersManager::class), 'jefe@example.com', [$own->id])
+            ->set('roles', ['jefe_nutricion'])
+            ->call('save')
+            ->assertHasErrors('roles.0');
+    }
+
+    public function test_manager_sees_nutritionists_of_his_companies_read_only(): void
+    {
+        $this->activatePremium(); // varias empresas: función Premium (NUT-RN-003-16)
+        $own = $this->companyOf($this->manager, 'Clínica Propia', '900123456-8');
+        $foreign = $this->companyOf($this->otherManager(), 'Clínica Ajena', '860002964-4');
+        $mine = User::factory()->create(['name' => 'Nutricionista Propia', 'all_companies' => false]);
+        $mine->assignRole('nutricionista');
+        $mine->companies()->sync([$own->id]);
+        $other = User::factory()->create(['name' => 'Nutricionista Ajena', 'all_companies' => false]);
+        $other->assignRole('nutricionista');
+        $other->companies()->sync([$foreign->id]);
+
+        // Solo el admin crea nutricionistas
         $this->newDispatcherForm(Livewire::actingAs($this->manager)->test(UsersManager::class), 'nutri@example.com', [$own->id])
             ->set('roles', ['nutricionista'])
             ->call('save')
             ->assertHasErrors('roles.0');
+        $this->assertDatabaseMissing('users', ['email' => 'nutri@example.com']);
+
+        Livewire::actingAs($this->manager)->test(UsersManager::class)
+            ->assertSee('Nutricionista Propia')
+            ->assertDontSee('Nutricionista Ajena')
+            ->assertSee('Solo lectura')
+            ->call('edit', $mine->id)->assertForbidden();
+        Livewire::actingAs($this->manager)->test(UsersManager::class)->call('toggleActive', $mine->id)->assertForbidden();
+    }
+
+    public function test_manager_manages_prices_with_premium(): void
+    {
+        $this->assertTrue($this->manager->can('managePrices'));
+
+        $this->actingAs($this->manager)->get(route('prices.index'))->assertRedirect(route('subscription.index'));
+
+        $this->activatePremium();
+        $this->actingAs($this->manager)->get(route('prices.index'))->assertOk();
     }
 
     public function test_manager_only_sees_and_edits_users_of_his_companies(): void

@@ -96,7 +96,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'viewDispatches', // Despachos del día (NUT-RN-003-25)
             'viewReports',
             'generateFiles',
-            'viewUsers',      // solo despachadores de sus empresas (config security.assignable_roles)
+            'managePrices',   // facturación y precios de sus empresas
+            'viewUsers',      // despachadores de sus empresas; los nutricionistas, solo lectura (config security)
             'createUsers',
             'editUsers',
             'manageSubscription', // paga el Premium del operador del despacho (NUT-RN-003-17)

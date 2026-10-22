@@ -8,6 +8,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
 /**
  * NIT colombiano con dígito de verificación (900123456-8), calculado con el
  * algoritmo de la DIAN (módulo 11 con pesos primos de derecha a izquierda).
+ * El formato siempre se exige; el dígito solo con config('companies.nit_check_digit').
  */
 class Nit implements ValidationRule
 {
@@ -38,7 +39,7 @@ class Nit implements ValidationRule
             return;
         }
 
-        if (self::checkDigit($m[1]) !== (int) $m[2]) {
+        if (config('companies.nit_check_digit') && self::checkDigit($m[1]) !== (int) $m[2]) {
             $fail('El dígito de verificación del NIT no es válido.');
         }
     }

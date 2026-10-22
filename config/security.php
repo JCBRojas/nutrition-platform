@@ -22,6 +22,12 @@ return [
         'jefe_despacho' => ['despachador'],
     ],
 
+    // Roles que además ve, de solo lectura, en el listado de usuarios (de sus empresas).
+    // Los nutricionistas los crea y asocia a las empresas solo el admin.
+    'visible_roles' => [
+        'jefe_despacho' => ['nutricionista'],
+    ],
+
     // NUT-RN-002-07: al sembrar con la lista de dominios vacía, autorizar el dominio de SEED_ADMIN_EMAIL.
     // Desde ese momento solo ingresan los correos de dominios autorizados (ver /admin/dominios).
     'seed_admin_email_domain' => (bool) env('SEED_ADMIN_EMAIL_DOMAIN', true),

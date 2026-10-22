@@ -46,7 +46,7 @@ class UsersManagementTest extends TestCase
             ->call('create')
             ->set('name', 'Auxiliar Cocina')
             ->set('email', 'aux@example.com')
-            ->set('phone', '+573001234567')
+            ->set('phone', '3001234567')
             ->set('password', 'Secreta-2026')
             ->set('password_confirmation', 'Secreta-2026')
             ->set('roles', ['despachador'])
@@ -58,7 +58,7 @@ class UsersManagementTest extends TestCase
         $user = User::where('email', 'aux@example.com')->firstOrFail();
         $this->assertTrue($user->hasRole('despachador'));
         $this->assertTrue($user->is_active);
-        $this->assertSame('+573001234567', $user->phone);
+        $this->assertSame('3001234567', $user->phone);
     }
 
     public function test_validation_rejects_bad_phone_duplicate_email_and_unknown_role(): void
@@ -67,7 +67,7 @@ class UsersManagementTest extends TestCase
             ->call('create')
             ->set('name', 'X')
             ->set('email', 'camilo@gmail.com')
-            ->set('phone', '3001234567')
+            ->set('phone', '+573001234567') // con indicativo: no se acepta
             ->set('password', 'Secreta-2026')
             ->set('password_confirmation', 'Secreta-2026')
             ->set('roles', ['superusuario'])

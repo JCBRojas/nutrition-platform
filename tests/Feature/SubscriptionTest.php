@@ -215,7 +215,7 @@ class SubscriptionTest extends TestCase
     private function secondCompany(): Company
     {
         return Company::create(['name' => 'Clínica Beta', 'nit' => '860002964-4', 'contact_name' => 'B',
-            'contact_phone' => '+573001234567', 'contact_email' => 'b@example.com']);
+            'contact_phone' => '3001234567', 'contact_email' => 'b@example.com']);
     }
 
     public function test_companies_screen_and_selector_require_premium(): void

@@ -33,7 +33,7 @@ class CompaniesTest extends TestCase
     private function company(string $name, string $nit, bool $active = true, ?User $manager = null): Company
     {
         $company = new Company([
-            'name' => $name, 'nit' => $nit, 'contact_name' => 'Contacto', 'contact_phone' => '+573001234567',
+            'name' => $name, 'nit' => $nit, 'contact_name' => 'Contacto', 'contact_phone' => '3001234567',
             'contact_email' => 'contacto@example.com', 'is_active' => $active,
         ]);
         $company->manager_id = ($manager ?? $this->jefeDespacho)->id;
@@ -48,7 +48,7 @@ class CompaniesTest extends TestCase
             ->set('name', $name)
             ->set('nit', $nit)
             ->set('contact_name', 'Ana Pérez')
-            ->set('contact_phone', '+573001234567')
+            ->set('contact_phone', '3001234567')
             ->set('contact_email', 'Ana@Clinica.com');
     }
 
@@ -63,6 +63,7 @@ class CompaniesTest extends TestCase
 
     public function test_nit_check_digit(): void
     {
+        config(['companies.nit_check_digit' => true]);
         $this->assertSame(8, Nit::checkDigit('900123456'));
         $this->assertSame(4, Nit::checkDigit('860002964'));
         $this->assertTrue(validator(['nit' => '900.123.456-8'], ['nit' => [new Nit]])->passes());
@@ -98,13 +99,31 @@ class CompaniesTest extends TestCase
 
     public function test_required_fields_and_check_digit_are_validated(): void
     {
+        config(['companies.nit_check_digit' => true]);
+
         Livewire::actingAs($this->jefeDespacho)->test(CompaniesManager::class)
             ->call('create')
             ->set('nit', '900123456-7')
-            ->set('contact_phone', '3001234567')
+            ->set('contact_phone', '+573001234567')
             ->call('save')
             ->assertHasErrors(['name', 'nit', 'contact_name', 'contact_phone', 'contact_email'])
-            ->assertSee('El dígito de verificación del NIT no es válido.');
+            ->assertSee('El dígito de verificación del NIT no es válido.')
+            ->assertSee('Escribe el número sin indicativo');
+    }
+
+    public function test_test_nit_is_accepted_while_check_digit_is_off(): void
+    {
+        config(['companies.nit_check_digit' => false]);
+
+        $this->assertTrue(validator(['nit' => '123456789-0'], ['nit' => [new Nit]])->passes());
+        $this->assertFalse(validator(['nit' => '123456789'], ['nit' => [new Nit]])->passes()); // el formato sí se exige
+
+        $this->fillForm(Livewire::actingAs($this->jefeDespacho)->test(CompaniesManager::class), 'Clínica de Prueba', '123.456.789-0')
+            ->set('contact_phone', '300 123 4567')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('companies', ['name' => 'Clínica de Prueba', 'nit' => '123456789-0', 'contact_phone' => '3001234567']);
     }
 
     public function test_edit_and_deactivate_keep_history_and_are_audited(): void

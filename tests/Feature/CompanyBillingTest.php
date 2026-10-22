@@ -44,7 +44,7 @@ class CompanyBillingTest extends TestCase
         $this->a = Company::default();
         $this->a->update(['name' => 'Clínica Alfa']);
         $this->b = Company::create(['name' => 'Clínica Beta', 'nit' => '860002964-4', 'contact_name' => 'B',
-            'contact_phone' => '+573001234567', 'contact_email' => 'b@example.com']);
+            'contact_phone' => '3001234567', 'contact_email' => 'b@example.com']);
         $this->billing = app(BillingService::class);
 
         // Una dieta de almuerzo en cada empresa desde el 1 de octubre (sin usuario: sin filtro)

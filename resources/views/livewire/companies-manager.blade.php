@@ -155,7 +155,7 @@
                             </div>
                             <div class="form-group">
                                 <label for="co-phone">Teléfono del contacto <span class="req">*</span></label>
-                                <input id="co-phone" type="tel" wire:model="contact_phone" placeholder="+573001234567">
+                                <input id="co-phone" type="tel" wire:model="contact_phone" inputmode="numeric" maxlength="14" placeholder="3001234567">
                                 @error('contact_phone') <div class="form-hint text-red-600">{{ $message }}</div> @enderror
                             </div>
                         </div>

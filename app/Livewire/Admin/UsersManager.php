@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Actions\Fortify\PasswordValidationRules;
 use App\Models\Company;
 use App\Models\User;
+use App\Rules\LocalPhone;
 use App\Services\UserService;
 use App\Support\Pagination;
 use Illuminate\Validation\Rule;
@@ -109,12 +110,12 @@ class UsersManager extends Component
     {
         $user = $this->editingId ? User::findOrFail($this->editingId) : null;
         $user ? $this->authorize('update', $user) : $this->authorize('create', User::class);
+        $this->phone = LocalPhone::normalize($this->phone);
 
         $data = $this->validate($this->rules(), [
             'roles.required' => 'Elige el rol del usuario.',
             'roles.*.in' => 'No puedes asignar ese rol.',
             'email.unique' => 'Ya existe un usuario con este correo (puede estar eliminado: restáuralo).',
-            'phone.regex' => 'Usa formato internacional, p. ej. +573001234567.',
             'companies.*.exists' => 'La empresa elegida no existe.',
         ]);
 
@@ -185,7 +186,7 @@ class UsersManager extends Component
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->editingId)],
-            'phone' => ['nullable', 'regex:/^\+[1-9]\d{7,14}$/'],
+            'phone' => ['nullable', new LocalPhone],
             'password' => $this->editingId
                 ? ['nullable', 'string', Password::default(), 'confirmed']
                 : $this->passwordRules(),
@@ -257,6 +258,10 @@ class UsersManager extends Component
             $allRoles = $allRoles->intersect($assignable)->values(); // el jefe de nutrición solo ve y crea despachadores
         }
 
+        // Roles que ve en el listado (incluye los de solo lectura, p. ej. nutricionistas del jefe de despacho)
+        $visible = UserService::visibleRoles(auth()->user());
+        $filterRoles = $visible === null ? $allRoles : Role::where('guard_name', UserService::GUARD)->whereIn('name', $visible)->orderBy('name')->pluck('name');
+
         $users = User::query()
             ->with(['roles', 'companies'])
             ->when($this->status === 'trashed', fn ($q) => $q->onlyTrashed())
@@ -267,8 +272,8 @@ class UsersManager extends Component
                 ->where('name', 'like', "%{$this->search}%")
                 ->orWhere('email', 'like', "%{$this->search}%")
                 ->orWhere('phone', 'like', "%{$this->search}%")))
-            ->when($allRoles->contains($this->role), fn ($q) => $q->role($this->role))
-            ->when($assignable !== null, fn ($q) => $assignable === [] ? $q->whereRaw('1 = 0') : $q->role($assignable))
+            ->when($filterRoles->contains($this->role), fn ($q) => $q->role($this->role))
+            ->when($visible !== null, fn ($q) => $visible === [] ? $q->whereRaw('1 = 0') : $q->role($visible))
             ->when($this->isDispatchManager(), fn ($q) => $q->whereHas('companies', fn ($q) => $q->whereIn('companies.id', $this->managedCompanyIds())))
             ->orderBy('name')
             ->paginate(Pagination::perPage($this->perPage));
@@ -276,6 +281,7 @@ class UsersManager extends Component
         return view('livewire.admin.users-manager', [
             'users' => $users,
             'allRoles' => $allRoles,
+            'filterRoles' => $filterRoles,
             'assignsCompanies' => $this->assignsCompanies(),
             'offersAllCompanies' => ! $this->isDispatchManager(),
             'offersOwnCompanies' => $this->isDispatchManager(),
