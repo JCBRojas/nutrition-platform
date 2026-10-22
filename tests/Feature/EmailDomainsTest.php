@@ -95,9 +95,13 @@ class EmailDomainsTest extends TestCase
         $this->authorize('nutritrack.com');
         $blocked = $this->user('maria@gmail.com');
 
-        // La respuesta es la misma que con un correo autorizado
-        $this->post('/forgot-password', ['email' => $blocked->email])->assertSessionHasNoErrors();
-        $this->post('/forgot-password', ['email' => $this->admin->email])->assertSessionHasNoErrors();
+        // La respuesta es la misma que con un correo autorizado (antes, 500 por un import faltante en User)
+        foreach ([$blocked->email, $this->admin->email] as $email) {
+            $this->from('/forgot-password')->post('/forgot-password', ['email' => $email])
+                ->assertRedirect('/forgot-password')
+                ->assertSessionHasNoErrors()
+                ->assertSessionHas('status');
+        }
 
         Notification::assertNotSentTo($blocked, ResetPassword::class);
         Notification::assertSentTo($this->admin, ResetPassword::class);
