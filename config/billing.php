@@ -18,6 +18,8 @@ return [
     /*
     | Servicios facturables, en el orden del formato. Clave = tiempo de comida
     | de config/timeFood.php. "Comida" del formato = cena. Fraccionada no se factura.
+    | Estas etiquetas son las del formato del hospital y solo van en el Excel; en la
+    | aplicación se usan las de timeFood (BillingService::serviceLabel).
     */
     'services' => [
         'desayuno' => 'DESAYUNO',

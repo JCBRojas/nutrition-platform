@@ -72,7 +72,7 @@ class PricesManager extends Component
 
         $billing->setPrice($data['editType'], $data['editService'], (float) $data['price'], CarbonImmutable::parse($data['validFrom']), auth()->id());
 
-        $label = BillingService::types()[$data['editType']]['name'].' / '.ucfirst(mb_strtolower(BillingService::services()[$data['editService']]));
+        $label = BillingService::types()[$data['editType']]['name'].' / '.BillingService::serviceLabel($data['editService']);
         AuditLogger::log('price_updated', "Precio de {$label}: {$data['price']} desde {$data['validFrom']}", null, [
             'company_id' => app(CurrentCompany::class)->id(), 'billing_type' => $data['editType'], 'service' => $data['editService'], 'price' => (float) $data['price'], 'valid_from' => $data['validFrom'],
         ]);

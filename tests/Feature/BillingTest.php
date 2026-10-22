@@ -156,6 +156,23 @@ class BillingTest extends TestCase
         $this->actingAs($this->nutritionist)->get(route('billing.excel'))->assertForbidden();
     }
 
+    public function test_prices_screen_uses_the_same_meal_names_as_diets(): void
+    {
+        // SCRUM-15: «Cena» y «Media mañana» como en las dietas; «Comida» y «M.mañana» solo en el Excel del hospital
+        $this->assertSame('Cena', BillingService::serviceLabel('cena'));
+        $this->assertSame('Media mañana', BillingService::serviceLabel('mediamanana'));
+        $this->assertSame('COMIDA', BillingService::services()['cena']);
+
+        $this->actingAs(User::role('jefe_nutricion')->firstOrFail())->get(route('prices.index'))
+            ->assertOk()
+            ->assertSee('Cena')
+            ->assertSee('Media mañana')
+            ->assertDontSee('M.mañana')
+            ->assertSee('Fraccionada no se factura.')
+            ->assertSee('No es un tipo de dieta: aquí se cobran la media mañana', false)
+            ->assertSee('Media mañana, Algo, Merienda: se cobran en Entrecomidas.');
+    }
+
     public function test_diet_form_requires_billing_type(): void
     {
         $this->actingAs($this->nutritionist)

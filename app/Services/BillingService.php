@@ -42,6 +42,17 @@ class BillingService
         return config('billing.services');
     }
 
+    /**
+     * Nombre de un servicio en la aplicación: el mismo del catálogo de tiempos de comida
+     * (config/timeFood.php), p. ej. «Cena» y «Media mañana» (SCRUM-15). Las etiquetas de
+     * config('billing.services') («COMIDA», «M.MAÑANA») son las del formato del hospital y
+     * solo se usan en el Excel de facturación.
+     */
+    public static function serviceLabel(string $service): string
+    {
+        return config("timeFood.labels.{$service}") ?? ucfirst(mb_strtolower(self::services()[$service] ?? $service));
+    }
+
     /** Tipos que el nutricionista puede elegir en el formulario: clave => nombre */
     public static function selectableTypes(): array
     {

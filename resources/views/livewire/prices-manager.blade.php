@@ -1,12 +1,14 @@
 @php
     $cop = fn ($v) => $v === null ? '—' : '$ '.number_format($v, 0, ',', '.');
-    $svc = fn ($key) => ucfirst(mb_strtolower($services[$key]));
+    // Mismos nombres que en las dietas (Cena, Media mañana); el Excel conserva los del formato del hospital
+    $svc = fn ($key) => \App\Services\BillingService::serviceLabel($key);
 @endphp
 <div class="content" id="page-precios">
     <style>
         .pm-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 400px); gap: 20px; align-items: start; }
         .pm-money { font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
         .pm-type td { background: var(--bg); font-weight: 700; padding-top: 14px; }
+        .pm-type-hint { font-weight: 400; font-size: 12px; color: var(--color-texto-suave); margin-top: 2px; }
         .pm-row td:first-child { padding-left: 28px; }
         .pm-edit td { background: var(--surface2); }
         .pm-edit .pm-fields { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
@@ -41,7 +43,7 @@
                     <div>
                         <div class="card-title">Precios vigentes hoy</div>
                         <div class="text-sm text-slate-500">
-                            Valor por bandeja (COP).
+                            Valor por bandeja (COP). Fraccionada no se factura.
                             @if ($missingCount)
                                 <span class="pm-missing">{{ $missingCount }} de {{ count(\App\Services\BillingService::rows()) }} sin precio.</span>
                             @endif
@@ -73,7 +75,21 @@
                         <tbody>
                             @forelse ($rows as $type => $typeRows)
                                 <tr class="pm-type" wire:key="type-{{ $type }}">
-                                    <td colspan="4">{{ $types[$type]['name'] }}</td>
+                                    <td colspan="4">
+                                        {{ $types[$type]['name'] }}
+                                        @if ($type === config('billing.snack_type'))
+                                            {{-- SCRUM-15: no es un tipo de dieta, es la fila del formato para refrigerios --}}
+                                            <div class="pm-type-hint">
+                                                No es un tipo de dieta: aquí se cobran la media mañana, el algo y la merienda
+                                                de los tipos que no tienen esas filas (p. ej. Normal, Blanda mecánica, Hiposódica).
+                                            </div>
+                                        @else
+                                            @php $toSnacks = array_diff($types[config('billing.snack_type')]['services'], $types[$type]['services']); @endphp
+                                            @if ($toSnacks)
+                                                <div class="pm-type-hint">{{ collect($toSnacks)->map($svc)->implode(', ') }}: se cobran en Entrecomidas.</div>
+                                            @endif
+                                        @endif
+                                    </td>
                                 </tr>
                                 @foreach ($typeRows as $r)
                                     @php
