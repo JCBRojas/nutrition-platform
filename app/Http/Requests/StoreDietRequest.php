@@ -10,7 +10,7 @@ class StoreDietRequest extends FormRequest
     use NormalizesIsolation;
 
     /** Longitud máxima de la habitación y del nombre del paciente (también maxlength en el formulario) */
-    public const HABITATION_MAX = 50;
+    public const HABITATION_MAX = 4;
 
     public const NAME_MAX = 150;
 

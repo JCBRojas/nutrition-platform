@@ -61,11 +61,15 @@ class DietValidationTest extends TestCase
     {
         $this->register(['habitation' => str_repeat('1', 300), 'name_patient' => str_repeat('a', 300)])
             ->assertSessionHasErrors([
-                'habitation' => 'La habitación no puede tener más de 50 caracteres.',
+                'habitation' => 'La habitación no puede tener más de 4 caracteres.',
                 'name_patient' => 'El nombre del paciente no puede tener más de 150 caracteres.',
             ]);
 
+        // Justo en el límite (4) se acepta; con 5 no
+        $this->register(['habitation' => '12345'])->assertSessionHasErrors('habitation');
         $this->assertSame(0, Diet::count());
+        $this->register(['habitation' => '1205'])->assertSessionHasNoErrors();
+        $this->assertSame(1, Diet::count());
     }
 
     public function test_valid_diet_is_registered_trimmed(): void
@@ -96,7 +100,7 @@ class DietValidationTest extends TestCase
         $this->actingAs($this->nutritionist)->get(route('dashboard.nutrition'))
             ->assertOk()
             ->assertSee('name="habitation" placeholder="Ej. 205"', false)
-            ->assertSee('maxlength="50"', false)
+            ->assertSee('maxlength="4"', false)
             ->assertSee('maxlength="150"', false);
     }
 }
