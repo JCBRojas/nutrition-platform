@@ -231,10 +231,11 @@
                         <div class="form-group">
                             <label>Contraseña @unless ($editingId)<span class="req">*</span>@endunless</label>
                             <input type="password" wire:model="password" autocomplete="new-password">
-                            @if ($editingId)
-                                <div class="form-hint">Déjala vacía para conservar la actual.</div>
-                            @endif
-                            @error('password') <div class="form-hint text-red-600">{{ $message }}</div> @enderror
+                            {{-- SCRUM-25: las reglas se ven desde el inicio y, al fallar, todos los errores a la vez --}}
+                            <div class="form-hint">Mínimo 10 caracteres, con mayúsculas, minúsculas y números.@if ($editingId) Déjala vacía para conservar la actual.@endif</div>
+                            @foreach ($errors->get('password') as $message)
+                                <div class="form-hint text-red-600">{{ $message }}</div>
+                            @endforeach
                         </div>
                         <div class="form-group">
                             <label>Confirmar contraseña</label>

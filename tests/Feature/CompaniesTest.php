@@ -235,7 +235,7 @@ class CompaniesTest extends TestCase
             ->set('password_confirmation', 'Secreta-2026')
             ->set('roles', ['despachador'])
             ->call('save')
-            ->assertHasErrors('user');
+            ->assertHasErrors('companies'); // junto con los demás errores del formulario (SCRUM-25)
 
         $this->assertDatabaseMissing('users', ['email' => 'sin.empresa@example.com']);
     }

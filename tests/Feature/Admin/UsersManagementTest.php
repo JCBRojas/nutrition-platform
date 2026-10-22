@@ -139,6 +139,7 @@ class UsersManagementTest extends TestCase
         Livewire::actingAs($other)->test(UsersManager::class)
             ->call('edit', $this->admin->id)
             ->set('roles', ['nutricionista'])
+            ->set('all_companies', true) // con acceso válido, solo falla la regla del último admin
             ->call('save')
             ->assertHasErrors('user');
 

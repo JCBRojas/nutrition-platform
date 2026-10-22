@@ -112,6 +112,13 @@ class UsersManager extends Component
         $user ? $this->authorize('update', $user) : $this->authorize('create', User::class);
         $this->phone = LocalPhone::normalize($this->phone);
 
+        // SCRUM-25: las reglas de empresas se evalúan con las demás, para mostrar todos los errores a la vez
+        $this->withValidator(fn ($validator) => $validator->after(function ($validator) {
+            foreach ($this->companyErrors() as $message) {
+                $validator->errors()->add('companies', $message);
+            }
+        }));
+
         $data = $this->validate($this->rules(), [
             'roles.required' => 'Elige el rol del usuario.',
             'roles.*.in' => 'No puedes asignar ese rol.',
@@ -132,11 +139,6 @@ class UsersManager extends Component
             $data['all_companies'] = false;
             $others = $user ? $user->companies()->whereNotIn('companies.id', $this->managedCompanyIds())->pluck('companies.id')->all() : [];
             $data['companies'] = [...array_map('intval', $data['companies'] ?? []), ...$others];
-            if (($data['companies'] ?? []) === [] || array_diff(array_map('intval', $this->companies), $this->managedCompanyIds()) !== []) {
-                $this->addError('companies', 'Asigna al menos una de tus empresas.');
-
-                return;
-            }
         }
 
         try {
@@ -209,6 +211,39 @@ class UsersManager extends Component
     }
 
     /** Jefe de despacho (sin ser admin): asigna solo sus empresas y ve solo a los usuarios de ellas */
+    /**
+     * Reglas de empresas que antes se revisaban después de la validación (aquí y en
+     * UserService::syncCompanies, que las mantiene como respaldo).
+     */
+    private function companyErrors(): array
+    {
+        if (! $this->assignsCompanies()) {
+            return [];
+        }
+
+        $selected = array_map('intval', $this->companies);
+        if ($this->isDispatchManager()) {
+            return $selected === [] || array_diff($selected, $this->managedCompanyIds()) !== []
+                ? ['Asigna al menos una de tus empresas.']
+                : [];
+        }
+
+        $roles = (array) $this->roles;
+        $admin = in_array(UserService::ADMIN_ROLE, $roles, true);
+        $dispatch = ! $admin && array_intersect([User::DISPATCHER_ROLE, User::DISPATCH_MANAGER_ROLE], $roles) !== [];
+
+        if ($this->all_companies && $dispatch) {
+            return ['A los despachadores y jefes de despacho se les asignan empresas específicas, no «Todas».'];
+        }
+        if (! $this->all_companies && $selected === [] && ! in_array(User::DISPATCH_MANAGER_ROLE, $roles, true)) {
+            return [in_array(User::DISPATCHER_ROLE, $roles, true)
+                ? 'Asigna al menos una empresa específica al despachador.'
+                : 'Asigna al menos una empresa o marca «Todas las empresas».'];
+        }
+
+        return [];
+    }
+
     private function isDispatchManager(): bool
     {
         return auth()->user()->isDispatchManager();

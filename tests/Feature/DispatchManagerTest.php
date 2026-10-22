@@ -303,7 +303,7 @@ class DispatchManagerTest extends TestCase
         $this->newDispatcherForm(Livewire::actingAs($this->admin)->test(UsersManager::class), 'todas@example.com', [])
             ->set('all_companies', true)
             ->call('save')
-            ->assertHasErrors('user')
+            ->assertHasErrors('companies') // junto con los demás errores del formulario (SCRUM-25)
             ->assertSee('se les asignan empresas específicas, no «Todas»');
 
         $this->assertDatabaseMissing('users', ['email' => 'todas@example.com']);
