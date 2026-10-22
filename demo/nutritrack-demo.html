@@ -303,9 +303,9 @@
     enfermeria: { views: ['activas'], edit: false, cont: true, receive: false },
     despachador: { views: ['despacho', 'despachos', 'historial', 'reporte'], dispatch: true },
     // Trabaja como nutricionista; además factura y crea nutricionistas
-    jefe_nutricion: { views: ['activas', 'despachos', 'historial', 'reporte', 'facturacion', 'usuarios'], edit: true, cont: true, receive: true, usersOnly: 'nutricionista' },
-    // Administra sus empresas y los despachadores de ellas; su inicio es Empresas
-    jefe_despacho: { views: ['despachos', 'historial', 'reporte', 'empresas', 'usuarios'], home: 'empresas', usersOnly: 'despachador' },
+    jefe_nutricion: { views: ['activas', 'despachos', 'historial', 'reporte', 'facturacion', 'usuarios'], edit: true, cont: true, receive: true, usersOnly: ['nutricionista'] },
+    // Administra sus empresas, sus precios y facturación, y los despachadores de ellas (ve los nutricionistas de solo lectura); su inicio es Empresas
+    jefe_despacho: { views: ['despachos', 'historial', 'reporte', 'facturacion', 'empresas', 'usuarios'], home: 'empresas', usersOnly: ['despachador'], seesRoles: ['despachador', 'nutricionista'] },
     admin: { views: ['activas', 'despachos', 'historial', 'reporte', 'facturacion', 'empresas', 'usuarios', 'auditoria'], edit: true, cont: true, receive: true }
   };
   var VIEWS = {
@@ -882,14 +882,14 @@
 
   // ── Usuarios ──
   // Quién aparece: el admin ve a todos; el jefe de nutrición, a los nutricionistas;
-  // el jefe de despacho, solo a los despachadores de sus empresas
+  // el jefe de despacho, los despachadores y (de solo lectura) los nutricionistas de sus empresas
   function visibleUsers() {
     if (user.role === 'admin') return S.users;
     if (user.role === 'jefe_despacho') {
       var mine = managedCos().map(function (c) { return c.id; });
-      return S.users.filter(function (u) { return u.role === 'despachador' && u.companies !== 'all' && u.companies.some(function (id) { return mine.indexOf(id) >= 0; }); });
+      return S.users.filter(function (u) { return ACCESS.jefe_despacho.seesRoles.indexOf(u.role) >= 0 && u.companies !== 'all' && u.companies.some(function (id) { return mine.indexOf(id) >= 0; }); });
     }
-    return S.users.filter(function (u) { return u.role === ACCESS[user.role].usersOnly; });
+    return S.users.filter(function (u) { return ACCESS[user.role].usersOnly.indexOf(u.role) >= 0; });
   }
   // Empresas que puede asignar: el jefe de despacho solo las suyas
   function assignableCos() { return (user.role === 'jefe_despacho' ? managedCos() : S.companies).filter(function (c) { return c.active; }); }
@@ -908,16 +908,16 @@
   }
   function vUsuarios() {
     var acc = ACCESS[user.role], list = visibleUsers(), admin = user.role === 'admin';
-    var roles = acc.usersOnly ? [acc.usersOnly] : Object.keys(ROLE);
+    var roles = acc.usersOnly || Object.keys(ROLE);
     var rows = list.map(function (u) {
       var act = [];
       if (admin && u.id !== user.id) act.push('<button type="button" class="btn btn-sm ' + (u.active ? 'btn-ghost' : 'btn-success') + '" data-a="toggleUser" data-id="' + u.id + '">' + (u.active ? 'Desactivar' : 'Activar') + '</button>');
-      if ((admin || user.role === 'jefe_despacho') && u.role !== 'admin') act.push('<button type="button" class="btn btn-sm btn-outline-primary" data-a="userCos" data-id="' + u.id + '">Empresas</button>');
+      if ((admin && u.role !== 'admin') || (user.role === 'jefe_despacho' && u.role === 'despachador')) act.push('<button type="button" class="btn btn-sm btn-outline-primary" data-a="userCos" data-id="' + u.id + '">Empresas</button>');
       return '<tr><td><b>' + esc(u.name) + '</b></td><td>' + esc(u.email) + '</td><td><span class="tag chip-brand">' + ROLE[u.role] + '</span></td><td>' + coAccess(u) + '</td><td>' + (u.active ? '<span class="tag chip-ok">Activo</span>' : '<span class="tag chip-muted">Inactivo</span>') + '</td><td class="actions">' +
         (act.length ? '<div class="acts">' + act.join('') + '</div>' : '<span class="muted small">' + (u.id === user.id ? 'Tu usuario' : 'Solo lectura') + '</span>') + '</td></tr>';
     }).join('') || '<tr><td colspan="6" class="empty">Todavía no hay usuarios que puedas ver.</td></tr>';
     var intro = admin ? 'Crea usuarios, asigna su rol, sus empresas y activa o desactiva su acceso.'
-      : user.role === 'jefe_despacho' ? 'Crea y edita los despachadores de tus empresas. Solo ves a los usuarios de tus empresas.'
+      : user.role === 'jefe_despacho' ? 'Crea y edita los despachadores de tus empresas. Los nutricionistas de tus empresas aparecen de solo lectura: los crea y asocia el administrador.'
       : 'Como jefe de nutrición puedes ver y crear nutricionistas.';
     var hint = admin ? 'El despachador siempre lleva empresas específicas; el administrador tiene todas.' : user.role === 'jefe_despacho' ? 'Solo puedes asignar tus empresas.' : 'Elige las empresas del nutricionista.';
     return '<div class="head"><div><h1>Usuarios</h1><p>' + intro + '</p></div></div>' +
