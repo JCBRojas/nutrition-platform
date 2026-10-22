@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arquitectura de NutriTrack</title>
+<meta name="description" content="Arquitectura de software de NutriTrack (nutrition-platform): capas, módulos, flujos, datos, seguridad y funcionalidades.">
+<style>
+  /* Paleta NUT-CMP-001 (violeta, sin rosa) */
+  :root {
+    --primario: #6C5DD3; --primario-hover: #5A4BC2; --marca: #5B4CC4;
+    --suave: #E8E5FB; --suave-texto: #4A3BB0;
+    --fondo: #EEF0FA; --superficie: #FFFFFF; --borde: #DCDFF0; --pista: #E6E8F5;
+    --texto: #1F2340; --texto-suave: #5E6384;
+    --exito: #166534; --exito-suave: #E3F4EA;
+    --error: #B91C1C; --error-suave: #FDECEC;
+    --advertencia: #92400E; --advertencia-suave: #FEF3E2;
+    --linea: #A9A7C9;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --marca: #A79DF0; --suave: #353163; --suave-texto: #C9C2FA;
+      --fondo: #1C1B33; --superficie: #28264A; --borde: #3A3766; --pista: #3A3766;
+      --texto: #ECEBFA; --texto-suave: #A9A7C9;
+      --exito: #4ADE80; --exito-suave: #1E3A2B; --error: #F87171; --error-suave: #3A1A1F;
+      --advertencia: #FBBF24; --advertencia-suave: #3A2E14; --linea: #5E5A94;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --marca: #A79DF0; --suave: #353163; --suave-texto: #C9C2FA;
+    --fondo: #1C1B33; --superficie: #28264A; --borde: #3A3766; --pista: #3A3766;
+    --texto: #ECEBFA; --texto-suave: #A9A7C9;
+    --exito: #4ADE80; --exito-suave: #1E3A2B; --error: #F87171; --error-suave: #3A1A1F;
+    --advertencia: #FBBF24; --advertencia-suave: #3A2E14; --linea: #5E5A94;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--fondo); color: var(--texto);
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  a { color: var(--marca); }
+  code { font: 12.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--pista); padding: 1px 5px; border-radius: 5px; }
+  h1, h2, h3 { line-height: 1.25; margin: 0; }
+  h2 { font-size: 22px; margin-bottom: 6px; }
+  h3 { font-size: 16px; margin: 18px 0 8px; }
+  p { margin: 0 0 10px; }
+
+  /* Estructura */
+  .layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 100vh; }
+  .toc {
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    background: var(--primario); color: #fff; padding: 22px 14px;
+  }
+  .toc .marca { font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .toc .marca::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #fff; }
+  .toc .sub { font-size: 12px; margin: 2px 0 18px 17px; }
+  .toc a { display: block; color: #fff; text-decoration: none; padding: 6px 10px; border-radius: 8px; font-size: 13.5px; }
+  .toc a:hover, .toc a:focus-visible { background: var(--primario-hover); outline: none; }
+  .toc a:focus-visible { box-shadow: 0 0 0 2px #fff; }
+  .toc .tema { margin-top: 18px; width: 100%; background: transparent; color: #fff; border: 1px solid #F8F9FA; border-radius: 8px; padding: 8px; font: inherit; font-size: 13px; cursor: pointer; }
+  .toc .tema:hover { background: #F8F9FA; color: #000; }
+
+  main { padding: 28px clamp(16px, 4vw, 44px) 60px; max-width: 1180px; }
+  header.portada { margin-bottom: 26px; }
+  header.portada h1 { font-size: clamp(26px, 4vw, 34px); }
+  header.portada .lead { color: var(--texto-suave); font-size: 16px; max-width: 760px; margin-top: 8px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: var(--suave); color: var(--suave-texto); }
+  .pill.ok { background: var(--exito-suave); color: var(--exito); }
+  .pill.plan { background: var(--advertencia-suave); color: var(--advertencia); }
+
+  section { background: var(--superficie); border: 1px solid var(--borde); border-radius: 16px; padding: 22px clamp(16px, 3vw, 28px); margin-bottom: 20px; scroll-margin-top: 16px; }
+  section > .intro { color: var(--texto-suave); margin-bottom: 14px; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+  .card { border: 1px solid var(--borde); border-radius: 12px; padding: 14px; background: var(--superficie); }
+  .card h4 { margin: 0 0 4px; font-size: 14.5px; }
+  .card p, .card li { font-size: 13.5px; color: var(--texto-suave); }
+  .card ul { margin: 6px 0 0; padding-left: 18px; }
+  .card .ruta { display: block; margin-top: 6px; }
+  .etq { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--marca); }
+
+  /* Tablas */
+  .tabla { width: 100%; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+  th { background: var(--pista); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--texto-suave); position: sticky; top: 0; }
+  td.si { color: var(--exito); font-weight: 700; text-align: center; }
+  td.no { color: var(--texto-suave); text-align: center; }
+
+  /* Diagrama de capas */
+  .capas { display: grid; gap: 10px; }
+  .capa { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; align-items: stretch; }
+  .capa .nombre { background: var(--primario); color: #fff; border-radius: 10px; padding: 10px 12px; font-weight: 700; font-size: 14px; display: flex; align-items: center; }
+  .capa .piezas { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border: 1px dashed var(--linea); border-radius: 10px; padding: 10px; }
+  .pieza { background: var(--suave); color: var(--suave-texto); border-radius: 8px; padding: 5px 10px; font-size: 13px; font-weight: 600; }
+  .flecha { text-align: center; color: var(--linea); font-size: 18px; line-height: 1; }
+
+  /* Línea de tiempo del ciclo de la dieta */
+  .ciclo { counter-reset: paso; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  .paso { position: relative; border: 1px solid var(--borde); border-radius: 12px; padding: 14px 14px 12px; }
+  .paso::before { counter-increment: paso; content: counter(paso); position: absolute; top: -11px; left: 12px; width: 24px; height: 24px; border-radius: 50%; background: var(--primario); color: #fff; font-size: 12.5px; font-weight: 700; display: grid; place-items: center; }
+  .paso h4 { margin: 4px 0 4px; font-size: 14px; }
+  .paso p { font-size: 13px; color: var(--texto-suave); margin: 0; }
+  .paso .quien { display: inline-block; margin-top: 8px; font-size: 11.5px; font-weight: 700; color: var(--marca); }
+
+  /* Diagramas SVG */
+  figure { margin: 8px 0 4px; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: 12.5px; color: var(--texto-suave); margin-top: 6px; }
+  svg .caja { fill: var(--superficie); stroke: var(--borde); }
+  svg .caja-p { fill: var(--suave); stroke: var(--primario); }
+  svg .txt { fill: var(--texto); font: 600 13px system-ui, sans-serif; }
+  svg .txt-s { fill: var(--texto-suave); font: 12px system-ui, sans-serif; }
+  svg .lin { stroke: var(--linea); stroke-width: 1.6; fill: none; }
+  svg .lin-p { stroke: var(--primario); stroke-width: 1.8; fill: none; }
+  svg .punta { fill: var(--linea); }
+  svg .punta-p { fill: var(--primario); }
+
+  /* Modelo de datos */
+  .er { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+  .entidad { border: 1px solid var(--borde); border-radius: 12px; overflow: hidden; }
+  .entidad h4 { margin: 0; padding: 8px 12px; background: var(--primario); color: #fff; font-size: 14px; display: flex; justify-content: space-between; gap: 8px; }
+  .entidad h4 small { font-weight: 500; font-size: 12px; }
+  .entidad ul { list-style: none; margin: 0; padding: 8px 12px; font-size: 12.5px; }
+  .entidad li { padding: 2px 0; color: var(--texto-suave); }
+  .entidad li b { color: var(--texto); font-weight: 600; }
+  .entidad .rel { border-top: 1px dashed var(--borde); color: var(--marca); }
+
+  /* Colores del sistema de diseño */
+  .muestras { display: flex; flex-wrap: wrap; gap: 8px; }
+  .muestra { display: flex; align-items: center; gap: 8px; border: 1px solid var(--borde); border-radius: 10px; padding: 6px 10px 6px 6px; font-size: 12.5px; }
+  .muestra i { width: 26px; height: 26px; border-radius: 7px; display: inline-block; border: 1px solid rgba(0,0,0,.08); }
+  .btn { display: inline-flex; align-items: center; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; border: 1px solid transparent; }
+  .tag { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+
+  .aviso { border-left: 4px solid var(--advertencia); background: var(--advertencia-suave); color: var(--texto); border-radius: 8px; padding: 10px 14px; font-size: 13.5px; margin: 10px 0; }
+  .nota { border-left: 4px solid var(--primario); background: var(--suave); color: var(--texto); border-radius: 8px; padding: 10px 14px; font-size: 13.5px; margin: 10px 0; }
+  ol.reglas, ul.lista { padding-left: 20px; margin: 6px 0; }
+  ol.reglas li, ul.lista li { margin-bottom: 6px; font-size: 14px; }
+  footer { color: var(--texto-suave); font-size: 12.5px; text-align: center; margin-top: 10px; }
+
+  main, .toc { min-width: 0; }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: minmax(0, 1fr); }
+    .toc { position: static; height: auto; }
+    .toc nav { display: flex; flex-wrap: wrap; gap: 4px; }
+    .capa { grid-template-columns: 1fr; }
+  }
+  @media print {
+    .toc { display: none; }
+    .layout { grid-template-columns: 1fr; }
+    section { break-inside: avoid; }
+  }
+</style>
+<script>
+  /* Tema elegido a mano (claro u oscuro); si no hay preferencia guardada, sigue al sistema */
+  try {
+    var t = localStorage.getItem('nt-doc-theme');
+    if (t) document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+</script>
+</head>
+<body>
+<div class="layout">
+  <aside class="toc" aria-label="Contenido">
+    <div class="marca">NutriTrack</div>
+    <div class="sub">Arquitectura de software</div>
+    <nav>
+      <a href="#vision">1. Visión general</a>
+      <a href="#stack">2. Stack tecnológico</a>
+      <a href="#capas">3. Capas y patrón</a>
+      <a href="#modulos">4. Módulos y funcionalidades</a>
+      <a href="#ciclo">5. Ciclo de vida de una dieta</a>
+      <a href="#tiempo-real">6. Tiempo real</a>
+      <a href="#datos">7. Modelo de datos</a>
+      <a href="#roles">8. Roles y permisos</a>
+      <a href="#rutas">9. Rutas y pantallas</a>
+      <a href="#reglas">10. Reportes y facturación</a>
+      <a href="#suscripcion">11. Suscripción</a>
+      <a href="#seguridad">12. Seguridad y cumplimiento</a>
+      <a href="#operacion">13. Operación</a>
+      <a href="#diseno">14. Sistema de diseño</a>
+      <a href="#calidad">15. Pruebas y calidad</a>
+      <a href="#pendiente">16. Pendiente y deuda</a>
+    </nav>
+    <button type="button" class="tema" id="tema">Cambiar tema claro / oscuro</button>
+  </aside>
+
+  <main>
+    <header class="portada">
+      <span class="etq">Documento de arquitectura · NUT-ARQ</span>
+      <h1>Arquitectura de software de NutriTrack</h1>
+      <p class="lead">Plataforma hospitalaria de gestión de dietas de pacientes. El nutricionista registra y versiona la dieta de cada habitación; la cocina ve los cambios casi en tiempo real, los confirma y despacha cada tiempo de comida; el nutricionista confirma la recepción, y con lo recibido se generan reportes, el censo mensual y la facturación al hospital. La cocina atiende varias <b>empresas</b> (hospitales, clínicas o IPS): cada una con su jefe de despacho y sus datos separados.</p>
+      <div class="meta">
+        <span class="pill">Repositorio: nutrition-platform</span>
+        <span class="pill">Laravel 10 · Livewire 3 · MySQL</span>
+        <span class="pill">Actualizado: 21 de octubre de 2026</span>
+        <span class="pill">Último commit: ff6aca8</span>
+      </div>
+    </header>
+
+    <!-- 1 -->
+    <section id="vision">
+      <h2>1. Visión general</h2>
+      <p class="intro">Quién usa el sistema y qué resuelve.</p>
+      <div class="grid">
+        <div class="card"><span class="etq">Nutricionista</span><h4>Prescribe y controla</h4><p>Crea, edita, continúa, cancela y da de alta dietas; confirma la recepción de cada despacho; ve reportes, despachos e historial.</p></div>
+        <div class="card"><span class="etq">Enfermería</span><h4>Acompaña</h4><p>Ve las dietas activas y autoriza el día siguiente («Continuar dieta»), según la matriz de permisos.</p></div>
+        <div class="card"><span class="etq">Despachador (cocina)</span><h4>Produce y despacha</h4><p>Ve los cambios en tiempo real, los confirma, despacha por servicio y descarga archivos de producción. Solo trabaja con las empresas específicas que tiene asignadas; sin ninguna, no ve ninguna pantalla.</p></div>
+        <div class="card"><span class="etq">Jefe de nutrición</span><h4>Nutricionista que gestiona</h4><p>Hace todo lo del nutricionista y, además, descarga los reportes y crea nutricionistas. Conserva precios, facturación y suscripción.</p></div>
+        <div class="card"><span class="etq">Jefe de despacho</span><h4>Administra sus empresas</h4><p>Crea, edita y desactiva las empresas a su nombre; crea despachadores con una, varias o todas sus empresas; consulta los despachos del día.</p></div>
+        <div class="card"><span class="etq">Administrador</span><h4>Gobierna</h4><p>Usuarios, roles y permisos, empresas (con su jefe de despacho), auditoría, aprobación de pagos y solicitudes de demo. Accede a todo.</p></div>
+        <div class="card"><span class="etq">Visitante</span><h4>Conoce el producto</h4><p>Ve la vitrina en el login, la política de datos y solicita una demo.</p></div>
+      </div>
+    </section>
+
+    <!-- 2 -->
+    <section id="stack">
+      <h2>2. Stack tecnológico</h2>
+      <p class="intro">Tecnologías por capa.</p>
+      <div class="tabla"><table>
+        <thead><tr><th>Capa</th><th>Tecnología</th><th>Uso</th></tr></thead>
+        <tbody>
+          <tr><td>Backend</td><td>PHP ^8.1 (local 8.4), <b>Laravel 10</b></td><td>Rutas, servicios, Eloquent, colas, tareas programadas</td></tr>
+          <tr><td>Autenticación</td><td>Jetstream 4 (Livewire), Fortify, Sanctum</td><td>Login, 2FA, perfil, sesiones en BD</td></tr>
+          <tr><td>Permisos</td><td><code>spatie/laravel-permission</code> 6</td><td>Roles y permisos, guard <code>web</code></td></tr>
+          <tr><td>Interfaz</td><td>Blade + <b>Livewire 3</b> + Tailwind 3 (Vite), Alpine</td><td>Pantallas reactivas sin SPA</td></tr>
+          <tr><td>Gráficas</td><td>Chart.js 4 (CDN)</td><td>Reporte nutricional</td></tr>
+          <tr><td>Tiempo real</td><td>Laravel Echo + protocolo Pusher (Soketi en local, puerto 6001)</td><td>Aviso de cambios sin datos clínicos</td></tr>
+          <tr><td>Base de datos</td><td>MySQL (<code>nutrition</code>), zona <code>-05:00</code></td><td>Datos de negocio y sesiones</td></tr>
+          <tr><td>Archivos</td><td><code>maatwebsite/excel</code> 3.1, PhpSpreadsheet</td><td>Excel del reporte mensual y de facturación</td></tr>
+          <tr><td>Respaldos</td><td><code>spatie/laravel-backup</code></td><td>Respaldos cifrados diarios y verificación semanal</td></tr>
+          <tr><td>Entorno</td><td>Laravel Herd, cola <code>sync</code>, <code>America/Bogota</code>, idioma <code>es</code></td><td>Desarrollo local</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- 3 -->
+    <section id="capas">
+      <h2>3. Capas y patrón</h2>
+      <p class="intro">Patrón <b>controlador delgado → servicio → Eloquent</b>. La lógica de negocio vive en <code>app/Services</code>; las escrituras de varias tablas van en <code>DB::transaction</code> y los efectos externos se emiten después de confirmar la transacción.</p>
+      <div class="capas" role="img" aria-label="Diagrama de capas: navegador, rutas y middleware, presentación, aplicación, servicios, dominio, persistencia e infraestructura">
+        <div class="capa"><div class="nombre">Navegador</div><div class="piezas"><span class="pieza">Blade + Livewire</span><span class="pieza">Alpine</span><span class="pieza">live.js · ntLive()</span><span class="pieza">Echo (WebSocket)</span><span class="pieza">modal-render-chips.js</span></div></div>
+        <div class="flecha" aria-hidden="true">▼</div>
+        <div class="capa"><div class="nombre">Rutas y middleware</div><div class="piezas"><span class="pieza">routes/web.php</span><span class="pieza">auth:sanctum · jetstream · verified</span><span class="pieza">compliance</span><span class="pieza">company</span><span class="pieza">permission:*</span><span class="pieza">premium:*</span><span class="pieza">SecurityHeaders</span><span class="pieza">throttle</span></div></div>
+        <div class="flecha" aria-hidden="true">▼</div>
+        <div class="capa"><div class="nombre">Presentación</div><div class="piezas"><span class="pieza">Controladores delgados</span><span class="pieza">Componentes Livewire</span><span class="pieza">FormRequest (authorize por permiso)</span><span class="pieza">Policies</span><span class="pieza">Componentes Blade</span></div></div>
+        <div class="flecha" aria-hidden="true">▼</div>
+        <div class="capa"><div class="nombre">Servicios</div><div class="piezas"><span class="pieza">DietService</span><span class="pieza">DispatchService</span><span class="pieza">DietDayService</span><span class="pieza">DietHistoryService</span><span class="pieza">Reports\DietReportService</span><span class="pieza">BillingService</span><span class="pieza">SubscriptionService</span><span class="pieza">UserService</span><span class="pieza">CompanyService</span><span class="pieza">AuditLogger</span></div></div>
+        <div class="flecha" aria-hidden="true">▼</div>
+        <div class="capa"><div class="nombre">Dominio y soporte</div><div class="piezas"><span class="pieza">Modelos Eloquent</span><span class="pieza">CurrentCompany</span><span class="pieza">CompanyScope</span><span class="pieza">LiveUpdates</span><span class="pieza">Navigation</span><span class="pieza">Pagination</span><span class="pieza">Catálogos en config/</span><span class="pieza">Eventos (DietsChanged)</span></div></div>
+        <div class="flecha" aria-hidden="true">▼</div>
+        <div class="capa"><div class="nombre">Infraestructura</div><div class="piezas"><span class="pieza">MySQL</span><span class="pieza">Soketi / Pusher</span><span class="pieza">Disco privado (comprobantes)</span><span class="pieza">Correo (SMTP)</span><span class="pieza">Respaldos cifrados</span><span class="pieza">Scheduler</span></div></div>
+      </div>
+      <h3>Convenciones</h3>
+      <ul class="lista">
+        <li>Catálogos de opciones en <code>config/</code> (no en BD), con <code>labels</code> y <code>colors</code>: <code>timeFood.php</code>, <code>consistency.php</code>, <code>specifications.php</code>, <code>billing.php</code>, <code>navigation.php</code>.</li>
+        <li>Autorización con middleware <code>permission:</code> en rutas y <code>authorize()</code> en FormRequest/Policy; se prefieren permisos sobre roles.</li>
+        <li>Secretos solo en <code>.env</code>. Comentarios y textos de usuario en español; clases y métodos en inglés.</li>
+        <li>Datos por empresa: el scope global <code>CompanyScope</code> filtra <code>Diet</code>, <code>DietDispatch</code> y <code>DietDay</code> por la empresa activa. Las consultas con <code>DB::table</code> no pasan por él y deben filtrar a mano.</li>
+      </ul>
+    </section>
+
+    <!-- 4 -->
+    <section id="modulos">
+      <h2>4. Módulos y funcionalidades</h2>
+      <p class="intro">Cada módulo con su servicio, su pantalla y lo que permite hacer. <span class="pill ok">Implementado</span> salvo que se indique.</p>
+      <div class="grid">
+        <div class="card"><span class="etq">Dietas</span><h4>Registro y versionado</h4><ul><li>Crear dieta por habitación y paciente (versión 1).</li><li>Editar = nueva versión inmutable.</li><li>Tiempos, consistencia, especificaciones, aislamiento, observaciones y tipo de facturación.</li><li>Búsqueda en vivo, pestañas Activas / Canceladas / Finalizadas.</li></ul><code class="ruta">DietService · NutritionDiets</code></div>
+        <div class="card"><span class="etq">Ciclo diario</span><h4>Autorización y día completado</h4><ul><li>«Continuar dieta» autoriza el día siguiente.</li><li>Día completado al recibir todos los tiempos exigibles.</li><li>Comando <code>diets:start-day</code> a las 00:01.</li></ul><code class="ruta">DietDayService · diet_days</code></div>
+        <div class="card"><span class="etq">Cierre</span><h4>Cancelación y alta</h4><ul><li>Modal con despachos sin recibir y lo recibido hoy.</li><li>Alta con envío a otro lugar (otra IPS) y tiempos a enviar.</li><li>No se borra nada: versiones <code>cancelada</code> / <code>finalizada</code>.</li></ul><code class="ruta">DietService::finishDiet · closingSummary</code></div>
+        <div class="card"><span class="etq">Despacho</span><h4>Cocina en tiempo real</h4><ul><li>Cambios sin confirmar arriba, con banner, sonido y notificación.</li><li>Comparación contra la última versión confirmada.</li><li>Despacho por servicio con selección múltiple.</li></ul><code class="ruta">DispatchService · DietsManager</code></div>
+        <div class="card"><span class="etq">Recepción</span><h4>Confirmar lo recibido</h4><ul><li>Panel de pendientes en el inicio del nutricionista.</li><li>Confirmación individual o múltiple (quién y cuándo).</li></ul><code class="ruta">DispatchReceipts</code></div>
+        <div class="card"><span class="etq">Despachos del día · Premium</span><h4>Seguimiento</h4><ul><li>Filtros por fecha, servicio, estado y búsqueda.</li><li>Resumen por tiempo de comida.</li></ul><code class="ruta">DispatchLog · /despachos</code></div>
+        <div class="card"><span class="etq">Historial · Premium</span><h4>Línea de tiempo de cambios</h4><ul><li>Versiones de la más nueva a la más vieja.</li><li>Elementos agregados, quitados y mantenidos; valor anterior.</li></ul><code class="ruta">DietHistoryService · /historial</code></div>
+        <div class="card"><span class="etq">Reportes</span><h4>Reporte nutricional</h4><ul><li>KPIs, barras apiladas por día, totales por tiempo, últimos 6 meses.</li><li>Excel mensual: Resumen, Diario, Por paciente.</li></ul><code class="ruta">DietReportService · MonthlySummaryExport</code></div>
+        <div class="card"><span class="etq">Facturación · Premium</span><h4>Precios y Excel del hospital</h4><ul><li>Precio por tipo de dieta × servicio con vigencia.</li><li>Excel con el formato del hospital (días 1–31, totales).</li></ul><code class="ruta">BillingService · PricesManager · BillingWorkbook</code></div>
+        <div class="card"><span class="etq">Suscripción</span><h4>Plan Básico / Premium</h4><ul><li>Pago manual con comprobante; aprobación del admin.</li><li>Precios de planes y activación sin pago con motivo.</li></ul><code class="ruta">SubscriptionService · SubscriptionManager</code></div>
+        <div class="card"><span class="etq">Administración</span><h4>Usuarios y roles</h4><ul><li>CRUD de usuarios con borrado lógico y restauración.</li><li>Matriz de permisos editable.</li><li>Acceso a empresas por usuario: «Todas» o empresas específicas.</li><li>Jefe de nutrición crea nutricionistas; jefe de despacho crea despachadores de sus empresas.</li></ul><code class="ruta">UserService · UsersManager · RolesManager · UserPolicy</code></div>
+        <div class="card"><span class="etq">Empresas</span><h4>Empresas atendidas por el despacho</h4><ul><li>Nombre y NIT únicos (dígito de verificación DIAN), contacto.</li><li>Cada empresa tiene su jefe de despacho; el admin lo elige.</li><li>No se borran: se desactivan. La predeterminada guarda los datos anteriores.</li></ul><code class="ruta">CompanyService · CompaniesManager · /empresas</code></div>
+        <div class="card"><span class="etq">Empresa activa</span><h4>Selector y aislamiento</h4><ul><li>«Cambiar empresa» arriba de cada pantalla; se recuerda la última.</li><li>Dietas, despachos, recepciones, reportes y Excel solo de la empresa activa.</li><li>Otra empresa por ID: 403. Avisos en tiempo real filtrados.</li></ul><code class="ruta">CurrentCompany · CompanyScope · x-company-switcher</code></div>
+        <div class="card"><span class="etq">Auditoría</span><h4>Registro inmutable</h4><ul><li>Accesos, intentos fallidos, cambios de usuarios, roles, precios, pagos y exportaciones.</li><li>Sin datos clínicos.</li></ul><code class="ruta">AuditLogger · AuditLogViewer</code></div>
+        <div class="card"><span class="etq">Público</span><h4>Login, demo y política</h4><ul><li>Login con vitrina del producto (claro / oscuro).</li><li>Solicitar demo con campo trampa y límite de envíos.</li><li>Política de datos (Ley 1581).</li></ul><code class="ruta">auth-shell · DemoRequestController</code></div>
+        <div class="card"><span class="etq">Navegación</span><h4>Menú lateral</h4><ul><li>Menú como datos, visibilidad por permiso, candado Premium.</li><li>Modo contraído, cajón móvil accesible, cierre de sesión con modal.</li></ul><code class="ruta">config/navigation.php · Navigation</code></div>
+        <div class="card"><span class="etq">Planeado</span><h4>Notificaciones WhatsApp</h4><p>Aviso a despachadores por cambio de dieta mediante Meta Cloud API, con cola y webhook de estados. <span class="pill plan">Planeado</span></p></div>
+        <div class="card"><span class="etq">Planeado</span><h4>Reportes PDF</h4><p>Producción de cocina, dietas activas, historial de cambios y consolidado mensual con dompdf. <span class="pill plan">Planeado</span></p></div>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section id="ciclo">
+      <h2>5. Ciclo de vida de una dieta</h2>
+      <p class="intro">Desde el registro hasta la facturación. Las versiones nunca se editan: todo cambio clínico crea una versión nueva.</p>
+      <div class="ciclo">
+        <div class="paso"><h4>Registrar</h4><p>Se crea la dieta y la versión 1 (no alerta a cocina). Autoriza el día de creación.</p><span class="quien">Nutricionista</span></div>
+        <div class="paso"><h4>Editar</h4><p>Nueva versión con <code>modify='si'</code>: cambio sin confirmar.</p><span class="quien">Nutricionista</span></div>
+        <div class="paso"><h4>Confirmar cambios</h4><p>Cocina revisa la diferencia acumulada y confirma; las versiones pendientes quedan en <code>modify='no'</code>.</p><span class="quien">Despachador</span></div>
+        <div class="paso"><h4>Despachar</h4><p>Un registro por dieta × día × tiempo. Bloqueado si hay cambios sin confirmar o falta la autorización del día.</p><span class="quien">Despachador</span></div>
+        <div class="paso"><h4>Confirmar recepción</h4><p>Se guarda quién recibió y cuándo. Solo lo recibido se factura.</p><span class="quien">Nutricionista</span></div>
+        <div class="paso"><h4>Día completado</h4><p>Recibidos todos los tiempos exigibles: versión <code>completada</code> y estado COMPLETED.</p><span class="quien">Sistema</span></div>
+        <div class="paso"><h4>Continuar</h4><p>Autoriza el día siguiente (versión <code>continuada</code>); a las 00:01 vuelve a Activa.</p><span class="quien">Nutricionista · Enfermería</span></div>
+        <div class="paso"><h4>Cierre</h4><p>Cancelación o alta (con envío opcional a otra IPS). Marca el fin del conteo.</p><span class="quien">Nutricionista</span></div>
+        <div class="paso"><h4>Facturación</h4><p>Censo mensual y Excel del hospital con las reglas de la sección 10.</p><span class="quien">Jefe de nutrición</span></div>
+      </div>
+      <h3>Estados de la dieta (<code>diets.status</code>)</h3>
+      <div class="tabla"><table>
+        <thead><tr><th>Valor</th><th>Constante</th><th>Significado</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><code>Diet::ACTIVE</code></td><td>En curso, pendiente de completar el día</td></tr>
+          <tr><td>3</td><td><code>Diet::COMPLETED</code></td><td>En curso con el día completado (cuenta como activa)</td></tr>
+          <tr><td>0</td><td><code>Diet::CANCELLED</code></td><td>Cancelada</td></tr>
+          <tr><td>2</td><td><code>Diet::FINISHED</code></td><td>Finalizada por alta del paciente</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- 6 -->
+    <section id="tiempo-real">
+      <h2>6. Tiempo real</h2>
+      <p class="intro">Las pantallas se actualizan sin <code>wire:poll</code>. El servidor solo avisa <em>qué tipo</em> de cosa cambió; nunca envía datos clínicos.</p>
+      <figure>
+        <svg viewBox="0 0 960 300" role="img" aria-labelledby="rt-t rt-d">
+          <title id="rt-t">Secuencia de una actualización en tiempo real</title>
+          <desc id="rt-d">Un servicio guarda un cambio, LiveUpdates junta los tipos y al confirmar la transacción emite DietsChanged al canal privado diets; Soketi lo reenvía y ntLive refresca el componente Livewire.</desc>
+          <defs>
+            <marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="punta-p" d="M0,0 L10,5 L0,10 z"/></marker>
+          </defs>
+          <rect class="caja-p" x="10" y="20" width="160" height="70" rx="10"/>
+          <text class="txt" x="90" y="50" text-anchor="middle">Servicio</text>
+          <text class="txt-s" x="90" y="70" text-anchor="middle">guarda en transacción</text>
+
+          <rect class="caja-p" x="210" y="20" width="170" height="70" rx="10"/>
+          <text class="txt" x="295" y="50" text-anchor="middle">LiveUpdates::touch</text>
+          <text class="txt-s" x="295" y="70" text-anchor="middle">diet · dispatch · day</text>
+
+          <rect class="caja-p" x="420" y="20" width="170" height="70" rx="10"/>
+          <text class="txt" x="505" y="50" text-anchor="middle">DietsChanged</text>
+          <text class="txt-s" x="505" y="70" text-anchor="middle">afterCommit · canal diets</text>
+
+          <rect class="caja-p" x="630" y="20" width="140" height="70" rx="10"/>
+          <text class="txt" x="700" y="50" text-anchor="middle">Soketi</text>
+          <text class="txt-s" x="700" y="70" text-anchor="middle">protocolo Pusher</text>
+
+          <rect class="caja-p" x="800" y="20" width="150" height="70" rx="10"/>
+          <text class="txt" x="875" y="50" text-anchor="middle">ntLive()</text>
+          <text class="txt-s" x="875" y="70" text-anchor="middle">refresca Livewire</text>
+
+          <path class="lin-p" d="M170 55 H205" marker-end="url(#m)"/>
+          <path class="lin-p" d="M380 55 H415" marker-end="url(#m)"/>
+          <path class="lin-p" d="M590 55 H625" marker-end="url(#m)"/>
+          <path class="lin-p" d="M770 55 H795" marker-end="url(#m)"/>
+
+          <rect class="caja" x="10" y="140" width="460" height="140" rx="10"/>
+          <text class="txt" x="30" y="168">Quién dispara el aviso</text>
+          <text class="txt-s" x="30" y="194">• Eventos de modelo: DietHistory creado; Diet, DietDispatch, DietDay guardados</text>
+          <text class="txt-s" x="30" y="216">• Actualizaciones por consulta: confirmChanges, confirmReceipt, startDay</text>
+          <text class="txt-s" x="30" y="238">• Si el WebSocket falla: se registra y la operación sigue (timeout 2 s)</text>
+          <text class="txt-s" x="30" y="260">• Cargas masivas: LiveUpdates::muted()</text>
+
+          <rect class="caja" x="490" y="140" width="460" height="140" rx="10"/>
+          <text class="txt" x="510" y="168">Cómo consulta el navegador</text>
+          <text class="txt-s" x="510" y="194">• Conectado: solo una consulta de seguridad cada 60 s</text>
+          <text class="txt-s" x="510" y="216">• Sin WebSocket: despacho cada 3 s, panel 5 s, recepción y log 5–10 s</text>
+          <text class="txt-s" x="510" y="238">• Con la pestaña oculta no consulta</text>
+          <text class="txt-s" x="510" y="260">• Canal privado: viewActiveDiets, viewDiets, viewDispatches…</text>
+        </svg>
+        <figcaption>Un solo evento por transacción, con los tipos de cambio (<code>kinds</code>) y las empresas afectadas (<code>companies</code>, solo IDs). <code>live.js</code> ignora los avisos de otras empresas comparando con <code>&lt;meta name="nt-company"&gt;</code>.</figcaption>
+      </figure>
+    </section>
+
+    <!-- 7 -->
+    <section id="datos">
+      <h2>7. Modelo de datos</h2>
+      <p class="intro">Base MySQL <code>nutrition</code>. Las versiones de dieta son inmutables (salvo el indicador <code>modify</code>) y los usuarios nunca se borran físicamente: <code>diet_histories.updated_by</code> borra en cascada. Cada dieta pertenece a una empresa, que no cambia.</p>
+      <figure>
+        <svg viewBox="0 0 960 250" role="img" aria-labelledby="er-t er-d">
+          <title id="er-t">Relaciones principales</title>
+          <desc id="er-d">companies tiene muchas diets y un jefe de despacho en users; diets se relaciona uno a muchos con diet_histories, diet_days y diet_dispatches; users registra versiones y recepciones y se asigna a empresas por company_user.</desc>
+          <defs><marker id="m2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="punta" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+          <rect class="caja-p" x="40" y="15" width="230" height="56" rx="10"/><text class="txt" x="155" y="40" text-anchor="middle">companies</text><text class="txt-s" x="155" y="58" text-anchor="middle">empresa · NIT · jefe de despacho</text>
+          <path class="lin" d="M270 50 H 375" marker-end="url(#m2)"/><text class="txt-s" x="290" y="38">company_id</text>
+          <path class="lin" d="M155 15 V 5 H 905 V 146" stroke-dasharray="5 5" marker-end="url(#m2)"/><text class="txt-s" x="600" y="24">manager_id · company_user</text>
+          <rect class="caja-p" x="380" y="15" width="200" height="56" rx="10"/><text class="txt" x="480" y="40" text-anchor="middle">diets</text><text class="txt-s" x="480" y="58" text-anchor="middle">habitación · paciente · status</text>
+          <rect class="caja" x="40" y="150" width="210" height="56" rx="10"/><text class="txt" x="145" y="175" text-anchor="middle">diet_histories</text><text class="txt-s" x="145" y="193" text-anchor="middle">versiones (1:N)</text>
+          <rect class="caja" x="290" y="150" width="180" height="56" rx="10"/><text class="txt" x="380" y="175" text-anchor="middle">diet_days</text><text class="txt-s" x="380" y="193" text-anchor="middle">un registro por día</text>
+          <rect class="caja" x="510" y="150" width="200" height="56" rx="10"/><text class="txt" x="610" y="175" text-anchor="middle">diet_dispatches</text><text class="txt-s" x="610" y="193" text-anchor="middle">día × tiempo de comida</text>
+          <rect class="caja" x="750" y="150" width="170" height="56" rx="10"/><text class="txt" x="835" y="175" text-anchor="middle">users</text><text class="txt-s" x="835" y="193" text-anchor="middle">autor y receptor</text>
+          <path class="lin" d="M420 71 C 300 110, 180 110, 150 146" marker-end="url(#m2)"/>
+          <path class="lin" d="M465 71 V 146" transform="translate(-85,0)" marker-end="url(#m2)"/>
+          <path class="lin" d="M520 71 C 560 100, 600 110, 610 146" marker-end="url(#m2)"/>
+          <path class="lin" d="M750 178 H 254" stroke-dasharray="5 5"/>
+          <text class="txt-s" x="738" y="140">updated_by · received_by</text>
+        </svg>
+      </figure>
+      <div class="er">
+        <div class="entidad"><h4>companies <small>Company</small></h4><ul><li><b>name</b> (único) · <b>nit</b> (único, con DV)</li><li>contact_name · contact_phone · contact_email</li><li>is_active · is_default · <b>manager_id</b></li><li class="rel">hasMany diets · belongsTo manager · belongsToMany users</li></ul></div>
+        <div class="entidad"><h4>company_user</h4><ul><li>company_id + user_id</li><li>Empresas específicas de cada usuario</li></ul></div>
+        <div class="entidad"><h4>diets <small>Diet</small></h4><ul><li><b>company_id</b> (no cambia)</li><li><b>habitation</b>, <b>name_patient</b></li><li><b>status</b> tinyint (1, 3, 0, 2)</li><li>transfer_destination / _meals / _date</li><li class="rel">hasMany histories · days · dispatches</li></ul></div>
+        <div class="entidad"><h4>diet_histories <small>DietHistory</small></h4><ul><li><b>version</b>, <b>updated_by</b></li><li>timeFood · consistency · specifications (JSON)</li><li>observations · isolation · billing_type</li><li><b>changes</b> · <b>modify</b> (si/no)</li><li class="rel">belongsTo diet · user</li></ul></div>
+        <div class="entidad"><h4>diet_days <small>DietDay</small></h4><ul><li><b>diet_id</b> + <b>service_date</b> (único)</li><li>authorized_via / _by / _at</li><li>completed_at · completed_history_id</li><li class="rel">belongsTo diet</li></ul></div>
+        <div class="entidad"><h4>diet_dispatches <small>DietDispatch</small></h4><ul><li>diet × día × tiempo de comida</li><li>despachado por / cuándo</li><li><b>received_at</b> · <b>received_by</b></li><li class="rel">belongsTo diet · user</li></ul></div>
+        <div class="entidad"><h4>service_prices <small>ServicePrice</small></h4><ul><li>billing_type · service · price</li><li><b>valid_from</b> (único por los tres)</li></ul></div>
+        <div class="entidad"><h4>plan_prices <small>PlanPrice</small></h4><ul><li>Precio Premium mensual y anual</li></ul></div>
+        <div class="entidad"><h4>subscriptions <small>Subscription</small></h4><ul><li>plan · period</li><li><b>starts_at</b> · <b>ends_at</b> (vigente si starts_at ≤ ahora &lt; ends_at)</li><li class="rel">hasMany payments</li></ul></div>
+        <div class="entidad"><h4>subscription_payments</h4><ul><li>método · referencia · comprobante (disco privado)</li><li>estado · motivo de rechazo</li></ul></div>
+        <div class="entidad"><h4>users <small>User</small></h4><ul><li>Jetstream + <b>phone</b> (E.164)</li><li>is_active · whatsapp_opt_in · deleted_at</li><li>privacy_accepted_at · privacy_version</li><li><b>all_companies</b> · last_company_id</li><li class="rel">HasRoles (Spatie) · belongsToMany companies</li></ul></div>
+        <div class="entidad"><h4>audit_logs <small>AuditLog</small></h4><ul><li>evento · descripción (sin datos clínicos)</li><li>sujeto · metadatos · inmutable</li></ul></div>
+        <div class="entidad"><h4>demo_requests <small>DemoRequest</small></h4><ul><li>contacto · autorización de datos · estado</li></ul></div>
+        <div class="entidad"><h4>Spatie y sistema</h4><ul><li>roles · permissions · pivotes (guard <code>web</code>)</li><li>sessions (en BD) · password_reset_tokens</li></ul></div>
+      </div>
+      <div class="aviso"><b>Pruebas:</b> usan <code>RefreshDatabase</code> con SQLite en memoria. Nunca quitar <code>DB_CONNECTION=sqlite</code> / <code>DB_DATABASE=:memory:</code> de <code>phpunit.xml</code>: con MySQL borran la base <code>nutrition</code>.</div>
+    </section>
+
+    <!-- 8 -->
+    <section id="roles">
+      <h2>8. Roles y permisos</h2>
+      <p class="intro">Permisos en camelCase (verbo + recurso). El administrador tiene todos (<code>Gate::before</code>, salvo <code>delete</code> para impedir la autoeliminación). Enfermería se crea desde <code>/admin/roles</code> y sus permisos dependen de la matriz. Los jefes solo asignan los roles de <code>config('security.assignable_roles')</code>.</p>
+      <div class="tabla"><table>
+        <thead><tr><th>Permiso</th><th>Admin</th><th>Nutricionista</th><th>Enfermería</th><th>Despachador</th><th>Jefe de nutrición</th><th>Jefe de despacho</th></tr></thead>
+        <tbody>
+          <tr><td><code>createDiets</code></td><td class="si">✓</td><td class="si">✓</td><td class="no">—</td><td class="no">—</td><td class="si">✓</td><td class="no">—</td></tr>
+          <tr><td><code>editDiets</code></td><td class="si">✓</td><td class="si">✓</td><td class="no">—</td><td class="no">—</td><td class="si">✓</td><td class="no">—</td></tr>
+          <tr><td><code>viewDiets</code></td><td class="si">✓</td><td class="si">✓</td><td class="no">—</td><td class="si">✓</td><td class="si">✓</td><td class="si">✓</td></tr>
+          <tr><td><code>viewActiveDiets</code></td><td class="si">✓</td><td class="si">✓</td><td class="si">✓</td><td class="no">—</td><td class="si">✓</td><td class="no">—</td></tr>
+          <tr><td><code>continueDiets</code></td><td class="si">✓</td><td class="si">✓</td><td class="si">✓</td><td class="no">—</td><td class="si">✓</td><td class="no">—</td></tr>
+          <tr><td><code>confirmDelivery</code></td><td class="si">✓</td><td class="no">—</td><td class="no">—</td><td class="si">✓</td><td class="no">—</td><td class="no">—</td></tr>
+          <tr><td><code>confirmReception</code></td><td class="si">✓</td><td class="si">✓</td><td class="no">—</td><td class="no">—</td><td class="si">✓</td><td class="no">—</td></tr>
+          <tr><td><code>viewDispatches</code></td><td class="si">✓</td><td class="si">✓</td><td class="no">—</td><td class="si">✓</td><td class="si">✓</td><td class="si">✓</td></tr>
+          <tr><td><code>viewReports</code></td><td class="si">✓</td><td class="si">✓</td><td class="no">—</td><td class="no">—</td><td class="si">✓</td><td class="si">✓</td></tr>
+          <tr><td><code>generateFiles</code></td><td class="si">✓</td><td class="no">—</td><td class="no">—</td><td class="si">✓</td><td class="si">✓</td><td class="si">✓</td></tr>
+          <tr><td><code>managePrices</code></td><td class="si">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="si">✓</td><td class="no">—</td></tr>
+          <tr><td><code>manageSubscription</code></td><td class="si">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="si">✓</td><td class="no">—</td></tr>
+          <tr><td><code>viewUsers</code> · <code>createUsers</code></td><td class="si">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="si">✓ (solo nutricionistas)</td><td class="si">✓ (despachadores de sus empresas)</td></tr>
+          <tr><td><code>editUsers</code></td><td class="si">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="si">✓ (despachadores de sus empresas)</td></tr>
+          <tr><td><code>deleteUsers</code></td><td class="si">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+          <tr><td><code>manageCompanies</code> · <code>viewCompanies</code></td><td class="si">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="si">✓ (sus empresas)</td></tr>
+          <tr><td><code>manageRoles</code> · <code>viewAuditLog</code></td><td class="si">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+          <tr><td><code>approvePayments</code> · <code>viewDemoRequests</code></td><td class="si">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Pantalla de inicio por rol (<code>User::homeUrl()</code>)</h3>
+      <p>Nutricionista y jefe de nutrición → panel de dietas activas · Despachador → despacho · Jefe de despacho → despachos del día (con Premium) o empresas · Admin → usuarios · Otros roles según su permiso (dietas activas, despachos o historial) · Sin rol → perfil.</p>
+      <h3>Acceso a empresas</h3>
+      <ul class="lista"><li><b>Admin:</b> todas, siempre.</li><li><b>Usuario con «Todas»</b> (<code>users.all_companies</code>): todas, incluidas las futuras.</li><li><b>Jefe de despacho:</b> las que administra (<code>companies.manager_id</code>); nunca «Todas».</li><li><b>Despachador:</b> solo empresas específicas (<code>company_user</code>); sin ninguna activa recibe «Sin empresa asignada» (403) en toda la app.</li></ul>
+    </section>
+
+    <!-- 9 -->
+    <section id="rutas">
+      <h2>9. Rutas y pantallas</h2>
+      <p class="intro">Todas las rutas de la app pasan por <code>auth:sanctum</code>, Jetstream, <code>verified</code>, <code>compliance</code> y <code>company</code> (despachador sin empresa → 403). Las rutas con <code>{diet}</code> responden 403 si la dieta es de otra empresa. El menú lateral muestra cada enlace solo si el usuario pasa el middleware de su ruta.</p>
+      <div class="tabla"><table>
+        <thead><tr><th>Ruta</th><th>Nombre</th><th>Pantalla / acción</th><th>Acceso</th></tr></thead>
+        <tbody>
+          <tr><td><code>GET /dashboard/nutrition</code></td><td>dashboard.nutrition</td><td>Panel de dietas activas (NutritionDiets + DispatchReceipts)</td><td><code>viewActiveDiets</code></td></tr>
+          <tr><td><code>GET /dashboard/dispatch</code></td><td>dashboard.dispatch</td><td>Despacho en tiempo real (DietsManager)</td><td>rol despachador</td></tr>
+          <tr><td><code>POST /dietas</code></td><td>dietas.create</td><td>Registrar dieta</td><td><code>createDiets</code></td></tr>
+          <tr><td><code>PUT /dietas/{diet}/version</code></td><td>dietas.update</td><td>Nueva versión</td><td><code>editDiets</code></td></tr>
+          <tr><td><code>PATCH /dietas/{diet}/cancel</code></td><td>diets.canceled</td><td>Cancelar</td><td><code>editDiets</code></td></tr>
+          <tr><td><code>PATCH /dietas/{diet}/finalizar</code></td><td>diets.finish</td><td>Dar de alta</td><td><code>editDiets</code></td></tr>
+          <tr><td><code>GET /despachos</code></td><td>dispatches.index</td><td>Despachos del día (DispatchLog)</td><td><code>viewDispatches</code> + Premium</td></tr>
+          <tr><td><code>GET /historial</code></td><td>diets.history</td><td>Historial de cambios (DietHistoryViewer)</td><td><code>viewDiets</code> + Premium</td></tr>
+          <tr><td><code>GET /diet-reports</code> · <code>/entrega/index</code></td><td>diet.reports · entrega.index</td><td>Reporte nutricional</td><td><code>viewReports</code> o <code>generateFiles</code></td></tr>
+          <tr><td><code>GET /reportes/produccion</code></td><td>reports.production</td><td>Producción de cocina</td><td><code>viewReports</code> o <code>generateFiles</code></td></tr>
+          <tr><td><code>GET /reportes/mensual/excel</code></td><td>reports.monthly.excel</td><td>Excel del mes</td><td><code>viewReports</code> o <code>generateFiles</code></td></tr>
+          <tr><td><code>GET /precios</code></td><td>prices.index</td><td>Precios y facturación (PricesManager)</td><td><code>managePrices</code> + Premium</td></tr>
+          <tr><td><code>GET /facturacion/excel</code></td><td>billing.excel</td><td>Excel de facturación</td><td><code>managePrices</code> + Premium</td></tr>
+          <tr><td><code>GET /suscripcion</code></td><td>subscription.index</td><td>Planes, pagos y aprobación</td><td><code>manageSubscription</code> / <code>approvePayments</code></td></tr>
+          <tr><td><code>GET /empresas</code></td><td>companies.index</td><td>Empresas (CompaniesManager)</td><td><code>viewCompanies</code> o <code>manageCompanies</code></td></tr>
+          <tr><td><code>POST /empresa-activa</code></td><td>company.switch</td><td>Cambiar la empresa activa (vuelve a la pantalla en la página 1)</td><td>Empresa asignada y activa</td></tr>
+          <tr><td><code>GET /admin/usuarios</code></td><td>admin.users.index</td><td>Usuarios</td><td><code>viewUsers</code></td></tr>
+          <tr><td><code>GET /admin/roles</code></td><td>admin.roles.index</td><td>Roles y matriz de permisos</td><td><code>manageRoles</code></td></tr>
+          <tr><td><code>GET /admin/auditoria</code></td><td>admin.audit.index</td><td>Visor de auditoría</td><td><code>viewAuditLog</code></td></tr>
+          <tr><td><code>GET /admin/solicitudes-demo</code></td><td>admin.demo-requests.index</td><td>Solicitudes de demo</td><td><code>viewDemoRequests</code></td></tr>
+          <tr><td><code>GET|POST /solicitar-demo</code></td><td>demo.create · demo.store</td><td>Formulario público (máx. 5 por minuto)</td><td>Público</td></tr>
+          <tr><td><code>GET /politica-de-datos</code></td><td>privacy.policy</td><td>Política de datos</td><td>Público</td></tr>
+          <tr><td><code>GET|POST /politica-de-datos/aceptar</code></td><td>privacy.accept</td><td>Aceptación obligatoria al ingresar</td><td>Autenticado</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- 10 -->
+    <section id="reglas">
+      <h2>10. Reportes y facturación</h2>
+      <p class="intro"><code>DietReportService</code> es la fuente única de datos; <code>activeDietsByDay()</code> devuelve por dieta y día la lista <code>meals</code> que cuenta. Reporte, Excel, facturación e indicadores usan esa lista y solo incluyen la empresa activa; el Excel lleva la empresa en el nombre del archivo.</p>
+      <ol class="reglas">
+        <li><b>Regla del alta:</b> el día del alta solo cuentan los tiempos con hora igual o anterior a la del alta (alta 15:00 → desayuno y almuerzo, no cena). Fraccionada no cuenta ese día.</li>
+        <li><b>Censo mensual:</b> la última versión de cada dieta hasta el cierre del mes; una bandeja por tiempo de comida y día activo.</li>
+        <li><b>Solo lo recibido</b> desde 2026-10-15 (<code>DISPATCH_REQUIRED_FROM</code>): facturación y Excel cuentan tiempos con despacho recibido.</li>
+        <li><b>Solo días completados</b> desde 2026-10-16 (<code>COMPLETION_REQUIRED_FROM</code>). Excepción: el día del alta o de la cancelación cuenta lo recibido aunque el día no se complete.</li>
+        <li><b>Alta con envío a otra IPS:</b> los tiempos indicados se exigen para completar el día y, recibidos, se facturan aunque sean posteriores a la hora del alta.</li>
+        <li><b>Precios:</b> por tipo de dieta × servicio con fecha de vigencia; cada día se valora con su precio vigente. Comida = cena; fraccionada no se factura; refrigerios sin fila propia van a «Entrecomidas».</li>
+        <li><b>Sin tipo de facturación:</b> las versiones antiguas aparecen como advertencia y no se cobran.</li>
+      </ol>
+      <div class="nota">El reporte web muestra lo <em>programado</em>; el Excel y la facturación muestran lo <em>recibido</em> (los demás tiempos quedan en <code>withheld</code>).</div>
+    </section>
+
+    <!-- 11 -->
+    <section id="suscripcion">
+      <h2>11. Suscripción (Básico / Premium)</h2>
+      <div class="grid">
+        <div class="card"><span class="etq">Plan Básico · gratis</span><h4>Operación diaria</h4><p>Dietas, despacho, recepción, «Continuar dieta» y cierre diario, reporte nutricional y Excel del mes.</p></div>
+        <div class="card"><span class="etq">Plan Premium · mensual o anual</span><h4>Gestión avanzada</h4><p>Todo lo del Básico más precios y facturación, despachos del día e historial de cambios.</p></div>
+        <div class="card"><span class="etq">Pago manual</span><h4>Sin pasarela</h4><p>Transferencia, consignación, Nequi o Daviplata. Se adjunta comprobante (JPG/PNG/PDF ≤ 5 MB); el admin aprueba o rechaza. Renovar antes no pierde días.</p></div>
+      </div>
+      <p style="margin-top:12px">Una suscripción por institución (pendiente: SCRUM-9 la pasa al jefe de despacho y hace Premium la función de empresas). Las rutas Premium usan el middleware <code>premium:{función}</code> y las vistas <code>@premium … @endpremium</code>. El administrador accede a todo.</p>
+    </section>
+
+    <!-- 12 -->
+    <section id="seguridad">
+      <h2>12. Seguridad y cumplimiento</h2>
+      <div class="grid">
+        <div class="card"><h4>Ley 1581 (datos personales)</h4><p>Aceptación obligatoria de la política vigente al ingresar (<code>EnsureAccountCompliance</code>).</p></div>
+        <div class="card"><h4>2FA obligatorio</h4><p>Por defecto para admin y jefe de nutrición (<code>TWO_FACTOR_ROLES</code>).</p></div>
+        <div class="card"><h4>HTTPS y cabeceras</h4><p>HSTS, <code>nosniff</code>, <code>X-Frame-Options</code>, <code>Referrer-Policy</code>, <code>Permissions-Policy</code>, <code>no-store</code> en páginas con sesión.</p></div>
+        <div class="card"><h4>Contraseñas</h4><p>Mínimo 10 caracteres con mayúsculas, minúsculas y números. El seeder no tiene contraseñas fijas.</p></div>
+        <div class="card"><h4>Sesiones</h4><p>En BD; se cierran al desactivar o eliminar al usuario. El login rechaza usuarios inactivos.</p></div>
+        <div class="card"><h4>Minimización de datos</h4><p>Tiempo real, auditoría y los futuros mensajes de WhatsApp no llevan datos clínicos ni nombres de pacientes.</p></div>
+        <div class="card"><h4>Auditoría inmutable</h4><p>Accesos, intentos fallidos, bloqueos, cambios de usuarios, roles, precios, pagos, exportaciones y consultas de historial.</p></div>
+        <div class="card"><h4>Usuarios</h4><p>Nadie se elimina a sí mismo; siempre queda ≥ 1 admin activo. Eliminar = desactivar + borrado lógico restaurable.</p></div>
+        <div class="card"><h4>Aislamiento por empresa</h4><p>Filtro en el servidor (<code>CompanyScope</code>), 403 sobre datos de otra empresa y avisos en tiempo real sin datos de otras empresas. La empresa de una dieta no cambia.</p></div>
+      </div>
+    </section>
+
+    <!-- 13 -->
+    <section id="operacion">
+      <h2>13. Operación</h2>
+      <h3>Tareas programadas (<code>app/Console/Kernel.php</code>)</h3>
+      <div class="tabla"><table>
+        <thead><tr><th>Hora</th><th>Comando</th><th>Qué hace</th></tr></thead>
+        <tbody>
+          <tr><td>Diario 00:01</td><td><code>diets:start-day</code></td><td>Vuelve a Activa las dietas completadas que se continuaron para hoy (también se ejecuta al despachar)</td></tr>
+          <tr><td>Diario 01:00</td><td><code>backup:run</code></td><td>Respaldo cifrado (<code>BACKUP_ARCHIVE_PASSWORD</code>)</td></tr>
+          <tr><td>Diario 01:30</td><td><code>backup:clean</code></td><td>Limpieza de respaldos antiguos</td></tr>
+          <tr><td>Diario 02:00</td><td><code>backup:monitor</code></td><td>Salud de los respaldos</td></tr>
+          <tr><td>Lunes 03:00</td><td><code>backups:verify</code></td><td>Respaldo reciente, cifrado, legible y con las tablas de dietas</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Puesta en marcha</h3>
+      <ul class="lista">
+        <li><code>composer install &amp;&amp; npm install</code> · <code>php artisan migrate --seed</code> · <code>npm run build</code> (o <code>npm run dev</code>)</li>
+        <li>WebSockets en local: <code>npx -p node@18 -p @soketi/soketi@1.6.1 soketi start</code> (puerto 6001). Sin <code>VITE_PUSHER_APP_KEY</code> todo funciona con consultas de respaldo.</li>
+        <li><code>php artisan schedule:work</code> para las tareas programadas; <code>queue:work</code> si la cola no es <code>sync</code>.</li>
+        <li>Despliegue: <code>public/build</code> no está en git, así que en el servidor hay que ejecutar <code>npm run build</code>. Detrás de un proxy, configurar <code>TRUSTED_PROXIES</code>.</li>
+      </ul>
+    </section>
+
+    <!-- 14 -->
+    <section id="diseno">
+      <h2>14. Sistema de diseño</h2>
+      <p class="intro">Tokens en <code>public/assets/css/theme.css</code> (NUT-CMP-001). <code>styleTree.css</code> apunta sus variables antiguas a estos tokens. Todo texto cumple WCAG AA (≥ 4.5:1).</p>
+      <h3>Paleta (violeta, sin rosa)</h3>
+      <div class="muestras">
+        <span class="muestra"><i style="background:#6C5DD3"></i>Primario #6C5DD3</span>
+        <span class="muestra"><i style="background:#5B4CC4"></i>Marca (texto) #5B4CC4</span>
+        <span class="muestra"><i style="background:#8B80E0"></i>Secundario #8B80E0</span>
+        <span class="muestra"><i style="background:#E8E5FB"></i>Primario suave #E8E5FB</span>
+        <span class="muestra"><i style="background:#EEF0FA"></i>Fondo #EEF0FA</span>
+        <span class="muestra"><i style="background:#1F2340"></i>Texto #1F2340</span>
+        <span class="muestra"><i style="background:#166534"></i>Éxito #166534</span>
+        <span class="muestra"><i style="background:#B91C1C"></i>Error #B91C1C</span>
+        <span class="muestra"><i style="background:#92400E"></i>Advertencia #92400E</span>
+      </div>
+      <h3>Botones (colores de Bootstrap 5.3)</h3>
+      <div class="muestras">
+        <span class="btn" style="background:#0D6EFD;color:#fff">Primary</span>
+        <span class="btn" style="background:#6C757D;color:#fff">Secondary</span>
+        <span class="btn" style="background:#198754;color:#fff">Success</span>
+        <span class="btn" style="background:#DC3545;color:#fff">Danger</span>
+        <span class="btn" style="background:#FFC107;color:#000">Warning</span>
+        <span class="btn" style="background:#0DCAF0;color:#000">Info</span>
+        <span class="btn" style="background:#fff;color:#6C757D;border-color:#6C757D">Outline secondary</span>
+      </div>
+      <p style="margin-top:8px;font-size:13.5px;color:var(--texto-suave)">Tokens <code>--btn-*</code> y, en Tailwind/Jetstream, <code>bs-*</code>. En el menú lateral los botones son outline-light.</p>
+      <h3>Catálogo de dietas (colores originales, excepción a la paleta)</h3>
+      <div class="muestras">
+        <span class="tag" style="background:#DDEAF8;color:#4A7FCB">Tiempo · Desayuno</span>
+        <span class="tag" style="background:#D8F3DC;color:#2D6A4F">Consistencia · Normal</span>
+        <span class="tag" style="background:#EDE9F5;color:#7B5EA7">Especificación · Sin gluten</span>
+        <span class="tag" style="background:#0F766E;color:#fff">✓ Entregado</span>
+        <span class="tag" style="background:#fff;color:#0F766E;border:1.5px dashed #0F766E">Despachado, sin recibir</span>
+      </div>
+      <p style="margin-top:8px;font-size:13.5px;color:var(--texto-suave)">En los formularios de registrar y editar, las etiquetas seleccionadas son azul (tiempos), ámbar (consistencia) y verde (especificaciones). Tokens <code>--dieta-*</code>.</p>
+      <h3>Menú lateral (NUT-CMP-002)</h3>
+      <p>Definido como datos en <code>config/navigation.php</code>, resuelto por <code>App\Support\Navigation</code> y dibujado con <code>&lt;x-nav-item&gt;</code>. Tiene modo contraído recordado en el navegador, <code>aria-current</code>, foco atrapado en el cajón móvil y cierre de sesión con modal.</p>
+    </section>
+
+    <!-- 15 -->
+    <section id="calidad">
+      <h2>15. Pruebas y calidad</h2>
+      <p class="intro">PHPUnit 10 con SQLite en memoria: <b>233 pruebas</b> pasan y 10 se omiten (Jetstream). Formato PSR-12 con Pint. <code>Tests\TestCase</code> desactiva la aceptación de la política, el 2FA y el HTTPS, que se prueban en <code>ComplianceTest</code>.</p>
+      <div class="grid">
+        <div class="card"><h4>Dietas y ciclo diario</h4><p><code>NutritionDashboardTest</code>, <code>FinishDietTest</code>, <code>DietDayCompletionTest</code>, <code>DietIsolationTest</code>, <code>DischargeTransferTest</code>, <code>DietDemoSeederTest</code></p></div>
+        <div class="card"><h4>Despacho</h4><p><code>DispatchFlowTest</code>, <code>DispatcherDashboardTest</code>, <code>LiveUpdatesTest</code></p></div>
+        <div class="card"><h4>Reportes y facturación</h4><p><code>NutritionReportTest</code>, <code>DischargeMealCutoffTest</code>, <code>BillingTest</code>, <code>PricesAndHistoryTest</code></p></div>
+        <div class="card"><h4>Seguridad y acceso</h4><p><code>ComplianceTest</code>, <code>AuditLogTest</code>, <code>VerifyBackupTest</code>, <code>LoginRedirectTest</code>, <code>PublicPagesTest</code>, <code>SidebarNavigationTest</code></p></div>
+        <div class="card"><h4>Administración y plan</h4><p><code>Admin/UsersManagementTest</code>, <code>JefeCreatesNutritionistsTest</code>, <code>SubscriptionTest</code></p></div>
+        <div class="card"><h4>Empresas</h4><p><code>CompaniesTest</code>, <code>CompanyIsolationTest</code>, <code>DispatchManagerTest</code></p></div>
+        <div class="card"><h4>Jetstream</h4><p>Autenticación, perfil, contraseñas, 2FA y sesiones del navegador.</p></div>
+      </div>
+    </section>
+
+    <!-- 16 -->
+    <section id="pendiente">
+      <h2>16. Pendiente y deuda técnica</h2>
+      <h3>Planeado</h3>
+      <ul class="lista">
+        <li><b>Notificaciones WhatsApp</b> (Meta Cloud API): evento <code>DietVersionCreated</code> después de confirmar la transacción → listener en cola <code>notifications</code> → canal WhatsApp con plantilla aprobada → webhook de estados. Destinatarios: despachadores activos con <code>whatsapp_opt_in</code>. Sin datos clínicos.</li>
+        <li><b>Empresas como función Premium</b> (SCRUM-9): <code>premium:companies</code>, sin Premium una sola empresa; el jefe de despacho paga la suscripción.</li>
+        <li><b>Precios y facturación por empresa</b> (SCRUM-10): <code>service_prices.company_id</code> y Excel de facturación por empresa. Hoy la facturación cuenta solo la empresa activa, pero los precios son globales.</li>
+        <li><b>Reportes PDF</b> con dompdf: producción de cocina, dietas activas, historial de cambios y consolidado mensual; trabajos en cola para reportes grandes.</li>
+      </ul>
+      <h3>Deuda técnica</h3>
+      <ul class="lista">
+        <li>Claves de tiempo de comida inconsistentes entre <code>config/timeFood.php</code> (<code>mediamanana</code>, <code>merienda</code>) y <code>form-diet.blade.php</code> (<code>media_manana</code>, sin <code>merienda</code>); los reportes las normalizan. Unificar y migrar los datos.</li>
+        <li><code>diets.confirmed</code> ya no se usa: la confirmación del despachador es <code>diet_histories.modify</code>.</li>
+        <li><code>created_at</code> antiguos guardados en UTC: migrar con <code>CONVERT_TZ</code> (una sola vez, con respaldo) si importan para reportes históricos.</li>
+        <li>Pint marca formato en 9 archivos anteriores a los últimos cambios.</li>
+        <li><code>public/assets/css/style2.css</code> no se carga en ninguna vista.</li>
+      </ul>
+      <h3>Documentación relacionada (Confluence, espacio NUT)</h3>
+      <p>NUT-VIS-001 Visión general · NUT-REQ-001 Requisitos funcionales · NUT-RNF-001 No funcionales · NUT-RN-001 Reglas de negocio · NUT-RN-003 Empresas atendidas por el despacho · NUT-ARQ-001 Arquitectura · NUT-DAT-001 Modelo de datos · NUT-DEV-001 Guía de desarrollo · NUT-CMP-001 Paleta · NUT-CMP-002 Menú lateral. Tareas en Jira: proyecto SCRUM.</p>
+    </section>
+
+    <footer>NutriTrack · Arquitectura de software · generado desde el repositorio nutrition-platform el 21 de octubre de 2026</footer>
+  </main>
+</div>
+<script>
+  (function () {
+    var btn = document.getElementById('tema');
+    btn.addEventListener('click', function () {
+      var root = document.documentElement;
+      var actual = root.getAttribute('data-theme') ||
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      var nuevo = actual === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', nuevo);
+      try { localStorage.setItem('nt-doc-theme', nuevo); } catch (e) {}
+    });
+  })();
+</script>
+</body>
+</html>
