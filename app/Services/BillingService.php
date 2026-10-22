@@ -107,7 +107,7 @@ class BillingService
      *   rows: array<int, array{type: string, service: string, days: array<int, int>, count: int,
      *                          price: ?float, priceChanges: array, value: float, missingPriceTrays: int}>,
      *   serviceTotals: array<string, int>, total: float, totalTrays: int,
-     *   unassigned: Collection, missingPrices: array<int, string>, notReceived: int
+     *   unassigned: Collection, missingPrices: array<int, string>, notReceived: int, pending: Collection
      * }
      */
     public function monthly(CarbonInterface $month): array
@@ -124,11 +124,21 @@ class BillingService
         }
         $unassigned = [];
         $notReceived = 0;
+        $pending = [];
 
         foreach ($this->reports->activeDietsByDay($start, receivedOnly: true) as $day) {
             $d = (int) $day['date']->format('j');
             // Servicios facturables sin recepción o de días sin completar (fraccionada no se factura)
             $notReceived += count(array_filter($day['withheld'], fn ($meal) => isset($services[$meal])));
+
+            // SCRUM-14: qué dieta y qué falta, para explicarlo en pantalla
+            foreach ($day['pending'] ?? [] as $p) {
+                $billable = array_values(array_filter($p['withheld'], fn ($meal) => isset($services[$meal])));
+                if ($billable !== []) {
+                    $pending[] = ['date' => $day['date'], 'diet' => $p['diet'], 'reason' => $p['reason'],
+                        'withheld' => $billable, 'received' => $p['received'], 'missing' => $p['missing']];
+                }
+            }
 
             foreach ($day['diets'] as ['diet' => $diet, 'version' => $version, 'meals' => $meals]) {
                 $type = $version->billing_type;
@@ -212,6 +222,8 @@ class BillingService
             'unassigned' => collect($unassigned)->values(),
             'missingPrices' => $missingPrices,
             'notReceived' => $notReceived,
+            // Detalle de lo sin facturar, lo más reciente primero
+            'pending' => collect($pending)->sortByDesc(fn ($p) => $p['date']->format('Ymd').str_pad((string) $p['diet']->habitation, 8, '0', STR_PAD_LEFT))->values(),
         ];
     }
 

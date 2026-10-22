@@ -18,6 +18,8 @@
         .pm-side { display: flex; flex-direction: column; gap: 20px; position: sticky; top: 16px; }
         .pm-warn { border-left: 3px solid var(--amber); background: var(--amber-light); padding: 10px 14px; font-size: 13px; border-radius: 0 8px 8px 0; }
         .pm-warn ul { margin: 6px 0 0; padding-left: 18px; }
+        .pm-pending { margin-top: 6px; }
+        .pm-pending summary { cursor: pointer; font-weight: 600; }
         @media (max-width: 1100px) { .pm-grid { grid-template-columns: minmax(0, 1fr); } .pm-side { position: static; } }
     </style>
 
@@ -184,9 +186,36 @@
                 @endif
 
                 @if ($monthly['notReceived'] > 0)
+                    @php $mealName = fn ($m) => config("timeFood.labels.$m", $m); @endphp
                     <div class="pm-warn" role="alert">
                         <strong>{{ $monthly['notReceived'] }} servicio(s) sin facturar en {{ $monthName }}.</strong>
-                        Solo se facturan los días en que la dieta quedó Completada: todos sus tiempos despachados por cocina y recibidos por nutrición.
+                        Un día de una dieta se factura cuando queda <strong>Completado</strong>: cocina despachó y nutrición recibió
+                        <em>todos</em> sus tiempos de ese día. Mientras falte alguno, no se factura ninguno de ese día, ni siquiera lo ya recibido.
+                        El día del alta o de la cancelación se factura lo recibido.
+                        @if ($monthly['pending']->isNotEmpty())
+                            <details class="pm-pending" @if ($monthly['pending']->count() <= 5) open @endif>
+                                <summary>Ver qué falta ({{ $monthly['pending']->count() }})</summary>
+                                <ul>
+                                    @foreach ($monthly['pending']->take(30) as $p)
+                                        <li>
+                                            <strong>Hab. {{ $p['diet']->habitation }}</strong> · {{ $p['date']->format('d/m') }}:
+                                            @if ($p['reason'] === 'day_incomplete')
+                                                @if ($p['received'])
+                                                    recibido {{ collect($p['received'])->map($mealName)->implode(', ') }};
+                                                @endif
+                                                falta recibir {{ collect($p['missing'])->map($mealName)->implode(', ') ?: '—' }}.
+                                                Se factura cuando el día quede completado.
+                                            @else
+                                                sin recepción: {{ collect($p['withheld'])->map($mealName)->implode(', ') }}.
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                    @if ($monthly['pending']->count() > 30)
+                                        <li>y {{ $monthly['pending']->count() - 30 }} más</li>
+                                    @endif
+                                </ul>
+                            </details>
+                        @endif
                     </div>
                 @endif
 

@@ -110,6 +110,36 @@ class DietDayCompletionTest extends TestCase
         $this->assertSame(0, app(BillingService::class)->monthly(CarbonImmutable::parse('2026-10-01'))['notReceived']);
     }
 
+    public function test_billing_explains_what_is_missing_for_an_incomplete_day(): void
+    {
+        // SCRUM-14: desayuno despachado y recibido, almuerzo pendiente → el día no se factura y se explica por qué
+        $diet = $this->diet('999', ['desayuno', 'almuerzo']);
+        $this->serve($diet, 'desayuno');
+
+        $pending = app(BillingService::class)->monthly(CarbonImmutable::parse('2026-10-01'))['pending'];
+        $this->assertCount(1, $pending);
+        $this->assertSame('day_incomplete', $pending[0]['reason']);
+        $this->assertSame(['desayuno'], $pending[0]['received']);
+        $this->assertSame(['almuerzo'], $pending[0]['missing']);
+
+        $this->activatePremium();
+        $this->actingAs(User::role('jefe_nutricion')->firstOrFail())
+            ->get(route('prices.index', ['mes' => '2026-10']))
+            ->assertOk()
+            ->assertSee('2 servicio(s) sin facturar', false)
+            ->assertSee('Hab. 999')
+            ->assertSeeInOrder(['recibido Desayuno;', 'falta recibir Almuerzo.'])
+            ->assertSee('Se factura cuando el día quede completado.');
+
+        // Al completar el día ya no hay pendientes y se factura aunque no haya precio (cantidad con $ 0)
+        $this->serve($diet, 'almuerzo');
+        $monthly = app(BillingService::class)->monthly(CarbonImmutable::parse('2026-10-01'));
+        $this->assertTrue($monthly['pending']->isEmpty());
+        $row = collect($monthly['rows'])->first(fn ($r) => $r['type'] === 'normal' && $r['service'] === 'desayuno');
+        $this->assertSame(1, $row['count']);
+        $this->assertSame(1, $row['missingPriceTrays']);
+    }
+
     public function test_days_before_the_completion_cutoff_keep_the_received_rule(): void
     {
         config(['dispatch.completion_required_from' => '2026-10-21']);
