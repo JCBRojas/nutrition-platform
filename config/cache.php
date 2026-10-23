@@ -108,4 +108,12 @@ return [
 
     'prefix' => env('CACHE_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_').'_cache_'),
 
+    /*
+    | Clases que se pueden deserializar desde la caché (Laravel 13). false = ninguna: la
+    | caché solo guarda arreglos y escalares (p. ej. los permisos de spatie), lo que evita
+    | ataques de deserialización si se filtrara el APP_KEY.
+    */
+
+    'serializable_classes' => false,
+
 ];

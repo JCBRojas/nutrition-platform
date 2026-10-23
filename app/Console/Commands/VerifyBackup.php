@@ -34,7 +34,7 @@ class VerifyBackup extends Command
                 continue;
             }
 
-            $ageHours = $backup->date()->diffInHours(now());
+            $ageHours = (int) $backup->date()->diffInHours(now()); // Carbon 3 devuelve float
             if ($ageHours > config('security.backups.max_age_hours')) {
                 $problems[] = "{$disk}: el último respaldo tiene {$ageHours} h.";
             }

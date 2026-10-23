@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\DietService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class DietIsolationTest extends TestCase
@@ -35,7 +36,7 @@ class DietIsolationTest extends TestCase
             ->put(route('dietas.update', $this->diet), $data + ['timeFood' => ['desayuno'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'changes' => 'aislado', 'billing_type' => 'normal']);
     }
 
-    /** @dataProvider accepted */
+    #[DataProvider('accepted')]
     public function test_isolation_values_from_forms_are_stored_as_enum(string $sent, string $stored): void
     {
         $this->update(['isolation' => $sent])->assertSessionHasNoErrors()->assertRedirect();

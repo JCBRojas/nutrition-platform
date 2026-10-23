@@ -211,4 +211,12 @@ return [
 
     'partitioned' => false,
 
+    /*
+    | Serialización de la sesión (Laravel 13): json en lugar de php para evitar ataques de
+    | deserialización. La sesión solo guarda escalares (empresa activa, mensajes, errores).
+    | Cambiarla invalida las sesiones abiertas.
+    */
+
+    'serialization' => 'json',
+
 ];

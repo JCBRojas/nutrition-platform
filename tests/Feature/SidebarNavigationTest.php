@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -26,7 +27,7 @@ class SidebarNavigationTest extends TestCase
             ->givePermissionTo(['viewActiveDiets', 'continueDiets']);
     }
 
-    /** @dataProvider roles */
+    #[DataProvider('roles')]
     public function test_each_role_sees_only_its_links(string $role, array $expected): void
     {
         $user = User::factory()->create();

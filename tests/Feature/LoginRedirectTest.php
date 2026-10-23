@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class LoginRedirectTest extends TestCase
@@ -17,7 +18,7 @@ class LoginRedirectTest extends TestCase
         $this->seed(RolesAndPermissionsSeeder::class);
     }
 
-    /** @dataProvider roles */
+    #[DataProvider('roles')]
     public function test_login_redirects_to_role_home(string $role, string $route): void
     {
         $user = User::factory()->create(['password' => bcrypt('Secreta-2026')]);
