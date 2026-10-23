@@ -10,7 +10,7 @@ Idioma del dominio y la UI: **español**. Mantén nombres de rutas/vistas en esp
 
 | Capa | Tecnología |
 |---|---|
-| Backend | PHP ^8.1 (local 8.4), **Laravel 10**, Jetstream 4 (stack Livewire), Fortify, Sanctum |
+| Backend | PHP ~8.2.35 · ~8.3.36 · ~8.4.27 (local 8.4.27; mínimos con el parche de CVE-2026-109618/109619 «PHP2shell»: `composer.json` no instala en un PHP sin él), **Laravel 10**, Jetstream 4 (stack Livewire), Fortify, Sanctum |
 | UI | Blade + **Livewire 3** + Tailwind 3 (Vite) · Chart.js 4 (CDN) · assets de plantilla en `public/assets` |
 | Auth/ACL | `spatie/laravel-permission` ^6 (roles + permisos, guard `web`) |
 | BD | MySQL (`nutrition`), sesiones en BD |
