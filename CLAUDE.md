@@ -10,11 +10,11 @@ Idioma del dominio y la UI: **español**. Mantén nombres de rutas/vistas en esp
 
 | Capa | Tecnología |
 |---|---|
-| Backend | PHP ~8.2.35 · ~8.3.36 · ~8.4.27 (local 8.4.27; mínimos con el parche de CVE-2026-109618/109619 «PHP2shell»: `composer.json` no instala en un PHP sin él), **Laravel 10**, Jetstream 4 (stack Livewire), Fortify, Sanctum |
-| UI | Blade + **Livewire 3** + Tailwind 3 (Vite) · Chart.js 4 (CDN) · assets de plantilla en `public/assets` |
+| Backend | PHP ~8.3.36 · ~8.4.27 (local 8.4.27; mínimos con el parche de CVE-2026-109618/109619 «PHP2shell»: `composer.json` no instala en un PHP sin él), **Laravel 13** (estructura clásica: `app/Http/Kernel.php`, `app/Console/Kernel.php`), Jetstream 5 (stack Livewire), Fortify, Sanctum 4 |
+| UI | Blade + **Livewire 3.8** + Tailwind 3 (Vite 7, `laravel-vite-plugin` 2) · Chart.js 4 (CDN) · assets de plantilla en `public/assets` |
 | Auth/ACL | `spatie/laravel-permission` ^6 (roles + permisos, guard `web`) |
 | BD | MySQL (`nutrition`), sesiones en BD |
-| Otros | `spatie/laravel-backup` (diario 01:00) · Tiempo real con Echo + protocolo Pusher (Soketi en local; ver «Tiempo real») |
+| Otros | `spatie/laravel-backup` 10 (diario 01:00; `verify_backup`) · Tiempo real con Echo + protocolo Pusher (Soketi en local; ver «Tiempo real») |
 | Entorno | Laravel Herd (`herd.yml`), cola `sync` |
 
 ## 2. Comandos
@@ -24,7 +24,7 @@ composer install && npm install
 php artisan migrate --seed          # crea roles/permisos + usuarios demo
 php artisan db:seed --class=DietDemoSeeder  # +50 dietas × 5 versiones de prueba (solo agrega; no corre en producción)
 npm run dev                         # Vite
-php artisan test                    # PHPUnit 10, SQLite :memory: (phpunit.xml). Requiere npm run build
+php artisan test                    # PHPUnit 12 (proveedores con #[DataProvider], no @dataProvider), SQLite :memory: (phpunit.xml). Requiere npm run build
 ./vendor/bin/pint                   # formato PSR-12
 php artisan schedule:work           # backups programados y diets:start-day
 npx -p node@18 -p @soketi/soketi@1.6.1 soketi start  # WebSockets local (puerto 6001); Soketi no corre en Node 25
@@ -113,6 +113,7 @@ Pendiente:
 - Claves de `timeFood` inconsistentes entre `config/timeFood.php` (`mediamanana`, `merienda`) y `components/form-diet.blade.php` (`media_manana`, sin `merienda`). Unificar y migrar los datos.
 - `diets.confirmed` no se usa (se eliminó `DietsManager::confirmRecord`; la confirmación del despachador es `diet_histories.modify`).
 - Tests de auth fallan sin `npm run build` (falta el manifest de Vite) y sin `APP_KEY` en el entorno de tests.
+- Tailwind 3: `npm audit` deja 8 avisos (braces, micromatch, chokidar, postcss-selector-parser) que solo se corrigen con Tailwind 4. Afectan la compilación, no el navegador. Migrar a Tailwind 4 (configuración en CSS, `indigo` redefinido en `tailwind.config.js`, vistas de Jetstream).
 
 ---
 
@@ -288,6 +289,7 @@ Detalle y lista de tareas de cada institución: `docs/seguridad/cumplimiento.md`
 - **2FA obligatorio** para los roles de `TWO_FACTOR_ROLES` (por defecto `admin,jefe_nutricion`): sin 2FA confirmada se redirige a `profile.show#two-factor`. En local se desactiva con `TWO_FACTOR_ROLES=`. `TWO_FACTOR_ENABLED=false` apaga el 2FA por completo (el login no pide el código aunque el usuario lo tenga activo, el perfil no muestra la sección y no se exige a ningún rol); `phpunit.xml` lo fija en `true`.
 - **HTTPS:** `FORCE_HTTPS` (por defecto en producción) → `SecurityHeaders` redirige a https y envía HSTS; `URL::forceScheme`; cookie de sesión `secure`. Detrás de un proxy: `TRUSTED_PROXIES`. `SecurityHeaders` envía además `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` y `no-store` en páginas con sesión.
 - **Perfil (`/user/profile`):** en español (`lang/es.json` traduce los textos de Jetstream/Fortify; `lang/es/validation.php`). Sin «Eliminar cuenta» (`Features::accountDeletion()` desactivado: solo el admin elimina usuarios). El correo no se edita: `UpdateUserProfileInformation` solo guarda el nombre y la vista lo muestra de solo lectura; lo cambia el admin en `/admin/usuarios`.
+- **Deserialización (Laravel 13):** sesión con `serialization = json` y caché con `serializable_classes = false`. No guardar objetos PHP en la sesión ni en la caché, solo arreglos y escalares. El CSRF es `PreventRequestForgery` (token + `Sec-Fetch-Site`), extendido por `App\Http\Middleware\VerifyCsrfToken`.
 - **Contraseñas:** `Password::defaults()` = mínimo 10, mayúsculas, minúsculas y números. El seeder ya no tiene contraseñas fijas (`SEED_USER_PASSWORD` o aleatoria).
 - **Auditoría:** `App\Services\AuditLogger::log($event, $descripcion, $subject, $meta)` → `audit_logs` (`App\Models\AuditLog`, inmutable; eventos en `AuditLog::EVENTS`). Accesos por `App\Listeners\AuditAuthEvents` y `FortifyServiceProvider::authenticateUsing` (intentos fallidos y bloqueos; el callback lanza la excepción sin el evento `Failed`). También `UserService`, `RolesManager`, `PricesManager`, exportaciones Excel y `DietHistoryViewer` (consulta de historial). **No poner datos clínicos ni nombres de pacientes en la descripción** (solo habitación o IDs). Visor `/admin/auditoria` (`admin.audit.index`, permiso `viewAuditLog`, solo admin).
 - **Respaldos:** cifrados con `BACKUP_ARCHIVE_PASSWORD`; programados `backup:run` 01:00, `backup:clean` 01:30, `backup:monitor` 02:00 y `backups:verify` los lunes 03:00 (último respaldo reciente, cifrado, legible y con las tablas de dietas). En local no hay `mysqldump`, así que no se generan respaldos.
