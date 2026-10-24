@@ -1,11 +1,20 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:nutritrack_desktop/core/api_client.dart';
+import 'package:nutritrack_desktop/live/alerts.dart';
+import 'package:nutritrack_desktop/live/live_feed.dart';
 
 /// Servidor simulado para las pruebas: responde por «MÉTODO /ruta» y registra las peticiones
 class FakeServer implements HttpClientAdapter {
+  /// Las pantallas de operación consultan al abrir: por defecto, sin datos
+  FakeServer() {
+    on('GET', '/dispatch/board', boardJson());
+    on('GET', '/receipts/pending', {'data': []});
+  }
+
   final Map<String, (int, Object)> routes = {};
   final List<RequestOptions> requests = [];
 
@@ -49,3 +58,40 @@ Map<String, dynamic> meJson({List<String> permissions = const ['confirmDelivery'
       'premium': [],
       'compliance': {'privacy_required': privacy, 'two_factor_setup_required': false},
     };
+
+Map<String, dynamic> boardJson({List<Map<String, dynamic>> diets = const [], List<int> dispatchable = const [], List<Map<String, dynamic>> pending = const [], String tab = 'active'}) => {
+      'meal': 'almuerzo',
+      'tab': tab,
+      'show_all': true,
+      'data': diets,
+      'dispatchable': dispatchable,
+      'meta': {'current_page': 1, 'last_page': 1, 'per_page': 15, 'total': diets.length},
+      'pending': pending,
+      'counts': {'active': diets.length, 'closed': 0, 'pendingActive': pending.length, 'pendingClosed': 0, 'transfers': 0, 'applies': null},
+    };
+
+/// Tiempo real simulado: las pruebas emiten los avisos a mano
+class FakeLiveFeed implements LiveFeed {
+  FakeLiveFeed({bool connected = true}) : connected = ValueNotifier(connected);
+
+  final _events = StreamController<Set<String>>.broadcast();
+
+  @override
+  Stream<Set<String>> get events => _events.stream;
+
+  @override
+  final ValueNotifier<bool> connected;
+
+  void push(Set<String> kinds) => _events.add(kinds);
+
+  @override
+  void dispose() {}
+}
+
+/// Registra las alertas en lugar de sonar y notificar
+class RecordingAlerts implements Alerts {
+  final sent = <(String, String)>[];
+
+  @override
+  Future<void> notify(String title, String body) async => sent.add((title, body));
+}

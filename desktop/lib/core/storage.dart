@@ -1,8 +1,8 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Lo que la app guarda en el equipo: la dirección del servidor y la empresa elegida
-/// (preferencias) y el token de la API (almacenamiento seguro: Llavero en macOS,
+/// Lo que la app guarda en el equipo: la dirección del servidor, la empresa elegida y si las
+/// alertas están activadas (preferencias) y el token de la API (almacenamiento seguro: Llavero en macOS,
 /// Administrador de credenciales en Windows). Nunca la contraseña.
 abstract class AppStorage {
   Future<String?> serverUrl();
@@ -11,6 +11,8 @@ abstract class AppStorage {
   Future<void> setToken(String? token);
   Future<int?> companyId();
   Future<void> setCompanyId(int? id);
+  Future<bool> alertsEnabled();
+  Future<void> setAlertsEnabled(bool enabled);
 }
 
 class DeviceStorage implements AppStorage {
@@ -23,6 +25,7 @@ class DeviceStorage implements AppStorage {
   static const _serverKey = 'server_url';
   static const _companyKey = 'company_id';
   static const _tokenKey = 'api_token';
+  static const _alertsKey = 'alerts_enabled';
 
   @override
   Future<String?> serverUrl() async => (await SharedPreferences.getInstance()).getString(_serverKey);
@@ -40,6 +43,12 @@ class DeviceStorage implements AppStorage {
   }
 
   @override
+  Future<bool> alertsEnabled() async => (await SharedPreferences.getInstance()).getBool(_alertsKey) ?? true;
+
+  @override
+  Future<void> setAlertsEnabled(bool enabled) async => (await SharedPreferences.getInstance()).setBool(_alertsKey, enabled);
+
+  @override
   Future<String?> token() => _secure.read(key: _tokenKey);
 
   @override
@@ -49,11 +58,12 @@ class DeviceStorage implements AppStorage {
 
 /// Almacenamiento en memoria para las pruebas
 class MemoryStorage implements AppStorage {
-  MemoryStorage({this.server, this.savedToken, this.company});
+  MemoryStorage({this.server, this.savedToken, this.company, this.alerts = true});
 
   String? server;
   String? savedToken;
   int? company;
+  bool alerts;
 
   @override
   Future<String?> serverUrl() async => server;
@@ -67,4 +77,8 @@ class MemoryStorage implements AppStorage {
   Future<int?> companyId() async => company;
   @override
   Future<void> setCompanyId(int? id) async => company = id;
+  @override
+  Future<bool> alertsEnabled() async => alerts;
+  @override
+  Future<void> setAlertsEnabled(bool enabled) async => alerts = enabled;
 }

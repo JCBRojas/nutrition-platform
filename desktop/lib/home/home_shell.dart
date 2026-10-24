@@ -6,6 +6,10 @@ import '../auth/auth_screens.dart';
 import '../auth/models.dart';
 import '../auth/session.dart';
 import '../core/theme.dart';
+import '../dispatch/dispatch_controller.dart';
+import '../dispatch/dispatch_screen.dart';
+import '../receipts/receipts_controller.dart';
+import '../receipts/receipts_screen.dart';
 
 /// Sección del menú lateral, visible según los permisos (como config/navigation.php en la web)
 class Section {
@@ -24,10 +28,20 @@ final sections = <Section>[
   Section('dispatches', 'Despachos del día', Icons.event_note_outlined, (me) => me.can('viewDispatches') && me.hasPremium('dispatch_log')),
 ];
 
+Widget _dispatchScreen(BuildContext context) => const DispatchScreen();
+Widget _receiptsScreen(BuildContext context) => const ReceiptsScreen();
+
+/// Pantallas listas; Dietas activas y Despachos del día llegan en el paso 6 del plan
+const defaultScreens = <String, WidgetBuilder>{
+  'dispatch': _dispatchScreen,
+  'receipts': _receiptsScreen,
+};
+
 /// Marco de la app con sesión: menú lateral, empresa activa, usuario y cierre de sesión.
-/// El contenido de cada sección llega en los pasos 5 y 6 del plan.
+/// Mantiene vivos el tablero de despacho y la recepción (según los permisos) para que las
+/// alertas lleguen aunque se esté en otra sección, y muestra sus pendientes en el menú.
 class HomeShell extends ConsumerStatefulWidget {
-  const HomeShell({super.key, required this.me, this.builders = const {}});
+  const HomeShell({super.key, required this.me, this.builders = defaultScreens});
 
   final Me me;
 
@@ -75,6 +89,13 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final visible = _visible;
     final index = visible.indexWhere((s) => s.id == _current);
 
+    // Con la política o el 2FA pendientes la operación responde 403: no se consulta
+    final operational = !me.needsWebAction;
+    final badges = <String, int>{
+      if (operational && me.can('confirmDelivery')) 'dispatch': ref.watch(dispatchBoardProvider.select((s) => s.board?.pending.length ?? 0)),
+      if (operational && me.can('confirmReception')) 'receipts': ref.watch(receiptsProvider.select((s) => s.items?.length ?? 0)),
+    };
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('NutriTrack', style: TextStyle(color: NtColors.marcaTexto, fontWeight: FontWeight.w700)),
@@ -95,7 +116,15 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               labelType: NavigationRailLabelType.all,
               onDestinationSelected: (i) => setState(() => _current = visible[i].id),
               destinations: [
-                for (final s in visible) NavigationRailDestination(icon: Icon(s.icon), label: Text(s.label)),
+                for (final s in visible)
+                  NavigationRailDestination(
+                    icon: Badge(
+                      isLabelVisible: (badges[s.id] ?? 0) > 0,
+                      label: Text('${badges[s.id]}'),
+                      child: Icon(s.icon),
+                    ),
+                    label: Text(s.label),
+                  ),
               ],
             ),
           const VerticalDivider(width: 1),
@@ -115,8 +144,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                           text: 'Tu rol no tiene funciones de la operación diaria. Usa NutriTrack en el navegador.',
                           action: FilledButton(onPressed: () => _openWeb(''), child: const Text('Abrir en el navegador')),
                         )
-                      : (widget.builders[_current]?.call(context) ??
-                          _Placeholder(title: visible[index < 0 ? 0 : index].label, text: 'Esta sección se agrega en el siguiente paso de la app.')),
+                      : (operational ? widget.builders[_current]?.call(context) : null) ??
+                          _Placeholder(
+                            title: visible[index < 0 ? 0 : index].label,
+                            text: operational ? 'Esta sección se agrega en el siguiente paso de la app.' : 'Resuelve el aviso de arriba en NutriTrack web para usar esta sección.',
+                          ),
                 ),
               ],
             ),
