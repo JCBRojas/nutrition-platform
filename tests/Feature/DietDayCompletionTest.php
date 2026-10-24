@@ -12,15 +12,17 @@ use App\Services\BillingService;
 use App\Services\DietDayService;
 use App\Services\DietService;
 use App\Services\DispatchService;
+use App\Services\Reports\DietReportService;
 use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Cierre diario (Completada), «Continuar dieta» y facturación solo de días completados.
+ * Cierre diario (Completada), «Continuar dieta» y facturación de cada tiempo recibido.
  */
 class DietDayCompletionTest extends TestCase
 {
@@ -38,7 +40,7 @@ class DietDayCompletionTest extends TestCase
         $this->nutritionist = User::role('nutricionista')->firstOrFail();
         $this->dispatcher = User::role('despachador')->firstOrFail();
         $this->travelTo(CarbonImmutable::parse('2026-10-20 05:00:00'));
-        config(['dispatch.required_from' => '2026-10-20', 'dispatch.completion_required_from' => '2026-10-20']);
+        config(['dispatch.required_from' => '2026-10-20']);
     }
 
     private function diet(string $room, array $timeFood = ['desayuno', 'almuerzo']): Diet
@@ -94,14 +96,20 @@ class DietDayCompletionTest extends TestCase
         $this->assertSame(['102'], $this->serve($diet, 'fraccionada')['completed']);
     }
 
-    public function test_only_completed_days_are_billed(): void
+    public function test_each_received_meal_is_billed_even_if_the_day_is_incomplete(): void
     {
         $diet = $this->diet('103');
         $this->serve($diet, 'desayuno');
 
-        // Desayuno recibido, pero el día no está completo: no se factura nada
-        $this->assertSame(0, $this->billed('desayuno'));
-        $this->assertSame(2, app(BillingService::class)->monthly(CarbonImmutable::parse('2026-10-01'))['notReceived']);
+        // Desayuno recibido y almuerzo pendiente: el día no está completo, pero el desayuno se factura
+        $this->assertNull(DietDay::where('diet_id', $diet->id)->value('completed_at'));
+        $this->assertSame(1, $this->billed('desayuno'));
+        $this->assertSame(0, $this->billed('almuerzo'));
+        $this->assertSame(1, app(BillingService::class)->monthly(CarbonImmutable::parse('2026-10-01'))['notReceived']);
+
+        $census = app(DietReportService::class)->monthlyCensus(CarbonImmutable::parse('2026-10-01'), receivedOnly: true);
+        $this->assertSame(1, $census['totals']['desayuno']);
+        $this->assertSame(0, $census['totals']['almuerzo']);
 
         $this->serve($diet, 'almuerzo');
 
@@ -110,28 +118,27 @@ class DietDayCompletionTest extends TestCase
         $this->assertSame(0, app(BillingService::class)->monthly(CarbonImmutable::parse('2026-10-01'))['notReceived']);
     }
 
-    public function test_billing_explains_what_is_missing_for_an_incomplete_day(): void
+    public function test_billing_explains_what_is_missing(): void
     {
-        // SCRUM-14: desayuno despachado y recibido, almuerzo pendiente → el día no se factura y se explica por qué
+        // SCRUM-14: desayuno recibido (se factura), almuerzo pendiente → se explica qué falta
         $diet = $this->diet('999', ['desayuno', 'almuerzo']);
         $this->serve($diet, 'desayuno');
 
         $pending = app(BillingService::class)->monthly(CarbonImmutable::parse('2026-10-01'))['pending'];
         $this->assertCount(1, $pending);
-        $this->assertSame('day_incomplete', $pending[0]['reason']);
+        $this->assertSame(['almuerzo'], $pending[0]['withheld']);
         $this->assertSame(['desayuno'], $pending[0]['received']);
-        $this->assertSame(['almuerzo'], $pending[0]['missing']);
 
         $this->activatePremium();
         $this->actingAs(User::role('jefe_nutricion')->firstOrFail())
             ->get(route('prices.index', ['mes' => '2026-10']))
             ->assertOk()
-            ->assertSee('2 servicio(s) sin facturar', false)
+            ->assertSee('1 servicio(s) sin facturar', false)
             ->assertSee('Hab. 999')
-            ->assertSeeInOrder(['recibido Desayuno;', 'falta recibir Almuerzo.'])
-            ->assertSee('Se factura cuando el día quede completado.');
+            ->assertSee('sin recepción: Almuerzo.', false)
+            ->assertSee('Se factura cuando nutrición confirme la recepción.');
 
-        // Al completar el día ya no hay pendientes y se factura aunque no haya precio (cantidad con $ 0)
+        // Recibido el almuerzo ya no hay pendientes y se factura aunque no haya precio (cantidad con $ 0)
         $this->serve($diet, 'almuerzo');
         $monthly = app(BillingService::class)->monthly(CarbonImmutable::parse('2026-10-01'));
         $this->assertTrue($monthly['pending']->isEmpty());
@@ -140,11 +147,17 @@ class DietDayCompletionTest extends TestCase
         $this->assertSame(1, $row['missingPriceTrays']);
     }
 
-    public function test_days_before_the_completion_cutoff_keep_the_received_rule(): void
+    public function test_received_meal_counts_even_if_the_latest_version_dropped_it(): void
     {
-        config(['dispatch.completion_required_from' => '2026-10-21']);
-        $diet = $this->diet('104');
+        $diet = $this->diet('106', ['desayuno', 'almuerzo']);
         $this->serve($diet, 'desayuno');
+
+        // Más tarde se quita el desayuno: lo que nutrición ya recibió sigue contando
+        $this->travelTo(CarbonImmutable::parse('2026-10-20 10:00:00'));
+        app(DietService::class)->createNewVersion($diet, [
+            'timeFood' => ['almuerzo'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'],
+            'billing_type' => 'normal', 'changes' => 'con_cambios',
+        ], $this->nutritionist->id);
 
         $this->assertSame(1, $this->billed('desayuno'));
     }
@@ -254,7 +267,7 @@ class DietDayCompletionTest extends TestCase
         $this->assertSame(0, $this->billed('desayuno'));
         $this->assertSame(0, $this->billed('cena'));
 
-        $census = app(\App\Services\Reports\DietReportService::class)->monthlyCensus(CarbonImmutable::parse('2026-10-01'), receivedOnly: true);
+        $census = app(DietReportService::class)->monthlyCensus(CarbonImmutable::parse('2026-10-01'), receivedOnly: true);
         $this->assertSame(1, $census['totals']['almuerzo']);
     }
 
@@ -303,7 +316,7 @@ class DietDayCompletionTest extends TestCase
         $diet = $this->diet('110');
         app(DietService::class)->cancelDiet($diet, $this->nutritionist->id);
 
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $this->expectException(ValidationException::class);
         app(DietDayService::class)->continueDiet($diet->fresh(), $this->nutritionist->id);
     }
 }

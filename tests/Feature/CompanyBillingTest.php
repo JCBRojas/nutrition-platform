@@ -37,7 +37,7 @@ class CompanyBillingTest extends TestCase
         $this->withoutVite();
         $this->seed(RolesAndPermissionsSeeder::class);
         // Cuenta lo programado: la regla de lo recibido se prueba en DispatchFlowTest
-        config(['dispatch.required_from' => null, 'dispatch.completion_required_from' => null]);
+        config(['dispatch.required_from' => null]);
         $this->travelTo(CarbonImmutable::parse('2026-10-15 12:00:00'));
 
         $this->jefe = User::role('jefe_nutricion')->firstOrFail();

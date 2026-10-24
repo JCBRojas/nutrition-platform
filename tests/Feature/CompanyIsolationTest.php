@@ -223,7 +223,7 @@ class CompanyIsolationTest extends TestCase
     {
         Excel::fake();
         // Sin la regla de lo recibido: cuenta lo programado de ambas empresas
-        config(['dispatch.required_from' => null, 'dispatch.completion_required_from' => null]);
+        config(['dispatch.required_from' => null]);
         $this->useCompany($this->nutritionist, $this->b);
 
         $this->get(route('reports.monthly.excel', ['mes' => '2026-10']))->assertOk();

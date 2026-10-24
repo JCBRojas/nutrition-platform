@@ -21,10 +21,9 @@ use InvalidArgumentException;
  * - Valor: cada día se valora con el precio vigente ese día (service_prices).
  * - Por empresa (NUT-RN-003-14, -15): dietas y precios son los de la empresa activa
  *   (CompanyScope en Diet y ServicePrice).
- * - Desde config('dispatch.required_from') solo se factura el tiempo de comida despachado
- *   por cocina y recibido por el nutricionista (activeDietsByDay con $receivedOnly).
- * - Desde config('dispatch.completion_required_from') solo se facturan los días en que la
- *   dieta quedó Completada (todos sus tiempos recibidos). Lo demás se informa en 'notReceived'.
+ * - Desde config('dispatch.required_from') se factura cada tiempo de comida despachado por
+ *   cocina y recibido por el nutricionista (activeDietsByDay con $receivedOnly), aunque el
+ *   día no quede Completado. Lo programado sin recepción se informa en 'notReceived'.
  */
 class BillingService
 {
@@ -139,15 +138,15 @@ class BillingService
 
         foreach ($this->reports->activeDietsByDay($start, receivedOnly: true) as $day) {
             $d = (int) $day['date']->format('j');
-            // Servicios facturables sin recepción o de días sin completar (fraccionada no se factura)
+            // Servicios facturables sin recepción (fraccionada no se factura)
             $notReceived += count(array_filter($day['withheld'], fn ($meal) => isset($services[$meal])));
 
             // SCRUM-14: qué dieta y qué falta, para explicarlo en pantalla
             foreach ($day['pending'] ?? [] as $p) {
                 $billable = array_values(array_filter($p['withheld'], fn ($meal) => isset($services[$meal])));
                 if ($billable !== []) {
-                    $pending[] = ['date' => $day['date'], 'diet' => $p['diet'], 'reason' => $p['reason'],
-                        'withheld' => $billable, 'received' => $p['received'], 'missing' => $p['missing']];
+                    $pending[] = ['date' => $day['date'], 'diet' => $p['diet'],
+                        'withheld' => $billable, 'received' => $p['received']];
                 }
             }
 

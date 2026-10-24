@@ -492,7 +492,7 @@
         <li><b>Regla del alta:</b> el día del alta solo cuentan los tiempos con hora igual o anterior a la del alta (alta 15:00 → desayuno y almuerzo, no cena). Fraccionada no cuenta ese día.</li>
         <li><b>Censo mensual:</b> la última versión de cada dieta hasta el cierre del mes; una bandeja por tiempo de comida y día activo.</li>
         <li><b>Solo lo recibido</b> desde 2026-10-15 (<code>DISPATCH_REQUIRED_FROM</code>): facturación y Excel cuentan tiempos con despacho recibido.</li>
-        <li><b>Solo días completados</b> desde 2026-10-16 (<code>COMPLETION_REQUIRED_FROM</code>). Excepción: el día del alta o de la cancelación cuenta lo recibido aunque el día no se complete.</li>
+        <li><b>Cada tiempo recibido cuenta</b>: no se exige que el día quede completado; vale también el día del alta o de la cancelación.</li>
         <li><b>Alta con envío a otra IPS:</b> los tiempos indicados se exigen para completar el día y, recibidos, se facturan aunque sean posteriores a la hora del alta.</li>
         <li><b>Precios:</b> por tipo de dieta × servicio con fecha de vigencia; cada día se valora con su precio vigente. Comida = cena; fraccionada no se factura; refrigerios sin fila propia van a «Entrecomidas».</li>
         <li><b>Sin tipo de facturación:</b> las versiones antiguas aparecen como advertencia y no se cobran.</li>

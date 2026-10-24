@@ -38,7 +38,7 @@ class DischargeTransferTest extends TestCase
         $this->nutritionist = User::role('nutricionista')->firstOrFail();
         $this->dispatcher = User::role('despachador')->firstOrFail();
         $this->travelTo(CarbonImmutable::parse('2026-10-20 05:00:00'));
-        config(['dispatch.required_from' => '2026-10-20', 'dispatch.completion_required_from' => '2026-10-20']);
+        config(['dispatch.required_from' => '2026-10-20']);
     }
 
     private function diet(string $room, array $timeFood = ['desayuno', 'almuerzo', 'cena']): Diet

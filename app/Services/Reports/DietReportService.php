@@ -3,7 +3,6 @@
 namespace App\Services\Reports;
 
 use App\Models\Diet;
-use App\Models\DietDay;
 use App\Models\DietDispatch;
 use App\Models\DietHistory;
 use Carbon\CarbonImmutable;
@@ -28,14 +27,10 @@ use Illuminate\Support\Str;
  * sale de aquí: reporte, Excel, facturación e indicadores.
  *
  * Solo lo recibido ($receivedOnly, Excel y facturación): desde config('dispatch.required_from')
- * cada tiempo cuenta únicamente si tiene despacho con recepción confirmada por el
- * nutricionista (diet_days sin ningún tiempo recibido no cuentan). Los tiempos
- * descartados se devuelven en `withheld` de cada día.
- *
- * Solo días completados ($receivedOnly): desde config('dispatch.completion_required_from')
- * un día de una dieta cuenta únicamente si quedó Completado (diet_days.completed_at: se
- * recibieron todos sus tiempos exigibles, ver DietDayService), y de ese día los tiempos
- * recibidos. Los días sin completar van completos a `withheld`.
+ * cuenta cada tiempo con despacho y recepción confirmada por nutrición, uno por uno: no
+ * hace falta que el día quede Completado, y cuenta aunque la última versión ya no incluya
+ * ese tiempo o sea el día del alta o la cancelación. Los tiempos programados sin
+ * recepción se devuelven en `withheld` de cada día.
  */
 class DietReportService
 {
@@ -48,7 +43,7 @@ class DietReportService
      * no cancelada hasta el cierre del mes).
      *
      * `meals` son los tiempos que cuentan ese día (en el día del alta, solo los anteriores a la hora del alta).
-     * Con $receivedOnly, solo los despachados y recibidos (y desde el corte, solo de días completados);
+     * Con $receivedOnly, los recibidos por nutrición (cada uno cuenta);
      * `withheld` lista los descartados.
      *
      * `pending` explica, por dieta, lo descartado (ver addPending).
@@ -66,49 +61,24 @@ class DietReportService
             ->filter(fn ($d) => $d['reference'] !== null);
 
         $requiredFrom = $receivedOnly ? self::dispatchRequiredFrom() : null;
-        $completionFrom = $receivedOnly ? self::completionRequiredFrom() : null;
-        $received = $requiredFrom || $completionFrom ? $this->receivedKeys($start, $end) : [];
-        $completed = $completionFrom ? $this->completedKeys($start, $end) : [];
+        $received = $requiredFrom ? $this->receivedMeals($start, $end) : [];
 
         $days = collect();
         for ($day = $start; $day <= $lastDay; $day = $day->addDay()) {
             $entries = $diets->map(fn ($d) => $this->dayEntry($d, $day))->filter()->values();
             $withheld = [];
             $pending = []; // detalle de lo descartado por dieta (para explicarlo en pantalla)
-            $mustComplete = $completionFrom && $day >= $completionFrom;
 
-            if ($mustComplete || ($requiredFrom && $day >= $requiredFrom)) {
-                $entries = $entries->map(function ($entry) use ($day, $received, $completed, $mustComplete, &$withheld, &$pending) {
-                    $id = $entry['diet']->id;
+            if ($requiredFrom && $day >= $requiredFrom) {
+                // Cuenta cada tiempo con recepción confirmada por nutrición, aunque el día no se haya
+                // completado o la última versión ya no lo incluya (también el día del alta o la cancelación)
+                $entries = $entries->map(function ($entry) use ($day, $received, &$withheld, &$pending) {
+                    $receivedToday = $received[self::dayKey($entry['diet']->id, $day)] ?? [];
+                    $kept = array_values(array_filter(self::MEALS, fn ($meal) => isset($receivedToday[$meal])));
+                    $missing = array_values(array_diff($entry['meals'], $kept));
 
-                    // Día del alta o de la cancelación: cuenta lo recibido aunque el día no se haya
-                    // completado, incluido lo despachado antes del cierre aunque su hora fuera posterior
-                    // y lo que se envió a otro lugar por indicación del alta (Diet::transferMealsOn)
-                    if ($entry['closedAt'] !== null) {
-                        $transfer = $entry['diet']->transferMealsOn($day);
-                        $kept = array_values(array_filter($entry['allMeals'], function ($meal) use ($entry, $received, $id, $day, $transfer) {
-                            $dispatchedAt = $received[self::dispatchKey($id, $day, $meal)] ?? null;
-
-                            return $dispatchedAt !== null
-                                && (in_array($meal, $entry['meals'], true) || $dispatchedAt <= $entry['closedAt'] || in_array($meal, $transfer, true));
-                        }));
-                        array_push($withheld, ...array_diff($entry['meals'], $kept));
-                        $this->addPending($pending, $entry, array_diff($entry['meals'], $kept), $kept, 'not_received');
-
-                        return $kept === [] ? null : ['meals' => $kept] + $entry;
-                    }
-
-                    if ($mustComplete && ! isset($completed[self::dayKey($id, $day)])) {
-                        array_push($withheld, ...$entry['meals']);
-                        $receivedMeals = array_values(array_filter($entry['meals'], fn ($meal) => isset($received[self::dispatchKey($id, $day, $meal)])));
-                        $this->addPending($pending, $entry, $entry['meals'], $receivedMeals, 'day_incomplete');
-
-                        return null;
-                    }
-
-                    $kept = array_values(array_filter($entry['meals'], fn ($meal) => isset($received[self::dispatchKey($id, $day, $meal)])));
-                    array_push($withheld, ...array_diff($entry['meals'], $kept));
-                    $this->addPending($pending, $entry, array_diff($entry['meals'], $kept), $kept, 'not_received');
+                    array_push($withheld, ...$missing);
+                    $this->addPending($pending, $entry, $missing, $kept);
 
                     return $kept === [] ? null : ['meals' => $kept] + $entry;
                 })->filter()->values();
@@ -131,14 +101,6 @@ class DietReportService
         return $from ? CarbonImmutable::parse($from)->startOfDay() : null;
     }
 
-    /** Fecha desde la que solo se cuentan días completados, o null si no se exige */
-    public static function completionRequiredFrom(): ?CarbonImmutable
-    {
-        $from = config('dispatch.completion_required_from');
-
-        return $from ? CarbonImmutable::parse($from)->startOfDay() : null;
-    }
-
     public static function dispatchKey(int $dietId, CarbonInterface $date, string $meal): string
     {
         return self::dayKey($dietId, $date).'|'.$meal;
@@ -149,26 +111,19 @@ class DietReportService
         return $dietId.'|'.$date->format('Y-m-d');
     }
 
-    /** Días completados del rango como conjunto "dietId|Y-m-d" => true */
-    private function completedKeys(CarbonInterface $from, CarbonInterface $to): array
+    /** Tiempos recibidos del rango agrupados por día de dieta: "dietId|Y-m-d" => [meal => true] */
+    private function receivedMeals(CarbonInterface $from, CarbonInterface $to): array
     {
-        return DietDay::completed()
+        $meals = [];
+        DietDispatch::received()
             ->whereDate('service_date', '>=', $from->toDateString())
             ->whereDate('service_date', '<=', $to->toDateString())
-            ->get(['diet_id', 'service_date'])
-            ->mapWithKeys(fn ($d) => [self::dayKey($d->diet_id, $d->service_date) => true])
-            ->all();
-    }
+            ->get(['diet_id', 'service_date', 'meal'])
+            ->each(function ($d) use (&$meals) {
+                $meals[self::dayKey($d->diet_id, $d->service_date)][str_replace('_', '', $d->meal)] = true;
+            });
 
-    /** Despachos recibidos del rango: "dietId|Y-m-d|meal" => momento del despacho */
-    private function receivedKeys(CarbonInterface $from, CarbonInterface $to): array
-    {
-        return DietDispatch::received()
-            ->whereDate('service_date', '>=', $from->toDateString())
-            ->whereDate('service_date', '<=', $to->toDateString())
-            ->get(['diet_id', 'service_date', 'meal', 'dispatched_at'])
-            ->mapWithKeys(fn ($d) => [self::dispatchKey($d->diet_id, $d->service_date, $d->meal) => CarbonImmutable::parse($d->dispatched_at)])
-            ->all();
+        return $meals;
     }
 
     /**
@@ -335,8 +290,7 @@ class DietReportService
      * Entrada de una dieta en un día, o null si ese día no cuenta.
      * Activa al cierre del día → todos sus tiempos. Día del alta → solo los
      * tiempos anteriores a la hora del alta. Día de la cancelación → ninguno por
-     * horario (se evalúa al cierre del día). En ambos, closedAt y allMeals permiten
-     * contar después lo despachado y recibido antes del cierre (regla de lo recibido).
+     * horario (se evalúa al cierre del día); con la regla de lo recibido cuenta lo recibido.
      */
     private function dayEntry(array $d, CarbonImmutable $day): ?array
     {
@@ -346,7 +300,7 @@ class DietReportService
             return null;
         }
 
-        $allMeals = $meals = $this->normalizeMeals($d['reference']->timeFood);
+        $meals = $this->normalizeMeals($d['reference']->timeFood);
         $closesToday = $d['until'] !== null && $d['until'] <= $dayEnd;
 
         if ($closesToday) {
@@ -357,7 +311,6 @@ class DietReportService
             'diet' => $d['diet'],
             'version' => $d['reference'],
             'meals' => $meals,
-            'allMeals' => $allMeals,
             'closedAt' => $closesToday ? $d['until'] : null,
         ];
     }
@@ -390,11 +343,10 @@ class DietReportService
     }
 
     /**
-     * Detalle de lo que no cuenta de una dieta en un día: `withheld` (tiempos descartados),
-     * `received` (los recibidos) y `missing` (exigidos sin recibir). reason: 'day_incomplete'
-     * (el día no quedó Completado: no se cuenta nada, ni lo recibido) o 'not_received'.
+     * Detalle de lo que no cuenta de una dieta en un día: `withheld` (tiempos programados sin
+     * recepción) y `received` (los recibidos, que sí cuentan).
      */
-    private function addPending(array &$pending, array $entry, array $withheld, array $received, string $reason): void
+    private function addPending(array &$pending, array $entry, array $withheld, array $received): void
     {
         if ($withheld === []) {
             return;
@@ -402,10 +354,8 @@ class DietReportService
 
         $pending[] = [
             'diet' => $entry['diet'],
-            'reason' => $reason,
             'withheld' => array_values($withheld),
             'received' => array_values($received),
-            'missing' => array_values(array_diff($entry['meals'], $received)),
         ];
     }
 

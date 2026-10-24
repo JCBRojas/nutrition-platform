@@ -30,8 +30,8 @@ class SummarySheet implements FromArray, ShouldAutoSize, WithStrictNullCompariso
 
         if ($c['receivedOnly'] ?? false) {
             $from = DietReportService::dispatchRequiredFrom();
-            $rows[] = ['Criterio', 'Solo tiempos despachados por cocina y recibidos por el nutricionista'.($from ? ' (desde el '.$from->format('d/m/Y').')' : '')];
-            $rows[] = ['Tiempos no contados (sin recepción o día sin completar)', $c['notReceived']];
+            $rows[] = ['Criterio', 'Cada tiempo recibido por el nutricionista cuenta'.($from ? ' (desde el '.$from->format('d/m/Y').')' : '')];
+            $rows[] = ['Tiempos sin recepción', $c['notReceived']];
         }
         $rows[] = [''];
 
