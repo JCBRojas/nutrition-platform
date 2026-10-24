@@ -18,6 +18,8 @@ class DietsChanged implements ShouldBroadcastNow
 
     public const CHANNEL = 'diets';
 
+    public const EVENT = 'diets.changed';
+
     /**
      * @param  array<int, string>  $kinds  diet | dispatch | day
      * @param  array<int, int>  $companies  empresas afectadas (IDs, sin datos clínicos); [] = todas
@@ -31,7 +33,7 @@ class DietsChanged implements ShouldBroadcastNow
 
     public function broadcastAs(): string
     {
-        return 'diets.changed';
+        return self::EVENT;
     }
 
     public function broadcastWith(): array

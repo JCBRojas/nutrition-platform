@@ -324,6 +324,15 @@ Detalle y lista de tareas de cada institución: `docs/seguridad/cumplimiento.md`
 - **Precios y facturación por empresa (NUT-RN-003-14, -15, SCRUM-10):** `service_prices.company_id` (único por empresa + tipo + servicio + vigencia; la migración `2026_10_31_000000_add_company_to_service_prices_table` dejó los existentes en la predeterminada). `ServicePrice` usa `CompanyScope` y al crear toma la empresa activa (`ServicePrice::defaultCompanyId()`; sin usuario, la predeterminada); su empresa no cambia. `/precios` y `BillingService::monthly()` trabajan con la empresa activa; el Excel de facturación lleva la empresa en el nombre del archivo y de la hoja del mes (`BillingWorkbook`, máx. 31 caracteres). Tests: `tests/Feature/CompanyBillingTest.php`.
 - Tests: `tests/Feature/CompanyIsolationTest.php`. El `UserFactory` crea usuarios con «Todas».
 
+## 7g. API v1 y cliente de escritorio (Flutter, en curso; NUT-RN-004)
+
+Plan: `/Users/camilorojas/.claude/plans/magical-hatching-balloon.md`. v1 = operación diaria (despacho, recepción, dietas activas, tiempo real); lo administrativo sigue en la web. App Flutter en `desktop/` (pendiente).
+- Rutas en `routes/api.php` bajo `/api/v1` (nombres `api.v1.*`), controladores en `app/Http/Controllers/Api/V1`. Siempre JSON (`ForceJsonResponse` en el grupo `api`). Límites con `ThrottleRequests::class` directo: el alias `throttle` lo reemplaza `CustomThrottleLogin` (login web).
+- Autenticación: tokens de Sanctum (`POST /auth/login` con `device_name`, `POST /auth/two-factor` con `ticket` + `code`/`recovery_code`, `POST /auth/logout`), vencen a las `DESKTOP_TOKEN_MINUTES` (720). Reglas compartidas con la web en `App\Services\AuthService` (intentos, dominio NUT-RN-002, inactivo, auditoría con `meta.client = desktop`). Desactivar/eliminar un usuario o quitar su dominio revoca sus tokens.
+- Empresa activa: encabezado `X-Company-Id` (`UseCompanyHeader`, alias `company.header` → `CurrentCompany::useForRequest`); sin él, la última del usuario. 403 `company_forbidden` si no es elegible.
+- `GET /meta` (público): versión mínima (`MIN_DESKTOP_VERSION`), catálogos y conexión de tiempo real (`DESKTOP_WS_*`). `GET /me`: permisos, pantalla inicial, empresas, premium y `compliance` (sin datos personales sensibles). `EnsureAccountCompliance` responde en `api/*` con `code` (`privacy_required`, `two_factor_setup_required`) y `url` de la web.
+- Tests: `tests/Feature/Api/`.
+
 ## 7c. Paginación de tablas
 
 Skill `.claude/skills/table-pagination`: 15 por página, parámetros `page` y `per_page` (`App\Support\Pagination::perPage()` acepta 15/30/50; cualquier otro → 15), control común `resources/views/pagination/table.blade.php` (Anterior/Siguiente, números, selector de página, "1–15 de N registros"; en Livewire `->links('pagination.table', ['livewire' => true])`). Los filtros se conservan (`withQueryString()` / `#[Url]`) y al cambiar un filtro se vuelve a la página 1.
