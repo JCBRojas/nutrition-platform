@@ -1,8 +1,11 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\DispatchController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\MetaController;
+use App\Http\Controllers\Api\V1\ReceiptController;
+use Illuminate\Broadcasting\BroadcastController;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Route;
 
@@ -26,5 +29,24 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::middleware(['auth:sanctum', 'company.header'])->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
         Route::get('/me', MeController::class)->name('me');
+
+        // Canal privado «diets» del tiempo real (routes/channels.php) autorizado con el token
+        Route::match(['get', 'post'], '/broadcasting/auth', [BroadcastController::class, 'authenticate'])->name('broadcasting.auth');
+
+        // Operación: mismas reglas que la web (política aceptada, 2FA de los roles, empresa asignada)
+        Route::middleware(['compliance', 'company'])->group(function () {
+            Route::middleware('permission:confirmDelivery')->group(function () {
+                Route::get('/dispatch/board', [DispatchController::class, 'board'])->name('dispatch.board');
+                Route::post('/dispatch', [DispatchController::class, 'store'])->name('dispatch.store');
+                Route::post('/diets/{diet}/confirm-changes', [DispatchController::class, 'confirmChanges'])->whereNumber('diet')->name('diets.confirm-changes');
+            });
+            // «No llegó» (confirmReception) o «Anular despacho» (confirmDelivery): el permiso depende de kind
+            Route::post('/dispatches/{dispatch}/void', [DispatchController::class, 'void'])->whereNumber('dispatch')->name('dispatches.void');
+
+            Route::middleware('permission:confirmReception')->group(function () {
+                Route::get('/receipts/pending', [ReceiptController::class, 'pending'])->name('receipts.pending');
+                Route::post('/receipts', [ReceiptController::class, 'confirm'])->name('receipts.confirm');
+            });
+        });
     });
 });
