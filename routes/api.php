@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\DietController;
 use App\Http\Controllers\Api\V1\DispatchController;
+use App\Http\Controllers\Api\V1\DispatchLogController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\MetaController;
 use App\Http\Controllers\Api\V1\ReceiptController;
@@ -47,6 +49,21 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
                 Route::get('/receipts/pending', [ReceiptController::class, 'pending'])->name('receipts.pending');
                 Route::post('/receipts', [ReceiptController::class, 'confirm'])->name('receipts.confirm');
             });
+
+            // Panel de dietas (paso 3): mismos permisos que la web
+            Route::get('/diets', [DietController::class, 'index'])->middleware('permission:viewActiveDiets')->name('diets.index');
+            Route::post('/diets', [DietController::class, 'store'])->middleware('permission:createDiets')->name('diets.store');
+            Route::post('/diets/{diet}/continue', [DietController::class, 'continue'])->middleware('permission:continueDiets')->whereNumber('diet')->name('diets.continue');
+            Route::middleware('permission:editDiets')->whereNumber('diet')->group(function () {
+                Route::put('/diets/{diet}', [DietController::class, 'update'])->name('diets.update');
+                Route::get('/diets/{diet}/closing-summary', [DietController::class, 'closingSummary'])->name('diets.closing-summary');
+                Route::post('/diets/{diet}/cancel', [DietController::class, 'cancel'])->name('diets.cancel');
+                Route::post('/diets/{diet}/finish', [DietController::class, 'finish'])->name('diets.finish');
+            });
+
+            // Despachos del día (Premium)
+            Route::get('/dispatches/day', DispatchLogController::class)
+                ->middleware(['permission:viewDispatches', 'premium:dispatch_log'])->name('dispatches.day');
         });
     });
 });
