@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\DietsManager;
 use App\Models\User;
+use App\Services\DietDayService;
 use App\Services\DietHistoryService;
 use App\Services\DietService;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -32,7 +33,7 @@ class DietLastChangeTest extends TestCase
     private function data(array $override = []): array
     {
         return ['habitation' => '301', 'name_patient' => 'Paciente', 'timeFood' => ['desayuno'], 'consistency' => ['normal'],
-            'billing_type' => 'normal', 'isolation' => 'No', ...$override];
+            'specifications' => ['sin_gluten'], 'isolation' => 'No', ...$override];
     }
 
     public function test_label_describes_the_real_last_change(): void
@@ -42,14 +43,14 @@ class DietLastChangeTest extends TestCase
         $diet = $service->createDiet($this->data(), $this->nutritionist->id);
         $this->assertSame('Creación', $history->lastChangeLabel($diet->fresh()));
 
-        $service->createNewVersion($diet, $this->data(['billing_type' => 'hiposodica', 'changes' => 'NA']), $this->nutritionist->id);
-        $this->assertSame('Cambió tipo de dieta', $history->lastChangeLabel($diet->fresh()));
+        $service->createNewVersion($diet, $this->data(['specifications' => ['hiposodica'], 'changes' => 'NA']), $this->nutritionist->id);
+        $this->assertSame('Cambió especificaciones y tipo de dieta', $history->lastChangeLabel($diet->fresh()));
 
-        $service->createNewVersion($diet, $this->data(['billing_type' => 'hiposodica', 'timeFood' => ['desayuno', 'cena'], 'isolation' => 'Sí']), $this->nutritionist->id);
+        $service->createNewVersion($diet, $this->data(['specifications' => ['hiposodica'], 'timeFood' => ['desayuno', 'cena'], 'isolation' => 'Sí']), $this->nutritionist->id);
         $this->assertSame('Cambió tiempos de comida y aislamiento', $history->lastChangeLabel($diet->fresh()));
 
         // Continuar dieta crea una copia del día: no es un cambio
-        app(\App\Services\DietDayService::class)->continueDiet($diet->fresh(), $this->nutritionist->id);
+        app(DietDayService::class)->continueDiet($diet->fresh(), $this->nutritionist->id);
         $this->assertSame('Cambió tiempos de comida y aislamiento', $history->lastChangeLabel($diet->fresh()));
 
         $service->cancelDiet($diet->fresh(), $this->nutritionist->id);
@@ -60,10 +61,10 @@ class DietLastChangeTest extends TestCase
     {
         $service = app(DietService::class);
         $diet = $service->createDiet($this->data(), $this->nutritionist->id);
-        $service->createNewVersion($diet, $this->data(['billing_type' => 'hiposodica']), $this->nutritionist->id);
+        $service->createNewVersion($diet, $this->data(['specifications' => ['hiposodica']]), $this->nutritionist->id);
 
         Livewire::actingAs(User::role('despachador')->firstOrFail())->test(DietsManager::class)
-            ->assertSee('Cambió tipo de dieta')
+            ->assertSee('Cambió especificaciones y tipo de dieta')
             ->assertDontSee('Sin tipo');
     }
 }

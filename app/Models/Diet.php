@@ -178,11 +178,13 @@ class Diet extends Model
      * y de su versión actual. Nunca el modelo completo: con la relación updatedBy cargada
      * exponía correo, teléfono, 2FA y aceptación de la política de quien editó (SCRUM-18).
      */
-    public function editPayload(): array
+    public function editPayload(array $lockedMeals = []): array
     {
         $v = $this->currentVersion;
 
         return [
+            // Tiempos que nutrición ya recibió hoy: no se pueden quitar al editar
+            'locked_meals' => array_values($lockedMeals),
             'habitation' => $this->habitation,
             'name_patient' => $this->name_patient,
             'current_version' => [
@@ -191,7 +193,6 @@ class Diet extends Model
                 'specifications' => $v?->specifications ?? [],
                 'observations' => $v?->observations,
                 'changes' => $v?->changes,
-                'billing_type' => $v?->billing_type,
                 'isolation' => $v?->isolation,
             ],
         ];

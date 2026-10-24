@@ -19,12 +19,14 @@ use Illuminate\Validation\ValidationException;
  *
  * 1. Autorización: crear la dieta autoriza el día de creación; cada día siguiente lo
  *    autoriza «Continuar dieta» (permiso continueDiets: nutrición y enfermería), en
- *    cualquier momento del día anterior. Sin autorización no se despacha (DispatchService).
+ *    cualquier momento del día anterior, o «Autorizar hoy» el mismo día. Si nadie lo hizo,
+ *    el inicio del día la autoriza sola (VIA_AUTOMATIC). Sin autorización no se despacha
+ *    (DispatchService).
  * 2. Cierre: cuando se reciben todos los tiempos exigibles del día, el día queda
  *    completado, la dieta pasa a Completada y se registra la versión 'completada'.
  *    Solo los días completados se facturan (DietReportService::activeDietsByDay).
- * 3. Inicio del día (diets:start-day, 00:01): las dietas Completadas autorizadas para hoy
- *    vuelven a Activa.
+ * 3. Inicio del día (diets:start-day, 00:01, y al despachar): autoriza las dietas abiertas
+ *    que nadie continuó y las Completadas autorizadas para hoy vuelven a Activa.
  *
  * Tiempos exigibles: los de la versión vigente ese día. El día de creación, solo los que
  * se sirven a la hora de creación o después (más los sin horario, como fraccionada). El día
@@ -81,6 +83,46 @@ class DietDayService
                 'authorized_by' => $userId,
                 'authorized_at' => now(),
             ]);
+        });
+    }
+
+    /**
+     * «Autorizar hoy»: autoriza el despacho del día en curso cuando no se continuó ayer
+     * (respaldo si el inicio del día no la autorizó). Registra la versión 'continuada'.
+     */
+    public function authorizeToday(Diet $diet, int $userId): DietDay
+    {
+        if (! $diet->isActive()) {
+            throw ValidationException::withMessages([
+                'diet' => "La dieta de la habitación {$diet->habitation} está {$diet->statusLabel()} y no se puede autorizar.",
+            ]);
+        }
+
+        $today = self::day();
+
+        return DB::transaction(function () use ($diet, $userId, $today) {
+            Diet::whereKey($diet->id)->lockForUpdate()->first();
+
+            if ($this->isAuthorized($diet, $today)) {
+                throw ValidationException::withMessages([
+                    'diet' => "La dieta de la habitación {$diet->habitation} ya está autorizada para hoy.",
+                ]);
+            }
+
+            $this->diets->recordDayVersion($diet, 'continuada', $userId);
+
+            $day = DietDay::upsertFor($diet->id, $today, [
+                'authorized_via' => DietDay::VIA_CONTINUATION,
+                'authorized_by' => $userId,
+                'authorized_at' => now(),
+            ]);
+
+            // Completada ayer: hoy vuelve a Activa
+            if ($diet->status === Diet::COMPLETED && ! $day->isCompleted()) {
+                $diet->update(['status' => Diet::ACTIVE]);
+            }
+
+            return $day;
         });
     }
 
@@ -189,12 +231,27 @@ class DietDayService
     /* ===================== INICIO DEL DÍA ===================== */
 
     /**
-     * Las dietas Completadas que tienen autorización para el día (y aún no lo completan)
-     * vuelven a Activa. Devuelve cuántas cambiaron.
+     * 1. Autoriza el día de las dietas abiertas creadas antes que nadie continuó (VIA_AUTOMATIC;
+     *    sin versión en el historial: no hay usuario que la firme).
+     * 2. Las dietas Completadas que tienen autorización para el día (y aún no lo completan)
+     *    vuelven a Activa.
+     *
+     * @return array{authorized: int, reactivated: int}
      */
-    public function startDay(?CarbonInterface $date = null): int
+    public function startDay(?CarbonInterface $date = null): array
     {
         $date = self::day($date);
+
+        $pending = Diet::active()
+            ->where('created_at', '<', $date)
+            ->whereDoesntHave('days', fn ($q) => $q->withoutGlobalScope(CompanyScope::class)->on($date)->authorized())
+            ->pluck('id');
+
+        $pending->each(fn ($id) => DietDay::upsertFor($id, $date, [
+            'authorized_via' => DietDay::VIA_AUTOMATIC,
+            'authorized_by' => null,
+            'authorized_at' => now(),
+        ]));
 
         // Las dietas ya se filtran por empresa: en las subconsultas de días se quita el filtro,
         // porque vuelve a consultar `diets` y MySQL no deja leer la tabla que se actualiza (error 1093)
@@ -203,17 +260,17 @@ class DietDayService
             ->whereDoesntHave('days', fn ($q) => $q->withoutGlobalScope(CompanyScope::class)->on($date)->completed())
             ->update(['status' => Diet::ACTIVE]);
 
-        if ($count > 0) {
+        if ($count > 0 || $pending->isNotEmpty()) {
             LiveUpdates::touch(LiveUpdates::DAY);
         }
 
-        return $count;
+        return ['authorized' => $pending->count(), 'reactivated' => $count];
     }
 
     /* ===================== CONSULTAS PARA LA UI ===================== */
 
     /**
-     * Estado del día por dieta: [dietId => ['completed' => bool, 'authorizedToday' => bool, 'authorizedTomorrow' => bool]]
+     * Estado del día por dieta: [dietId => ['completed' => bool, 'authorizedToday' => bool, 'authorizedVia' => ?string, 'authorizedTomorrow' => bool]]
      */
     public function statusByDiet(array $dietIds, ?CarbonInterface $date = null): array
     {
@@ -232,6 +289,7 @@ class DietDayService
             return [$id => [
                 'completed' => (bool) $today?->isCompleted(),
                 'authorizedToday' => (bool) $today?->isAuthorized(),
+                'authorizedVia' => $today?->authorized_via,
                 'authorizedTomorrow' => (bool) $tomorrow?->isAuthorized(),
             ]];
         })->all();

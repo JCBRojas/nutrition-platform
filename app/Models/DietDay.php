@@ -23,6 +23,9 @@ class DietDay extends Model
 
     public const VIA_CONTINUATION = 'continuacion';
 
+    /** Autorizada por el inicio del día (diets:start-day) porque nadie la continuó */
+    public const VIA_AUTOMATIC = 'automatica';
+
     protected $fillable = [
         'diet_id',
         'service_date',

@@ -98,6 +98,23 @@ class NutritionDiets extends Component
         }
     }
 
+    /** «Autorizar hoy»: respaldo cuando no se continuó ayer y el inicio del día no la autorizó */
+    public function authorizeToday(int $dietId, DietDayService $days): void
+    {
+        abort_unless(auth()->user()?->can('continueDiets'), 403);
+
+        $diet = Diet::findAccessible($dietId);
+
+        try {
+            $days->authorizeToday($diet, auth()->id());
+            $this->notice = "Dieta de la habitación {$diet->habitation} autorizada para hoy.";
+            $this->noticeError = false;
+        } catch (ValidationException $e) {
+            $this->notice = collect($e->errors())->flatten()->first();
+            $this->noticeError = true;
+        }
+    }
+
     /* ===================== CANCELAR / DAR DE ALTA ===================== */
 
     /** Abre la confirmación con lo despachado sin recibir (se cobra) y, en el alta, el envío a otro lugar */

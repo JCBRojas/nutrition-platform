@@ -83,7 +83,8 @@ class DietService
             'timeFood' => $data['timeFood'] ?? null,
             'consistency' => $data['consistency'] ?? null,
             'specifications' => $data['specifications'] ?? null,
-            'billing_type' => $data['billing_type'] ?? null,
+            // Tipo de facturación deducido de consistencia y especificaciones (ya no se elige)
+            'billing_type' => BillingService::typeFor($data['consistency'] ?? null, $data['specifications'] ?? null) ?? ($data['billing_type'] ?? null),
             'observations' => $data['observations'] ?? null,
             'isolation' => $data['isolation'] ?? 'No',
             'changes' => $data['changes'] ?? null,

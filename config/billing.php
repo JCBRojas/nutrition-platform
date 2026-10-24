@@ -58,4 +58,16 @@ return [
         'entrecomidas' => ['label' => 'ENTRECOMIDAS', 'name' => 'Entrecomidas', 'services' => ['mediamanana', 'algo', 'merienda'], 'selectable' => false],
     ],
 
+    /*
+    | Tipo de dieta que se factura, deducido de la versión (BillingService::typeFor): ya no se
+    | elige en el formulario. Manda la primera consistencia de esta lista que tenga la dieta;
+    | si no tiene ninguna, la primera especificación de la lista; si tampoco, 'default'.
+    | El orden es la prioridad (p. ej. líquida clara + hipoglúcida → Líquida clara).
+    */
+    'type_from' => [
+        'consistency' => ['liquida_clara', 'liquida_completa', 'supraglotica', 'blanda_mecanica'],
+        'specifications' => ['hipoglucida', 'hiposodica', 'hipograsa'],
+        'default' => 'normal',
+    ],
+
 ];

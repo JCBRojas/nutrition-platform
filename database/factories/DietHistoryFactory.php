@@ -2,13 +2,15 @@
 
 namespace Database\Factories;
 
+use App\Models\DietHistory;
+use App\Services\BillingService;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
  * Las claves de timeFood, consistency y specifications salen de config/*.php
  * para que todas las vistas encuentren su etiqueta.
  *
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\DietHistory>
+ * @extends Factory<DietHistory>
  */
 class DietHistoryFactory extends Factory
 {
@@ -61,26 +63,10 @@ class DietHistoryFactory extends Factory
         return array_values(array_merge($meals, $snacks));
     }
 
-    /**
-     * Tipo de facturación coherente para datos de prueba: manda la consistencia
-     * (si tiene tipo propio y no es normal), luego la primera especificación con tipo.
-     */
+    /** Tipo de facturación: la misma regla de la aplicación (BillingService::typeFor) */
     public function billingTypeFor(array $consistency, array $specifications): string
     {
-        $types = array_keys(config('billing.types'));
-
-        foreach ($consistency as $c) {
-            if ($c !== 'normal' && in_array($c, $types, true)) {
-                return $c;
-            }
-        }
-        foreach ($specifications as $s) {
-            if (in_array($s, $types, true)) {
-                return $s;
-            }
-        }
-
-        return 'normal';
+        return BillingService::typeFor($consistency, $specifications) ?? config('billing.type_from.default');
     }
 
     public function randomSpecifications(): array

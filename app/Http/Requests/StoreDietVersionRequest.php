@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\NormalizesIsolation;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreDietVersionRequest extends FormRequest
@@ -20,7 +21,7 @@ class StoreDietVersionRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -30,7 +31,6 @@ class StoreDietVersionRequest extends FormRequest
             'specifications.*' => 'nullable|string',
             'observations' => 'nullable|string',
             'isolation' => $this->isolationRules(),
-            'billing_type' => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Services\BillingService::selectableTypes()))],
             'changes' => 'nullable|string',
         ];
     }
@@ -38,8 +38,6 @@ class StoreDietVersionRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'billing_type.required' => 'Elige el tipo de dieta (facturación).',
-            'billing_type.in' => 'El tipo de dieta elegido no es válido.',
             'isolation.in' => 'El aislamiento debe ser Sí o No.',
         ];
     }

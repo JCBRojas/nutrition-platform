@@ -7,6 +7,19 @@ let selections = {
     specifications: [],
 };
 
+// Tiempos recibidos hoy por dieta en edición ("edit-timeFood-ID" => [claves]): no se quitan
+const lockedChips = {};
+const LOCKED_MESSAGE = "Nutrición ya confirmó la recepción de este tiempo hoy: no se puede quitar.";
+
+function isLocked(key, val) {
+    return (lockedChips[key] ?? []).includes(val);
+}
+
+function warnLocked(csId) {
+    const select = document.getElementById(csId);
+    if (select) showFieldError(select, LOCKED_MESSAGE);
+}
+
 const inputMap = {
     timeFood: "f-tiempo",
     consistency: "f-consist",
@@ -34,15 +47,19 @@ function openEditModal(id, diet) {
         diet.current_version.observations ?? "";
     document.getElementById("edit-changes-" + id).value =
         diet.current_version.changes ?? "NA";
-    // Tipo de dieta para facturación ("" si la versión no lo tiene)
-    const billing = document.getElementById("edit-billing-type-" + id);
-    if (billing) billing.value = diet.current_version.billing_type ?? "";
 
     // Valores del enum: "Sí" | "No" (los antiguos "Si" se muestran como "Sí")
     document.getElementById("edit-isolation-" + id).value =
         diet.current_version.isolation === "No" || !diet.current_version.isolation ? "No" : "Sí";
 
+    lockedChips["edit-timeFood-" + id] = diet.locked_meals ?? [];
     selections["edit-timeFood-" + id] = diet.current_version.timeFood ?? [];
+    // Por si la versión guardó la clave antigua: los recibidos siempre quedan elegidos
+    lockedChips["edit-timeFood-" + id].forEach((m) => {
+        if (!selections["edit-timeFood-" + id].some((v) => v.replace("_", "") === m)) {
+            selections["edit-timeFood-" + id].push(m);
+        }
+    });
     renderChips("cs-timeFood-" + id, "edit-timeFood-" + id);
 
     selections["edit-consistency-" + id] =
@@ -108,8 +125,10 @@ function renderChips(csId, key) {
                     : "var(--dieta-chip-texto)"
             };">
             ${LABEL_MAP[v] ?? v}
-            <span class="remove"
-                onclick="removeChip('${key}','${v}', '${csId}'); event.stopPropagation()">×</span>
+            ${isLocked(key, v)
+                ? `<span class="chip-locked" title="Recibido hoy: no se puede quitar" aria-label="Recibido hoy, no se puede quitar">✓</span>`
+                : `<span class="remove"
+                onclick="removeChip('${key}','${v}', '${csId}'); event.stopPropagation()">×</span>`}
         </span>
     `,
         )
@@ -120,6 +139,9 @@ function renderChips(csId, key) {
     // ============================
     opts.forEach((o) => {
         o.classList.toggle("selected", selections[key].includes(o.dataset.val));
+        o.classList.toggle("locked", isLocked(key, o.dataset.val));
+        if (isLocked(key, o.dataset.val)) o.title = "Recibido hoy: no se puede quitar";
+        else o.removeAttribute("title");
     });
 
     // ============================
@@ -173,6 +195,7 @@ document.addEventListener("click", (e) => {
 function selectChip(e, csId, key, act) {
     e.stopPropagation();
     const val = e.target.dataset.val;
+    if (isLocked(key, val) && selections[key].includes(val)) return warnLocked(csId);
 
     selections[key] = selections[key].includes(val)
         ? selections[key].filter((v) => v !== val)
@@ -183,6 +206,7 @@ function selectChip(e, csId, key, act) {
 
 // Eliminar chip desde la X
 function removeChip(key, val, csId) {
+    if (isLocked(key, val)) return warnLocked(csId);
     selections[key] = selections[key].filter((v) => v !== val);
     renderChips(csId, key);
 }

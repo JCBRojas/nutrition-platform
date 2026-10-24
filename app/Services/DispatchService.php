@@ -110,7 +110,7 @@ class DispatchService
         $date = $day->toDateString();
         $result = ['dispatched' => [], 'skipped' => []];
 
-        // Las dietas Completadas ayer y continuadas para hoy vuelven a Activa (por si no corrió diets:start-day)
+        // Inicio del día por si no corrió diets:start-day: autoriza las no continuadas y reactiva las Completadas
         if ($day->isToday()) {
             $this->days->startDay($day);
         }

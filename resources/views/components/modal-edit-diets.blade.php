@@ -124,17 +124,6 @@
                     class="w-full border rounded px-2 py-1">
             </div>
 
-            {{-- Tipo de dieta (facturación) --}}
-            <div>
-                <label class="block text-sm font-medium" for="edit-billing-type-{{ $diet->id }}">Tipo de dieta (facturación) *</label>
-                <select name="billing_type" class="form-control" id="edit-billing-type-{{ $diet->id }}" required>
-                    <option value="">Selecciona el tipo</option>
-                    @foreach (\App\Services\BillingService::selectableTypes() as $key => $name)
-                        <option value="{{ $key }}" @selected(data_get($version, 'billing_type') === $key)>{{ $name }}</option>
-                    @endforeach
-                </select>
-            </div>
-
             {{-- Aislamiento --}}
             <div>
                 <label class="block text-sm font-medium">Aislamiento</label>

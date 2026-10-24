@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\DietHistory;
 use App\Models\ServicePrice;
 use App\Services\Reports\DietReportService;
 use Carbon\CarbonImmutable;
@@ -15,7 +16,8 @@ use InvalidArgumentException;
  * - Conteo: misma regla que el reporte nutricional (DietReportService::activeDietsByDay):
  *   última versión de cada dieta × días activa. El día del alta solo se facturan los
  *   servicios anteriores a la hora del alta (docs/bussiness-rules/facturacion-alta-paciente.md).
- * - Tipo: diet_histories.billing_type de esa versión. Sin tipo → se lista en 'unassigned'.
+ * - Tipo: deducido de la consistencia y las especificaciones de esa versión (typeFor,
+ *   config('billing.type_from')). Versiones antiguas sin ellas: su billing_type; sin tipo → 'unassigned'.
  * - Refrigerios de un tipo sin esa fila → config('billing.snack_type') (Entrecomidas).
  * - Fraccionada no se factura (no está en config('billing.services')).
  * - Valor: cada día se valora con el precio vigente ese día (service_prices).
@@ -52,7 +54,38 @@ class BillingService
         return config("timeFood.labels.{$service}") ?? ucfirst(mb_strtolower(self::services()[$service] ?? $service));
     }
 
-    /** Tipos que el nutricionista puede elegir en el formulario: clave => nombre */
+    /**
+     * Tipo de dieta a facturar según la consistencia y las especificaciones de la versión
+     * (prioridad en config('billing.type_from')). null si la versión no tiene ninguna de las
+     * dos (versiones antiguas): se usa su billing_type guardado.
+     */
+    public static function typeFor(?array $consistency, ?array $specifications): ?string
+    {
+        $consistency = array_values((array) $consistency);
+        $specifications = array_values((array) $specifications);
+        if ($consistency === [] && $specifications === []) {
+            return null;
+        }
+
+        $rules = config('billing.type_from');
+        foreach (['consistency' => $consistency, 'specifications' => $specifications] as $catalog => $selected) {
+            foreach ($rules[$catalog] as $type) {
+                if (in_array($type, $selected, true)) {
+                    return $type;
+                }
+            }
+        }
+
+        return $rules['default'];
+    }
+
+    /** Tipo con que se factura una versión */
+    public static function typeOf(DietHistory $version): ?string
+    {
+        return self::typeFor($version->consistency, $version->specifications) ?? $version->billing_type;
+    }
+
+    /** Tipos de dieta facturables (sin Entrecomidas, que solo agrupa refrigerios): clave => nombre */
     public static function selectableTypes(): array
     {
         return collect(self::types())
@@ -151,7 +184,7 @@ class BillingService
             }
 
             foreach ($day['diets'] as ['diet' => $diet, 'version' => $version, 'meals' => $meals]) {
-                $type = $version->billing_type;
+                $type = self::typeOf($version); // según consistencia y especificaciones
 
                 if (! $type || ! isset($types[$type])) {
                     $unassigned[$diet->id] ??= ['diet' => $diet, 'days' => 0];

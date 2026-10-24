@@ -173,16 +173,39 @@ class BillingTest extends TestCase
             ->assertSee('Media mañana, Algo, Merienda: se cobran en Entrecomidas.');
     }
 
-    public function test_diet_form_requires_billing_type(): void
+    public function test_diet_form_no_longer_asks_for_billing_type_and_deduces_it(): void
     {
         $this->actingAs($this->nutritionist)
             ->post(route('dietas.create'), ['habitation' => '102', 'name_patient' => 'Nuevo', 'timeFood' => ['desayuno'], 'consistency' => ['normal'], 'specifications' => ['hiposodica']])
-            ->assertSessionHasErrors('billing_type');
-
-        $this->actingAs($this->nutritionist)
-            ->post(route('dietas.create'), ['habitation' => '102', 'name_patient' => 'Nuevo', 'timeFood' => ['desayuno'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'billing_type' => 'hiperproteica'])
             ->assertSessionHasNoErrors();
 
-        $this->assertSame('hiperproteica', Diet::where('name_patient', 'Nuevo')->first()->currentVersion->billing_type);
+        $this->assertSame('hiposodica', Diet::where('name_patient', 'Nuevo')->first()->currentVersion->billing_type);
+
+        $this->actingAs($this->nutritionist)
+            ->get(route('dashboard.nutrition'))
+            ->assertOk()
+            ->assertDontSee('Tipo de dieta (facturación)');
+    }
+
+    public function test_type_is_deduced_from_consistency_then_specifications(): void
+    {
+        $this->assertSame('liquida_clara', BillingService::typeFor(['liquida_clara'], ['hipoglucida']));
+        $this->assertSame('blanda_mecanica', BillingService::typeFor(['normal', 'blanda_mecanica'], ['hiposodica']));
+        $this->assertSame('hipoglucida', BillingService::typeFor(['normal'], ['hiposodica', 'hipoglucida']));
+        $this->assertSame('hipograsa', BillingService::typeFor(['normal'], ['sin_gluten', 'hipograsa']));
+        $this->assertSame('normal', BillingService::typeFor(['normal'], ['sin_gluten']));
+        $this->assertNull(BillingService::typeFor([], []));
+    }
+
+    public function test_report_bills_by_consistency_and_specifications_not_the_stored_type(): void
+    {
+        // Versión guardada como «hiperproteica» a mano, pero es líquida clara: se factura como líquida clara
+        $diet = $this->diet('2026-10-15 06:00:00', ['almuerzo'], 'hiperproteica');
+        $diet->currentVersion->forceFill(['consistency' => ['liquida_clara'], 'specifications' => ['sin_lacteos']])->saveQuietly();
+
+        $m = $this->billing->monthly(CarbonImmutable::parse('2026-10-01'));
+
+        $this->assertSame(1, $this->row($m, 'liquida_clara', 'almuerzo')['count']);
+        $this->assertSame(0, $this->row($m, 'hiperproteica', 'almuerzo')['count']);
     }
 }

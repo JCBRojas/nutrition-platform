@@ -108,9 +108,20 @@
                                         @if ($day['completed'] ?? false)
                                             <span class="tag tag-completed" title="Se recibieron todos los tiempos de hoy">Completada</span>
                                         @elseif ($day['authorizedToday'] ?? false)
-                                            <span class="tag tag-in-progress" title="Autorizada para hoy; faltan tiempos por recibir">En curso</span>
+                                            <span class="tag tag-in-progress" title="{{ ($day['authorizedVia'] ?? null) === \App\Models\DietDay::VIA_AUTOMATIC ? 'Autorizada automáticamente al iniciar el día' : 'Autorizada para hoy' }}; faltan tiempos por recibir">En curso</span>
                                         @else
                                             <span class="tag tag-blocked" title="No se puede despachar hoy: no se continuó ayer">Sin autorizar hoy</span>
+                                            @can('continueDiets')
+                                            <button type="button" class="nd-next nd-continue" title="Autorizar hoy: cocina podrá despacharla hoy"
+                                                    wire:click="authorizeToday({{ $diet->id }})" wire:loading.attr="disabled" wire:target="authorizeToday({{ $diet->id }})"
+                                                    wire:confirm="{{ "¿Autorizar hoy la dieta de {$diet->name_patient} (hab. {$diet->habitation})?
+
+Cocina podrá despacharla hoy." }}"
+                                                    aria-label="Autorizar hoy la dieta de {{ $diet->name_patient }}">
+                                                    <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                                    Autorizar hoy
+                                                </button>
+                                            @endcan
                                         @endif
 
                                         @if ($day['authorizedTomorrow'] ?? false)
@@ -120,14 +131,13 @@
                                             </span>
                                         @else
                                             @can('continueDiets')
-                                            <button type="button" class="nd-next nd-continue" title="Continuar dieta: autoriza el despacho de mañana"
+                                            <button type="button" class="nd-next nd-continue nd-icon-only" title="Continuar dieta: autoriza el despacho de mañana"
                                                     wire:click="continueDiet({{ $diet->id }})" wire:loading.attr="disabled" wire:target="continueDiet({{ $diet->id }})"
                                                     wire:confirm="{{ "¿Continuar la dieta de {$diet->name_patient} (hab. {$diet->habitation}) mañana?
 
 Cocina podrá despacharla el día siguiente." }}"
                                                     aria-label="Continuar dieta de {{ $diet->name_patient }} mañana">
                                                     <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="13 6 19 12 13 18"/><line x1="5" y1="12" x2="19" y2="12" style="display: block"/></svg>
-                                                    Continuar
                                                 </button>
                                             @else
                                                 <span class="nd-next nd-next-off" title="Mañana sin autorizar">Mañana —</span>
@@ -198,7 +208,7 @@ Cocina podrá despacharla el día siguiente." }}"
                                         @can('editDiets')
                                         <button type="button" class="btn btn-success btn-sm btn-icon" title="Editar dieta"
                                             aria-label="Editar dieta de {{ $diet->name_patient }}"
-                                            onclick='openEditModal({{ $diet->id }}, @json($diet->editPayload()))'>
+                                            onclick='openEditModal({{ $diet->id }}, @json($diet->editPayload(array_keys(array_filter($delivery[$diet->id] ?? [], fn ($s) => $s === 'received')))))'>
                                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
                                         </button>
                                         {{-- Alta y cancelación: el modal informa lo despachado sin recibir y el envío a otro lugar --}}

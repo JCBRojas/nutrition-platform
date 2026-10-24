@@ -1471,6 +1471,17 @@ textarea {
   opacity: .38
 }
 
+/* Tiempo recibido hoy: no se puede quitar al editar */
+.chip-option.locked {
+  cursor: not-allowed
+}
+
+.chip .chip-locked {
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 700
+}
+
 /* ── HISTORY ── */
 .history-item {
   display: flex;

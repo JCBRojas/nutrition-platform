@@ -5,7 +5,9 @@ namespace App\Http\Requests;
 use App\Http\Requests\Concerns\NormalizesIsolation;
 use App\Http\Requests\Concerns\ValidatesDietCatalog;
 use App\Models\Diet;
+use App\Models\DietDispatch;
 use App\Rules\NoHtml;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -36,7 +38,7 @@ class StoreDietRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     protected function prepareForValidation(): void
     {
@@ -58,7 +60,6 @@ class StoreDietRequest extends FormRequest
             'allow_duplicate_room' => ['nullable', 'boolean'],
             'observations' => ['nullable', 'string', new NoHtml],
             'isolation' => $this->isolationRules(),
-            'billing_type' => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Services\BillingService::selectableTypes()))],
             'changes' => ['nullable', 'string', new NoHtml],
         ];
     }
@@ -81,8 +82,6 @@ class StoreDietRequest extends FormRequest
             'name_patient.required' => 'Escribe el nombre del paciente.',
             'name_patient.max' => 'Escribe el nombre del paciente con :max caracteres como máximo.',
             ...$this->catalogMessages(),
-            'billing_type.required' => 'Elige el tipo de dieta (facturación).',
-            'billing_type.in' => 'Elige un tipo de dieta de la lista.',
             'isolation.in' => 'Elige Sí o No en aislamiento.',
         ];
     }
@@ -94,7 +93,13 @@ class StoreDietRequest extends FormRequest
     public function after(): array
     {
         return [function (Validator $validator) {
-            if ($this->route('diet') || $validator->errors()->has('habitation') || $this->boolean('allow_duplicate_room')) {
+            if ($this->route('diet')) {
+                $this->keepReceivedMeals($validator);
+
+                return;
+            }
+
+            if ($validator->errors()->has('habitation') || $this->boolean('allow_duplicate_room')) {
                 return;
             }
 
@@ -103,5 +108,29 @@ class StoreDietRequest extends FormRequest
                 $validator->errors()->add('habitation', "La habitación {$room} ya tiene una dieta activa. Edítala o, si es una habitación compartida, marca «Registrar de todas formas».");
             }
         }];
+    }
+
+    /**
+     * Al versionar, los tiempos que nutrición ya recibió hoy no se pueden quitar: ya se sirvieron
+     * (y se facturan). P. ej. con el almuerzo recibido, la edición debe conservar el almuerzo.
+     */
+    private function keepReceivedMeals(Validator $validator): void
+    {
+        if ($validator->errors()->has('timeFood') || $validator->errors()->has('timeFood.*')) {
+            return;
+        }
+
+        $plain = fn ($meal) => str_replace('_', '', (string) $meal);
+        $selected = array_map($plain, (array) $this->input('timeFood'));
+        $removed = DietDispatch::received()
+            ->where('diet_id', $this->route('diet')->id)
+            ->whereDate('service_date', now()->toDateString())
+            ->pluck('meal')
+            ->reject(fn ($meal) => in_array($plain($meal), $selected, true))
+            ->map(fn ($meal) => config("timeFood.labels.{$meal}", $meal));
+
+        if ($removed->isNotEmpty()) {
+            $validator->errors()->add('timeFood', 'No puedes quitar '.$removed->implode(', ').': nutrición ya confirmó su recepción hoy.');
+        }
     }
 }

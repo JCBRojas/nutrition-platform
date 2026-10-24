@@ -7,6 +7,7 @@ use App\Livewire\NutritionDiets;
 use App\Models\Diet;
 use App\Models\DietDay;
 use App\Models\DietDispatch;
+use App\Models\DietHistory;
 use App\Models\User;
 use App\Services\BillingService;
 use App\Services\DietDayService;
@@ -155,25 +156,141 @@ class DietDayCompletionTest extends TestCase
         // Más tarde se quita el desayuno: lo que nutrición ya recibió sigue contando
         $this->travelTo(CarbonImmutable::parse('2026-10-20 10:00:00'));
         app(DietService::class)->createNewVersion($diet, [
-            'timeFood' => ['almuerzo'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'],
+            'timeFood' => ['almuerzo'], 'consistency' => ['normal'], 'specifications' => ['sin_gluten'],
             'billing_type' => 'normal', 'changes' => 'con_cambios',
         ], $this->nutritionist->id);
 
         $this->assertSame(1, $this->billed('desayuno'));
     }
 
-    public function test_next_day_needs_continue_before_dispatching(): void
+    public function test_received_meal_cannot_be_removed_when_editing(): void
+    {
+        $diet = $this->diet('107', ['desayuno', 'almuerzo']);
+        $this->travelTo(CarbonImmutable::parse('2026-10-20 12:10:00'));
+        $this->serve($diet, 'almuerzo');
+        $form = ['timeFood' => ['desayuno'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'changes' => 'con_cambios'];
+
+        $this->actingAs($this->nutritionist)
+            ->put(route('dietas.update', $diet), $form)
+            ->assertSessionHasErrors(['timeFood' => 'No puedes quitar Almuerzo: nutrición ya confirmó su recepción hoy.']);
+        $this->assertSame(1, $diet->history()->count());
+
+        // Conservando el almuerzo sí se puede editar (aquí se quita el desayuno, no recibido)
+        $this->actingAs($this->nutritionist)
+            ->put(route('dietas.update', $diet), ['timeFood' => ['almuerzo', 'cena']] + $form)
+            ->assertSessionHasNoErrors();
+        $this->assertSame(['almuerzo', 'cena'], $diet->fresh()->currentVersion->timeFood);
+
+        // Al día siguiente el almuerzo de ayer ya no bloquea
+        $this->travelTo(CarbonImmutable::parse('2026-10-21 08:00:00'));
+        $this->actingAs($this->nutritionist)
+            ->put(route('dietas.update', $diet), ['timeFood' => ['cena']] + $form)
+            ->assertSessionHasNoErrors();
+    }
+
+    public function test_dispatched_but_not_received_meal_can_still_be_removed(): void
+    {
+        $diet = $this->diet('108', ['desayuno', 'almuerzo']);
+        $this->travelTo(CarbonImmutable::parse('2026-10-20 12:10:00'));
+        app(DispatchService::class)->dispatch([$diet->id], 'almuerzo', $this->dispatcher->id);
+
+        $this->actingAs($this->nutritionist)
+            ->put(route('dietas.update', $diet), ['timeFood' => ['desayuno'], 'consistency' => ['normal'], 'specifications' => ['hiposodica'], 'changes' => 'con_cambios'])
+            ->assertSessionHasNoErrors();
+    }
+
+    public function test_edit_button_sends_the_received_meals_as_locked(): void
+    {
+        $diet = $this->diet('109', ['desayuno', 'almuerzo']);
+        $this->serve($diet, 'desayuno');
+
+        Livewire::actingAs($this->nutritionist)
+            ->test(NutritionDiets::class)
+            ->assertSeeHtml('"locked_meals":["desayuno"]');
+    }
+
+    public function test_next_day_without_continue_is_authorized_automatically_when_dispatching(): void
     {
         $diet = $this->diet('105', ['desayuno']);
         $this->serve($diet, 'desayuno');
         $this->assertSame(Diet::COMPLETED, $diet->fresh()->status);
 
-        // Al día siguiente sin «Continuar dieta»: cocina no puede despachar
-        $this->travelTo(CarbonImmutable::parse('2026-10-21 06:00:00'));
+        // Al día siguiente sin «Continuar dieta» ni diets:start-day: al despachar se inicia el día y se autoriza sola
+        $this->travelTo(CarbonImmutable::parse('2026-10-21 06:40:00'));
         $result = app(DispatchService::class)->dispatch([$diet->id], 'desayuno', $this->dispatcher->id);
-        $this->assertSame([], $result['dispatched']);
-        $this->assertStringContainsString('Continuar dieta', $result['skipped']['105']);
-        $this->assertSame(0, DietDispatch::whereDate('service_date', '2026-10-21')->count());
+
+        $this->assertSame(['105'], $result['dispatched']);
+        $this->assertSame(DietDay::VIA_AUTOMATIC, DietDay::where('diet_id', $diet->id)->whereDate('service_date', '2026-10-21')->value('authorized_via'));
+        $this->assertSame(Diet::ACTIVE, $diet->fresh()->status);
+    }
+
+    public function test_start_day_authorizes_open_diets_nobody_continued(): void
+    {
+        $completed = $this->diet('120', ['desayuno']);
+        $this->serve($completed, 'desayuno');
+        $active = $this->diet('121', ['desayuno', 'almuerzo']);
+        $continued = $this->diet('122', ['desayuno']);
+        app(DietDayService::class)->continueDiet($continued, $this->nutritionist->id);
+        $cancelled = $this->diet('123', ['desayuno']);
+        app(DietService::class)->cancelDiet($cancelled, $this->nutritionist->id);
+        $versions = DietHistory::count();
+
+        $this->travelTo(CarbonImmutable::parse('2026-10-21 00:01:00'));
+        $this->artisan('diets:start-day')
+            ->expectsOutput('2 dieta(s) autorizada(s) automáticamente; 1 volvieron a Activa.')
+            ->assertSuccessful();
+
+        $via = fn (Diet $d) => DietDay::where('diet_id', $d->id)->whereDate('service_date', '2026-10-21')->value('authorized_via');
+        $this->assertSame(DietDay::VIA_AUTOMATIC, $via($completed));
+        $this->assertSame(DietDay::VIA_AUTOMATIC, $via($active));
+        $this->assertSame(DietDay::VIA_CONTINUATION, $via($continued)); // no se pisa «Continuar»
+        $this->assertNull($via($cancelled));
+        $this->assertSame(Diet::ACTIVE, $completed->fresh()->status);
+        $this->assertSame($versions, DietHistory::count()); // sin versión: no hay usuario
+
+        // Correrlo otra vez no duplica nada
+        $this->artisan('diets:start-day')->expectsOutput('0 dieta(s) autorizada(s) automáticamente; 0 volvieron a Activa.');
+        $this->assertSame(3, DietDay::whereDate('service_date', '2026-10-21')->count()); // la cancelada no tiene día
+    }
+
+    public function test_authorize_today_when_the_day_was_not_authorized(): void
+    {
+        $diet = $this->diet('124', ['desayuno']);
+        $this->serve($diet, 'desayuno');
+        $this->travelTo(CarbonImmutable::parse('2026-10-21 06:00:00')); // no corrió el inicio del día
+
+        // Solo lectura (sin continueDiets): no ve el botón ni puede autorizar
+        $reader = User::factory()->create();
+        $reader->assignRole(Role::firstOrCreate(['name' => 'lectura', 'guard_name' => 'web'])->syncPermissions(['viewActiveDiets']));
+        Livewire::actingAs($reader)->test(NutritionDiets::class)
+            ->assertSee('Sin autorizar hoy')
+            ->assertDontSeeHtml('wire:click="authorizeToday(')
+            ->call('authorizeToday', $diet->id)
+            ->assertForbidden();
+
+        Livewire::actingAs($this->nutritionist)->test(NutritionDiets::class)
+            ->assertSee('Sin autorizar hoy')
+            ->assertSee('Autorizar hoy')
+            ->call('authorizeToday', $diet->id)
+            ->assertSet('noticeError', false)
+            ->assertSet('notice', 'Dieta de la habitación 124 autorizada para hoy.')
+            ->assertSee('En curso')
+            ->call('authorizeToday', $diet->id)
+            ->assertSet('noticeError', true)
+            ->assertSet('notice', 'La dieta de la habitación 124 ya está autorizada para hoy.');
+
+        $this->assertSame(Diet::ACTIVE, $diet->fresh()->status);
+        $this->assertSame('continuada', $diet->fresh()->currentVersion->changes);
+        $this->assertSame(['124'], app(DispatchService::class)->dispatch([$diet->id], 'desayuno', $this->dispatcher->id)['dispatched']);
+    }
+
+    public function test_closed_diet_cannot_be_authorized_today(): void
+    {
+        $diet = $this->diet('125', ['desayuno']);
+        app(DietService::class)->cancelDiet($diet, $this->nutritionist->id);
+
+        $this->expectException(ValidationException::class);
+        app(DietDayService::class)->authorizeToday($diet->fresh(), $this->nutritionist->id);
     }
 
     public function test_continue_authorizes_tomorrow_and_restarts_the_day(): void

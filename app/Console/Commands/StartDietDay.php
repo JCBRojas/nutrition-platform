@@ -6,19 +6,19 @@ use App\Services\DietDayService;
 use Illuminate\Console\Command;
 
 /**
- * Inicio del día: las dietas Completadas que se continuaron para hoy vuelven a Activa.
- * Las que no se continuaron siguen Completadas y cocina no puede despacharlas.
+ * Inicio del día: autoriza las dietas abiertas que nadie continuó (autorización automática)
+ * y las Completadas autorizadas para hoy vuelven a Activa.
  */
 class StartDietDay extends Command
 {
     protected $signature = 'diets:start-day';
 
-    protected $description = 'Vuelve a Activa las dietas completadas que se continuaron para hoy';
+    protected $description = 'Autoriza el día de las dietas abiertas y vuelve a Activa las completadas';
 
     public function handle(DietDayService $days): int
     {
-        $count = $days->startDay();
-        $this->info("{$count} dieta(s) continuada(s) para hoy volvieron a Activa.");
+        $result = $days->startDay();
+        $this->info("{$result['authorized']} dieta(s) autorizada(s) automáticamente; {$result['reactivated']} volvieron a Activa.");
 
         return self::SUCCESS;
     }

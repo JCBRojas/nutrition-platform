@@ -67,6 +67,7 @@
     .nd-continue:hover { background: var(--btn-primary); color: var(--btn-primary-texto); }
     .nd-continue:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .nd-continue[disabled] { opacity: .5; cursor: wait; }
+    .nd-icon-only { width: 22px; padding: 0; justify-content: center; } /* «Continuar»: solo el ícono (nombre en title y aria-label) */
     .nd-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .nd-tabs .nd-register { margin-left: auto; white-space: nowrap; }
     @media (max-width: 640px) {
