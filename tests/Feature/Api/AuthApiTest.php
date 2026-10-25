@@ -59,7 +59,8 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('catalogs.meals.0', ['key' => 'desayuno', 'label' => 'Desayuno', 'time' => '06:30'])
             ->assertJsonPath('catalogs.consistency.normal', config('consistency.labels.normal'))
             ->assertJsonPath('catalogs.void_kinds.not_arrived', 'No llegó')
-            ->assertJsonPath('diet_form.billing_type_required', true)
+            // El tipo de facturación se deduce de la consistencia y las especificaciones: la app no lo pide
+            ->assertJsonPath('diet_form.billing_type_required', false)
             ->assertJsonPath('diet_form.habitation_max', 4)
             ->assertJsonPath('realtime.channel', 'private-diets')
             ->assertJsonPath('realtime.event', '.diets.changed')

@@ -90,6 +90,19 @@ class DietApiTest extends TestCase
         $this->as($this->dispatcher)->postJson(route('api.v1.diets.store'), $this->payload(['habitation' => '203']))->assertForbidden();
     }
 
+    public function test_update_keeps_the_meals_received_today(): void
+    {
+        $diet = $this->diet('205');
+        $dispatch = app(DispatchService::class)->dispatch([$diet->id], 'almuerzo', $this->dispatcher->id);
+        $this->assertSame(['205'], $dispatch['dispatched']);
+        app(DispatchService::class)->confirmReceipt(DietDispatch::where('diet_id', $diet->id)->pluck('id')->all(), $this->nutritionist->id);
+
+        $this->as($this->nutritionist)->putJson(route('api.v1.diets.update', $diet->id), $this->payload(['timeFood' => ['cena']]))
+            ->assertStatus(422)
+            ->assertJsonPath('errors.timeFood.0', 'No puedes quitar Almuerzo: nutrición ya confirmó su recepción hoy.');
+        $this->putJson(route('api.v1.diets.update', $diet->id), $this->payload(['timeFood' => ['almuerzo']]))->assertOk();
+    }
+
     public function test_update_creates_a_new_version_only_for_active_diets_of_the_company(): void
     {
         $diet = $this->diet('204');

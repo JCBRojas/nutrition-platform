@@ -120,10 +120,13 @@ class StoreDietRequest extends FormRequest
             return;
         }
 
+        // La web enlaza el modelo; la API v1 recibe el ID (busca la dieta en el controlador)
+        $diet = $this->route('diet');
+        $dietId = $diet instanceof Diet ? $diet->id : (int) $diet;
         $plain = fn ($meal) => str_replace('_', '', (string) $meal);
         $selected = array_map($plain, (array) $this->input('timeFood'));
         $removed = DietDispatch::received()
-            ->where('diet_id', $this->route('diet')->id)
+            ->where('diet_id', $dietId)
             ->whereDate('service_date', now()->toDateString())
             ->pluck('meal')
             ->reject(fn ($meal) => in_array($plain($meal), $selected, true))
