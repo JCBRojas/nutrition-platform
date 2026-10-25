@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Events\DietsChanged;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreDietRequest;
 use App\Models\DietDispatchVoid;
 use App\Services\BillingService;
 use App\Services\Reports\DietReportService;
@@ -36,6 +37,12 @@ class MetaController extends Controller
                 'specifications' => config('specifications.labels'),
                 'billing_types' => BillingService::selectableTypes(),
                 'void_kinds' => DietDispatchVoid::LABELS,
+            ],
+            // Formulario de dieta: si se pide el tipo de facturación o el servidor lo deduce
+            'diet_form' => [
+                'billing_type_required' => array_key_exists('billing_type', (new StoreDietRequest)->rules()),
+                'habitation_max' => StoreDietRequest::HABITATION_MAX,
+                'name_max' => StoreDietRequest::NAME_MAX,
             ],
             'realtime' => [
                 'enabled' => filled($key),

@@ -26,6 +26,7 @@ class NtColors {
   static const btnSuccess = Color(0xFF198754);
   static const btnDanger = Color(0xFFDC3545);
   static const btnSecondary = Color(0xFF6C757D);
+  static const btnInfo = Color(0xFF0DCAF0);
 
   // Catálogo de dietas
   static const dietaTiempo = Color(0xFF4A7FCB);

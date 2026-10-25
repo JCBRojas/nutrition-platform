@@ -1,17 +1,21 @@
 /// Datos públicos del servidor (GET /api/v1/meta)
 class Meta {
-  Meta({required this.minVersion, required this.webUrl, required this.catalogs, required this.realtime});
+  Meta({required this.minVersion, required this.webUrl, required this.catalogs, required this.realtime, this.dietForm = const {}});
 
   final String minVersion;
   final String webUrl;
   final Map<String, dynamic> catalogs;
   final Map<String, dynamic> realtime;
 
+  /// Reglas del formulario de dieta (billing_type_required, habitation_max, name_max)
+  final Map<String, dynamic> dietForm;
+
   factory Meta.fromJson(Map<String, dynamic> json) => Meta(
         minVersion: json['min_desktop_version']?.toString() ?? '0.0.0',
         webUrl: json['web_url']?.toString() ?? '',
         catalogs: Map<String, dynamic>.from(json['catalogs'] as Map? ?? const {}),
         realtime: Map<String, dynamic>.from(json['realtime'] as Map? ?? const {}),
+        dietForm: Map<String, dynamic>.from(json['diet_form'] as Map? ?? const {}),
       );
 }
 

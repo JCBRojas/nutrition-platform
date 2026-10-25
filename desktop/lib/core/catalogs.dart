@@ -13,11 +13,17 @@ class Meal {
 
 /// Catálogos de dietas que envía el servidor en /meta: las mismas claves y etiquetas que la web
 class Catalogs {
-  Catalogs(this.meals, this.consistency, this.specifications);
+  Catalogs(this.meals, this.consistency, this.specifications, {this.billingTypes = const {}, this.billingTypeRequired = false, this.habitationMax = 4, this.nameMax = 150});
 
   final List<Meal> meals;
   final Map<String, String> consistency;
   final Map<String, String> specifications;
+
+  /// Tipos de dieta para facturación (solo se piden si el servidor no los deduce)
+  final Map<String, String> billingTypes;
+  final bool billingTypeRequired;
+  final int habitationMax;
+  final int nameMax;
 
   factory Catalogs.fromMeta(Meta? meta) {
     final raw = meta?.catalogs ?? const {};
@@ -31,6 +37,10 @@ class Catalogs {
           .toList(),
       labels('consistency'),
       labels('specifications'),
+      billingTypes: labels('billing_types'),
+      billingTypeRequired: meta?.dietForm['billing_type_required'] == true,
+      habitationMax: meta?.dietForm['habitation_max'] as int? ?? 4,
+      nameMax: meta?.dietForm['name_max'] as int? ?? 150,
     );
   }
 
@@ -45,6 +55,17 @@ class Catalogs {
   String consistencyLabel(String key) => consistency[key] ?? _readable(key);
 
   String specificationLabel(String key) => specifications[key] ?? _readable(key);
+
+  /// Columna «Cambios» del panel (mismas etiquetas que la web; las copias del día no muestran nada)
+  static String changeLabel(String? key) => switch (key) {
+        null || '' || 'NA' || 'completada' || 'continuada' => '—',
+        'con_cambios' => 'Con cambios',
+        'aislado' => 'Se aisló',
+        'ya_no_aislado' => 'Ya no está aislado',
+        'cancelada' => 'Cancelada',
+        'finalizada' => 'Finalizada (alta)',
+        _ => _readable(key),
+      };
 
   /// Respaldo legible para claves fuera del catálogo (como DietReportService::label)
   static String _readable(String key) {

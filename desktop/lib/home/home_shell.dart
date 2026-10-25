@@ -6,8 +6,10 @@ import '../auth/auth_screens.dart';
 import '../auth/models.dart';
 import '../auth/session.dart';
 import '../core/theme.dart';
+import '../diets/diets_screen.dart';
 import '../dispatch/dispatch_controller.dart';
 import '../dispatch/dispatch_screen.dart';
+import '../dispatch_log/dispatch_log_screen.dart';
 import '../receipts/receipts_controller.dart';
 import '../receipts/receipts_screen.dart';
 
@@ -30,11 +32,15 @@ final sections = <Section>[
 
 Widget _dispatchScreen(BuildContext context) => const DispatchScreen();
 Widget _receiptsScreen(BuildContext context) => const ReceiptsScreen();
+Widget _dietsScreen(BuildContext context) => const DietsScreen();
+Widget _dispatchLogScreen(BuildContext context) => const DispatchLogScreen();
 
-/// Pantallas listas; Dietas activas y Despachos del día llegan en el paso 6 del plan
+/// Pantalla de cada sección del menú
 const defaultScreens = <String, WidgetBuilder>{
   'dispatch': _dispatchScreen,
   'receipts': _receiptsScreen,
+  'diets': _dietsScreen,
+  'dispatches': _dispatchLogScreen,
 };
 
 /// Marco de la app con sesión: menú lateral, empresa activa, usuario y cierre de sesión.
@@ -147,7 +153,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                       : (operational ? widget.builders[_current]?.call(context) : null) ??
                           _Placeholder(
                             title: visible[index < 0 ? 0 : index].label,
-                            text: operational ? 'Esta sección se agrega en el siguiente paso de la app.' : 'Resuelve el aviso de arriba en NutriTrack web para usar esta sección.',
+                            text: operational ? 'Esta sección no está disponible en la app. Usa NutriTrack en el navegador.' : 'Resuelve el aviso de arriba en NutriTrack web para usar esta sección.',
                           ),
                 ),
               ],

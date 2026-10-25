@@ -46,7 +46,7 @@ const metaJson = {
   'realtime': {'enabled': false},
 };
 
-Map<String, dynamic> meJson({List<String> permissions = const ['confirmDelivery'], String home = 'dispatch', List<Map<String, Object>>? companies, bool privacy = false}) => {
+Map<String, dynamic> meJson({List<String> permissions = const ['confirmDelivery'], String home = 'dispatch', List<Map<String, Object>>? companies, bool privacy = false, List<String> premium = const []}) => {
       'id': 7,
       'name': 'Mariana López',
       'email': 'mariana@nutritrack.com',
@@ -55,7 +55,7 @@ Map<String, dynamic> meJson({List<String> permissions = const ['confirmDelivery'
       'home': home,
       'companies': companies ?? [{'id': 1, 'name': 'Clínica Central', 'is_default': true}],
       'current_company_id': 1,
-      'premium': [],
+      'premium': premium,
       'compliance': {'privacy_required': privacy, 'two_factor_setup_required': false},
     };
 
