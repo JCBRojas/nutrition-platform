@@ -61,9 +61,14 @@ class EmailDomainService
         }
     }
 
-    /** Cierra las sesiones abiertas de los usuarios cuyo dominio ya no está autorizado */
+    /** Cierra las sesiones abiertas y revoca los tokens de los usuarios cuyo dominio ya no está autorizado */
     private function endSessionsWithoutAccess(): void
     {
+        // Tokens del cliente de escritorio (NUT-RN-004)
+        User::whereHas('tokens')->get(['id', 'email'])
+            ->reject(fn (User $user) => EmailDomain::allows($user->email))
+            ->each(fn (User $user) => $user->tokens()->delete());
+
         if (config('session.driver') !== 'database') {
             return;
         }

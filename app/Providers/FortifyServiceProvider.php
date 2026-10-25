@@ -6,18 +6,15 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
+use App\Http\Middleware\CustomThrottleLogin;
 use App\Http\Responses\LoginResponse;
 use App\Http\Responses\PasswordResetLinkResponse;
-use App\Models\EmailDomain;
-use App\Models\User;
-use App\Services\AuditLogger;
+use App\Services\AuthService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Contracts\LockoutResponse as LockoutResponseContract;
@@ -80,57 +77,17 @@ class FortifyServiceProvider extends ServiceProvider
             return Limit::perMinute(3)->by($throttleKey);
         });
 
-        $this->app->router->aliasMiddleware('throttle', \App\Http\Middleware\CustomThrottleLogin::class);
+        $this->app->router->aliasMiddleware('throttle', CustomThrottleLogin::class);
 
         RateLimiter::for('two-factor', function (Request $request) {
             return Limit::perMinute(3)->by($request->session()->get('login.id'));
         });
 
-        Fortify::authenticateUsing(function (Request $request) {
-            $username = $request->input(Fortify::username());
-            $throttleKey = Str::transliterate(Str::lower($username).'|'.$request->ip());
-
-            if (RateLimiter::tooManyAttempts($throttleKey, 3)) {
-                $seconds = RateLimiter::availableIn($throttleKey);
-                AuditLogger::log('lockout', "Bloqueo de inicio de sesión para {$username}", null, ['email' => $username, 'seconds' => $seconds]);
-
-                throw ValidationException::withMessages([
-                    Fortify::username() => "Demasiados intentos de inicio de sesión. Inténtalo nuevamente en {$seconds} segundos.",
-                ])->status(302);
-            }
-
-            $user = User::where(Fortify::username(), $username)->first();
-
-            if (! $user || ! Hash::check($request->password, $user->password)) {
-                RateLimiter::hit($throttleKey);
-                AuditLogger::log('login_failed', "Intento fallido con {$username}", $user, ['email' => $username, 'reason' => $user ? 'contraseña' : 'usuario inexistente'], $user?->id);
-
-                throw ValidationException::withMessages([
-                    Fortify::username() => 'Credenciales incorrectas.',
-                ]);
-            }
-
-            // NUT-RN-002-01/-04: dominio no autorizado → mismo mensaje que credenciales inválidas
-            if (! EmailDomain::allows($user->email)) {
-                RateLimiter::hit($throttleKey);
-                $domain = EmailDomain::of($user->email);
-                AuditLogger::log('login_blocked_domain', "Ingreso rechazado: dominio {$domain} no autorizado", $user, ['domain' => $domain], $user->id);
-
-                throw ValidationException::withMessages([
-                    Fortify::username() => 'Credenciales incorrectas.',
-                ]);
-            }
-
-            RateLimiter::clear($throttleKey);
-
-            if (! $user->is_active) {
-                AuditLogger::log('login_failed', "Intento de usuario inactivo {$username}", $user, ['email' => $username, 'reason' => 'inactivo'], $user->id);
-                throw ValidationException::withMessages([
-                    Fortify::username() => 'Tu usuario está inactivo. Contacta al administrador.',
-                ]);
-            }
-
-            return $user;
-        });
+        // Reglas compartidas con la API del cliente de escritorio (App\Services\AuthService)
+        Fortify::authenticateUsing(fn (Request $request) => app(AuthService::class)->attempt(
+            (string) $request->input(Fortify::username()),
+            (string) $request->password,
+            (string) $request->ip(),
+        ));
     }
 }

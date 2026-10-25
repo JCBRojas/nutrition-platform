@@ -23,18 +23,23 @@ class EnsureAccountCompliance
         }
 
         if (config('security.privacy.required') && ! $user->hasAcceptedPrivacyPolicy()) {
-            return $this->deny($request, route('privacy.accept'), 'Debes aceptar la política de tratamiento de datos para continuar.');
+            return $this->deny($request, route('privacy.accept'), 'Debes aceptar la política de tratamiento de datos para continuar.', 'privacy_required');
         }
 
         if ($user->requiresTwoFactor() && ! $user->hasTwoFactorEnabled()) {
-            return $this->deny($request, route('profile.show').'#two-factor', 'Tu rol requiere la verificación en dos pasos. Actívala en «Autenticación de dos factores» para continuar.');
+            return $this->deny($request, route('profile.show').'#two-factor', 'Tu rol requiere la verificación en dos pasos. Actívala en «Autenticación de dos factores» para continuar.', 'two_factor_setup_required');
         }
 
         return $next($request);
     }
 
-    private function deny(Request $request, string $url, string $message): Response
+    private function deny(Request $request, string $url, string $message, string $code): Response
     {
+        // API del cliente de escritorio: se resuelve en la web (enlace en 'url')
+        if ($request->is('api/*')) {
+            return response()->json(['message' => $message, 'code' => $code, 'url' => $url], 403);
+        }
+
         if ($request->expectsJson()) {
             abort(403, $message);
         }

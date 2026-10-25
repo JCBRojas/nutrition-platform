@@ -269,5 +269,7 @@ class UserService
         if (config('session.driver') === 'database') {
             DB::table(config('session.table', 'sessions'))->where('user_id', $user->getKey())->delete();
         }
+        // Y los tokens del cliente de escritorio (NUT-RN-004)
+        $user->tokens()->delete();
     }
 }

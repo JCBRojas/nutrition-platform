@@ -5,13 +5,10 @@ namespace App\Livewire;
 use App\Models\Diet;
 use App\Models\DietDispatch;
 use App\Models\DietDispatchVoid;
-use App\Models\DietHistory;
-use App\Services\DietDayService;
-use App\Services\DietHistoryService;
 use App\Services\DietService;
+use App\Services\DispatchBoard;
 use App\Services\DispatchService;
 use App\Support\Pagination;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Url;
@@ -26,9 +23,6 @@ use Livewire\WithPagination;
 class DietsManager extends Component
 {
     use WithPagination;
-
-    /** Campos que se comparan para mostrar qué cambió */
-    private const COMPARED_FIELDS = ['timeFood', 'consistency', 'specifications', 'observations', 'isolation'];
 
     #[Url(except: 'active')]
     public string $tab = 'active'; // active | closed
@@ -117,7 +111,7 @@ class DietsManager extends Component
         }
 
         $rooms = $this->pending()
-            ->filter(fn (Diet $d) => in_array($this->pendingKey($d), $new, true))
+            ->filter(fn (Diet $d) => in_array(DispatchBoard::pendingKey($d), $new, true))
             ->map(fn (Diet $d) => $d->habitation)
             ->values()
             ->all();
@@ -217,54 +211,11 @@ class DietsManager extends Component
 
     public function render()
     {
-        $statuses = $this->tab === 'closed' ? [Diet::CANCELLED, Diet::FINISHED] : Diet::OPEN_STATUSES;
-
+        $board = app(DispatchBoard::class);
         $filterByMeal = $this->tab === 'active' && ! $this->showAll;
-
-        $diets = Diet::query()
-            // Activas: también las dadas de alta hoy con comida por enviar a otro lugar
-            ->where(fn (Builder $q) => $q->whereIn('status', $statuses)
-                ->when($this->tab === 'active', fn (Builder $q) => $q->orWhere(fn (Builder $q) => $q->transferOn())))
-            ->when($filterByMeal, fn (Builder $q) => $this->appliesToMeal($q))
-            ->when($this->search !== '', fn (Builder $q) => $q->where(fn (Builder $q) => $q
-                ->where('habitation', 'like', "%{$this->search}%")
-                ->orWhere('name_patient', 'like', "%{$this->search}%")))
-            ->withExists(['history as has_pending' => fn (Builder $q) => $q->where('modify', 'si')])
-            ->with(['currentVersion.updatedBy', 'history'])
-            ->orderByDesc('has_pending') // los cambios sin confirmar siempre arriba; luego por habitación
-            ->orderByRoom()
-            ->latest('updated_at')
-            ->paginate($this->perPage);
-
-        $history = app(DietHistoryService::class);
-        $diets->getCollection()->each(function (Diet $diet) use ($history) {
-            $diet->pending_changes = $diet->has_pending ? $this->changesSinceConfirmed($diet) : [];
-            $diet->last_change = $history->lastChangeLabel($diet); // columna «Último cambio» (SCRUM-28)
-        });
-
-        // Estado de despacho de cada dieta de la página en el tiempo elegido
+        $diets = $board->diets($this->tab, $this->meal, $this->showAll, $this->search, $this->perPage);
         $dispatchService = app(DispatchService::class);
-        $dispatches = $this->tab === 'active'
-            ? $dispatchService->dispatchesFor($diets->getCollection()->pluck('id')->all(), $this->meal)
-            : collect();
-        $voids = $this->tab === 'active'
-            ? $dispatchService->voidsFor($diets->getCollection()->pluck('id')->all(), $this->meal)
-            : collect();
-        $authorized = $this->tab === 'active'
-            ? app(DietDayService::class)->authorizedIds($diets->getCollection()->pluck('id')->all())
-            : [];
-        $diets->getCollection()->each(function (Diet $diet) use ($dispatches, $voids, $dispatchService, $authorized) {
-            $diet->authorized_for_day = in_array($diet->id, $authorized, true);
-            $diet->dispatch_record = $dispatches->get($diet->id);
-            // Nutrición reportó que no llegó: aviso para volver a despacharlo
-            $void = $diet->dispatch_record ? null : $voids->get($diet->id);
-            $diet->dispatch_missing = $void?->isNotArrived() ? $void : null;
-            $diet->dispatch_block = $this->tab === 'active' ? $dispatchService->blockReason($diet, $this->meal) : null;
-        });
-        $dispatchable = $diets->getCollection()
-            ->filter(fn (Diet $d) => ! $d->dispatch_record && ! $d->dispatch_block)
-            ->pluck('id')
-            ->all();
+        $dispatchable = $this->tab === 'active' ? $board->dispatchable($diets->getCollection()) : [];
         // Lo que dejó de ser despachable (cambio nuevo, ya despachado) se desmarca solo
         $this->selected = array_values(array_filter(array_map('intval', $this->selected), fn ($id) => ! $diets->getCollection()->contains('id', $id) || in_array($id, $dispatchable, true)));
 
@@ -286,14 +237,7 @@ class DietsManager extends Component
             'delivery' => $this->tab === 'active' ? $dispatchService->statusByDiet($diets->getCollection()->pluck('id')->all()) : [],
             'dispatchable' => $dispatchable,
             'voiding' => $voiding,
-            'counts' => [
-                'active' => Diet::active()->count(),
-                'closed' => Diet::whereIn('status', [Diet::CANCELLED, Diet::FINISHED])->count(),
-                'pendingActive' => $pending->filter(fn (Diet $d) => $d->isActive() || $d->transferMealsOn())->count(),
-                'pendingClosed' => $pending->reject(fn (Diet $d) => $d->isActive() || $d->transferMealsOn())->count(),
-                'transfers' => Diet::transferOn()->count(),
-                'applies' => $filterByMeal ? $this->appliesToMeal(Diet::active())->count() : null,
-            ],
+            'counts' => $board->counts($pending, $this->meal, ! $filterByMeal),
             'foodLabels' => config('timeFood.labels'),
             'consistencyLabels' => config('consistency.labels'),
             'specLabels' => config('specifications.labels'),
@@ -303,79 +247,14 @@ class DietsManager extends Component
 
     /* ===================== INTERNOS ===================== */
 
-    /**
-     * Dietas cuya versión actual incluye el servicio elegido, más las que tienen cambios
-     * sin confirmar (el despachador debe verlas aunque el cambio haya quitado ese tiempo).
-     */
-    private function appliesToMeal(Builder $query): Builder
-    {
-        // Claves guardadas de un mismo tiempo: 'mediamanana' / 'media_manana' (JSON: ["almuerzo","cena"])
-        $keys = $this->meal === 'mediamanana' ? ['mediamanana', 'media_manana'] : [$this->meal];
-
-        return $query->where(fn (Builder $q) => $q
-            ->whereHas('currentVersion', fn (Builder $v) => $v->where(function (Builder $v) use ($keys) {
-                foreach ($keys as $key) {
-                    $v->orWhere('timeFood', 'like', '%"'.$key.'"%');
-                }
-            }))
-            ->orWhereHas('history', fn (Builder $h) => $h->where('modify', 'si')));
-    }
-
     /** Dietas con versiones sin confirmar, la más reciente primero */
     private function pending(): Collection
     {
-        return $this->pendingCache ??= Diet::query()
-            ->whereHas('history', fn (Builder $q) => $q->where('modify', 'si'))
-            ->with(['currentVersion.updatedBy', 'history'])
-            ->get()
-            ->each(fn (Diet $d) => $d->last_change = app(DietHistoryService::class)->lastChangeLabel($d))
-            ->sortByDesc(fn (Diet $d) => $d->currentVersion?->created_at)
-            ->values();
+        return $this->pendingCache ??= app(DispatchBoard::class)->pending();
     }
 
     private function pendingKeys(): array
     {
-        return $this->pending()->map(fn (Diet $d) => $this->pendingKey($d))->all();
-    }
-
-    private function pendingKey(Diet $diet): string
-    {
-        return $diet->id.':'.($diet->currentVersion?->version ?? 0);
-    }
-
-    /**
-     * Diferencias entre la versión actual y la última que el despachador confirmó
-     * (si el nutricionista editó varias veces, se ven todos los cambios acumulados).
-     */
-    private function changesSinceConfirmed(Diet $diet): array
-    {
-        $versions = $diet->history->sortBy('version')->values();
-        $current = $versions->last();
-        $baseline = $versions->last(fn (DietHistory $h) => $h->version < $current->version && $h->modify === 'no')
-            ?? $versions->get($versions->count() - 2);
-
-        if (! $current || ! $baseline) {
-            return [];
-        }
-
-        $changes = [];
-        foreach (self::COMPARED_FIELDS as $field) {
-            $old = $baseline->$field;
-            $new = $current->$field;
-
-            if (is_array($old) || is_array($new)) {
-                $old = array_values((array) $old);
-                $new = array_values((array) $new);
-                $added = array_values(array_diff($new, $old));
-                $removed = array_values(array_diff($old, $new));
-                if ($added || $removed) {
-                    $changes[$field] = ['added' => $added, 'removed' => $removed];
-                }
-            } elseif ((string) $old !== (string) $new) {
-                $changes[$field] = ['old' => $old, 'new' => $new];
-            }
-        }
-
-        return $changes;
+        return $this->pending()->map(fn (Diet $d) => DispatchBoard::pendingKey($d))->all();
     }
 }

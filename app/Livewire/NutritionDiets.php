@@ -6,8 +6,8 @@ use App\Models\Diet;
 use App\Services\DietDayService;
 use App\Services\DietService;
 use App\Services\DispatchService;
+use App\Services\NutritionBoard;
 use App\Support\Pagination;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
@@ -23,12 +23,8 @@ class NutritionDiets extends Component
 {
     use WithPagination;
 
-    /** Pestañas => estados de la dieta (activas incluye las completadas hoy) */
-    public const TABS = [
-        'active' => Diet::OPEN_STATUSES,
-        'cancelled' => [Diet::CANCELLED],
-        'finished' => [Diet::FINISHED],
-    ];
+    /** Pestañas => estados de la dieta (ver NutritionBoard) */
+    public const TABS = NutritionBoard::TABS;
 
     #[Url(except: 'active')]
     public string $tab = 'active';
@@ -188,22 +184,9 @@ class NutritionDiets extends Component
 
     public function render(DispatchService $dispatches, DietDayService $days)
     {
-        $search = trim($this->search);
-
-        // La búsqueda aplica a la pestaña abierta (habitación o paciente)
-        $diets = Diet::with('currentVersion.updatedBy')
-            ->whereIn('status', self::TABS[$this->tab])
-            ->when($search !== '', fn (Builder $q) => $q->where(fn (Builder $q) => $q
-                ->where('habitation', 'like', "%{$search}%")
-                ->orWhere('name_patient', 'like', "%{$search}%")))
-            ->orderByRoom()
-            ->latest('updated_at') // misma habitación (dietas cerradas): la más reciente primero
-            ->paginate($this->perPage);
-
-        // Indicadores sobre todas las dietas, no solo la página visible
-        $counts = Diet::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+        $board = app(NutritionBoard::class);
+        $diets = $board->diets($this->tab, $this->search, $this->perPage);
         $pageIds = $diets->getCollection()->pluck('id')->all();
-        $activeVersions = Diet::active()->with('currentVersion')->get()->pluck('currentVersion')->filter();
 
         $closingDiet = $this->closingId ? Diet::active()->with('currentVersion')->find($this->closingId) : null;
         if ($this->closingId && ! $closingDiet) {
@@ -212,11 +195,8 @@ class NutritionDiets extends Component
 
         return view('livewire.nutrition-diets', [
             'diets' => $diets,
-            'counts' => collect(self::TABS)->map(fn ($statuses) => (int) collect($statuses)->sum(fn ($s) => $counts[$s] ?? 0))->all(),
-            'stats' => [
-                'isolated' => $activeVersions->where('isolation', 'Sí')->count(),
-                'changes' => $activeVersions->reject(fn ($v) => in_array($v->changes, [null, '', 'NA', ...Diet::DAY_CHANGES], true))->count(),
-            ],
+            'counts' => $board->counts(),
+            'stats' => $board->stats(),
             'delivery' => $this->tab === 'active' ? $dispatches->statusByDiet($pageIds) : [],
             'dayStatus' => $this->tab === 'active' ? $days->statusByDiet($pageIds) : [],
             'closing' => $closingDiet ? ['diet' => $closingDiet, 'summary' => $dispatches->closingSummary($closingDiet)] : null,

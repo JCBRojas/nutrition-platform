@@ -59,6 +59,20 @@ class CurrentCompany
         return $company;
     }
 
+    /**
+     * API del cliente de escritorio (sin sesión): fija la empresa de esta petición desde el
+     * encabezado X-Company-Id. false si el usuario no puede elegirla (NUT-RN-003-12).
+     */
+    public function useForRequest(User $user, int $companyId): bool
+    {
+        if (! $user->selectableCompanies()->whereKey($companyId)->exists()) {
+            return false;
+        }
+        $this->resolved[$user->id] = $companyId;
+
+        return true;
+    }
+
     public function forget(): void
     {
         $this->resolved = [];
