@@ -46,3 +46,6 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Paquetes de distribución (scripts/package_macos.sh, msix)
+dist/

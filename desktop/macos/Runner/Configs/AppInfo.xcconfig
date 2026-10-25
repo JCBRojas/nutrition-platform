@@ -11,4 +11,4 @@ PRODUCT_NAME = NutriTrack
 PRODUCT_BUNDLE_IDENTIFIER = co.nutritrack.nutritrackDesktop
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 co.nutritrack. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 NutriTrack. Todos los derechos reservados.

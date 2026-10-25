@@ -38,8 +38,8 @@ class Harness {
   final alerts = RecordingAlerts();
   final MemoryStorage storage;
 
-  Future<void> start(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1600, 1000);
+  Future<void> start(WidgetTester tester, {Size size = const Size(1600, 1000)}) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 

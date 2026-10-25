@@ -57,6 +57,7 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   mocktail: ^1.0.5
+  msix: ^3.18.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -99,3 +100,20 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Instalador MSIX de Windows (dart run msix:create; ver README, «Distribución»). La firma
+# (certificado y publisher) llega por parámetros desde la CI: nunca secretos aquí.
+msix_config:
+  display_name: NutriTrack
+  publisher_display_name: NutriTrack
+  identity_name: Co.NutriTrack.Desktop
+  # Se reemplaza con --publisher (el sujeto del certificado de firma)
+  publisher: CN=NutriTrack
+  languages: es-co
+  capabilities: internetClient
+  install_certificate: false
+  # Notificaciones nativas de la app empaquetada (lib/live/alerts.dart, mismo guid)
+  toast_activator:
+    clsid: d7a3c2e1-5b4f-4e8a-9c61-2f0b8e7d4a95
+    arguments: msix-args
+    display_name: NutriTrack

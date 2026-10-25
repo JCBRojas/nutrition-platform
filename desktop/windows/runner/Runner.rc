@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "co.nutritrack" "\0"
+            VALUE "CompanyName", "NutriTrack" "\0"
             VALUE "FileDescription", "NutriTrack" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "nutritrack_desktop" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 co.nutritrack. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 NutriTrack. Todos los derechos reservados." "\0"
             VALUE "OriginalFilename", "nutritrack_desktop.exe" "\0"
             VALUE "ProductName", "NutriTrack" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

@@ -239,12 +239,11 @@ class _PendingBanner extends StatelessWidget {
           border: const Border(left: BorderSide(color: NtColors.btnPrimary, width: 5)),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
+          // Wrap: en la ventana mínima la explicación pasa a la línea siguiente
+          Wrap(spacing: 6, runSpacing: 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
             const Icon(Icons.notifications_active_outlined, size: 18, color: NtColors.primarioSuaveTexto),
-            const SizedBox(width: 6),
             Text(n == 1 ? '1 cambio sin confirmar' : '$n cambios sin confirmar',
                 style: const TextStyle(fontWeight: FontWeight.w700, color: NtColors.primarioSuaveTexto)),
-            const SizedBox(width: 8),
             const Text('Revisa y confirma antes de entregar.', style: TextStyle(color: NtColors.textoSuave, fontSize: 13)),
           ]),
           const SizedBox(height: 8),

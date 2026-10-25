@@ -10,6 +10,10 @@
 // A class abstraction for a high DPI-aware Win32 Window. Intended to be
 // inherited from by classes that wish to specialize with custom
 // rendering and input handling
+// Tamaño mínimo de la ventana en píxeles lógicos (lib/core/window.dart)
+constexpr int kMinWindowWidth = 1100;
+constexpr int kMinWindowHeight = 700;
+
 class Win32Window {
  public:
   struct Point {
