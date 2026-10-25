@@ -17,6 +17,18 @@ flutter run -d macos      # en Windows: flutter run -d windows
 ```
 La primera vez la app pide la dirección del servidor (la misma de la web). La API debe estar en esa instalación (rama `main` del backend).
 
+## Prueba contra un servidor real
+
+`integration_test/live_server_test.dart` abre la app de verdad (macOS o Windows) contra un servidor con Soketi: verifica que un cambio de dieta llegue en vivo con su alerta, lo confirma, despacha y reporta «No llegó» desde Recepción, y guarda capturas en el directorio temporal de la app. Sin los parámetros se omite.
+
+```bash
+flutter test integration_test/live_server_test.dart -d macos \
+  --dart-define=NT_SERVER=http://nutrition-platform.test \
+  --dart-define=NT_DISPATCH_TOKEN=… --dart-define=NT_NUTRI_TOKEN=… --dart-define=NT_DIET=…
+```
+
+Necesita tokens de Sanctum de un despachador y un nutricionista (p. ej. `$user->createToken('prueba', ['*'], now()->addHours(3))` en `php artisan tinker`) y una dieta de prueba activa con la cena recibida hoy y «Continuar» hecho. Usar una dieta de prueba y borrarla después, junto con los tokens.
+
 ## Distribución
 
 **CI** (`.github/workflows/desktop.yml`): con cada push a `main` que toque `desktop/` (y en los PR) corre `flutter analyze` y `flutter test`, y genera los paquetes de macOS y Windows como artefactos del run. Con una etiqueta `desktop-vX.Y.Z` (igual a la `version` de `pubspec.yaml`) publica además una versión en GitHub con los paquetes:

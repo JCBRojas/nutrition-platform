@@ -192,7 +192,9 @@ class Diet extends Model
                 'consistency' => $v?->consistency ?? [],
                 'specifications' => $v?->specifications ?? [],
                 'observations' => $v?->observations,
-                'changes' => $v?->changes,
+                // getAttribute: dentro de un modelo, ->changes es la propiedad protegida de Eloquent
+                // (atributos modificados, siempre vacía aquí) y no la columna
+                'changes' => $v?->getAttribute('changes'),
                 'isolation' => $v?->isolation,
             ],
         ];

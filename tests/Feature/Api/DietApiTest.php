@@ -100,7 +100,9 @@ class DietApiTest extends TestCase
         $this->as($this->nutritionist)->putJson(route('api.v1.diets.update', $diet->id), $this->payload(['timeFood' => ['cena']]))
             ->assertStatus(422)
             ->assertJsonPath('errors.timeFood.0', 'No puedes quitar Almuerzo: nutrición ya confirmó su recepción hoy.');
-        $this->putJson(route('api.v1.diets.update', $diet->id), $this->payload(['timeFood' => ['almuerzo']]))->assertOk();
+        $this->putJson(route('api.v1.diets.update', $diet->id), $this->payload(['timeFood' => ['almuerzo'], 'changes' => 'con_cambios']))
+            ->assertOk()
+            ->assertJsonPath('changes', 'con_cambios');
     }
 
     public function test_update_creates_a_new_version_only_for_active_diets_of_the_company(): void
