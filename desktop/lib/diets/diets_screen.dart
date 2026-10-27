@@ -155,7 +155,7 @@ class _DietsScreenState extends ConsumerState<DietsScreen> {
                     onSelectionChanged: (s) => _controller.setTab(s.first),
                   ),
                   SizedBox(
-                    width: 260,
+                    width: 220,
                     child: TextField(
                       controller: _search,
                       focusNode: _searchFocus,
@@ -238,15 +238,19 @@ class _Stats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget card(String label, int value, String sub, Color accent) => StatCard(label: label, value: '$value', sub: sub, accent: accent);
+    // Una sola fila que reparte el ancho: en la ventana mínima no ocupa dos filas
+    Widget card(String label, int value, String sub, Color accent) => Expanded(
+      child: StatCard(label: label, value: '$value', sub: sub, accent: accent, width: null),
+    );
 
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
+    return Row(
       children: [
         card('Dietas activas', data.counts['active'] ?? 0, 'Pacientes en seguimiento', NtColors.exito),
+        const SizedBox(width: 12),
         card('Canceladas', data.counts['cancelled'] ?? 0, '${data.counts['finished'] ?? 0} finalizadas por alta', NtColors.error),
+        const SizedBox(width: 12),
         card('En aislamiento', data.isolated, 'Activas con protocolo especial', NtColors.advertencia),
+        const SizedBox(width: 12),
         card('Con cambios', data.withChanges, 'Última versión con cambios', NtColors.btnPrimary),
       ],
     );
@@ -317,10 +321,37 @@ class _DietTable extends StatelessWidget {
     );
   }
 
-  Widget _text(String? value, {double width = 200}) => ConstrainedBox(
-    constraints: BoxConstraints(maxWidth: width),
-    child: Text(value == null || value.isEmpty ? '—' : value, overflow: TextOverflow.ellipsis, maxLines: 2, style: const TextStyle(fontSize: 13)),
-  );
+  /// Paciente con las marcas «Aislamiento» y «Con cambios» (antes, columnas aparte con «No» y «—»)
+  Widget _patient(Diet d) {
+    final changes = Catalogs.changeLabel(d.changes);
+    Widget mark(String text, Color fg, Color bg) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(5)),
+      child: Text(
+        text,
+        style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w700),
+      ),
+    );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _text(d.patient, lines: 2),
+        if (d.isolated || changes != '—') ...[
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: [if (d.isolated) mark('Aislamiento', NtColors.advertencia, NtColors.advertenciaSuave), if (changes != '—') mark(changes, NtColors.primarioSuaveTexto, NtColors.primarioSuave)],
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Texto que se parte en líneas dentro del ancho de su columna (máximo [lines])
+  Widget _text(String? value, {int lines = 3}) => Text(value == null || value.isEmpty ? '—' : value, overflow: TextOverflow.ellipsis, maxLines: lines, style: const TextStyle(fontSize: 13));
 
   Widget _day(Diet d) {
     final day = d.day ?? const DayStatus();
@@ -330,8 +361,9 @@ class _DietTable extends StatelessWidget {
         ? ('En curso', NtColors.primarioSuaveTexto, NtColors.primarioSuave, 'Autorizada para hoy; faltan tiempos por recibir')
         : ('Sin autorizar hoy', NtColors.advertencia, NtColors.advertenciaSuave, 'No se puede despachar hoy: no se continuó ayer');
 
-    return Row(
+    return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Tooltip(
           message: tip,
@@ -344,7 +376,7 @@ class _DietTable extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(height: 4),
         if (day.authorizedTomorrow)
           const Tooltip(
             message: 'Continúa mañana: cocina puede despacharla',
@@ -361,7 +393,12 @@ class _DietTable extends StatelessWidget {
           )
         else if (me?.can('continueDiets') ?? false)
           TextButton.icon(
-            style: TextButton.styleFrom(minimumSize: const Size(0, 30), padding: const EdgeInsets.symmetric(horizontal: 8), visualDensity: VisualDensity.compact),
+            style: TextButton.styleFrom(
+              minimumSize: const Size(0, 28),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
             onPressed: busy ? null : () => onContinue(d),
             icon: const Icon(Icons.arrow_forward, size: 16),
             label: Text('Continuar', semanticsLabel: 'Continuar dieta de ${d.patient} mañana'),
@@ -382,12 +419,11 @@ class _DietTable extends StatelessWidget {
     icon: Icon(icon, size: 20, color: busy ? null : color),
   );
 
-  Widget _actions(Diet d) => Row(
-    mainAxisSize: MainAxisSize.min,
+  Widget _actions(Diet d) => Wrap(
+    crossAxisAlignment: WrapCrossAlignment.center,
     children: [
       if (!_active) _closedTag(),
-      if (_canHistory)
-        _iconButton(_historyInApp ? 'Ver historial de ${d.patient}' : 'Ver historial (se abre en el navegador)', Icons.history, NtColors.textoSuave, () => onHistory(d)),
+      if (_canHistory) _iconButton(_historyInApp ? 'Ver historial de ${d.patient}' : 'Ver historial (se abre en el navegador)', Icons.history, NtColors.textoSuave, () => onHistory(d)),
       if (_active && _canEdit) ...[
         _iconButton('Editar dieta de ${d.patient}', Icons.edit_outlined, NtColors.btnSuccess, () => onEdit(d)),
         _iconButton('Dar de alta (finalizar dieta)', Icons.logout, NtColors.primarioSuaveTexto, () => onFinish(d)),
@@ -416,58 +452,88 @@ class _DietTable extends StatelessWidget {
     return '${two(l.day)}/${two(l.month)}/${l.year} ${formatTime(l)}';
   }
 
+  /// Anchos: las columnas de etiquetas y texto se reparten el espacio (flex) y las demás
+  /// toman lo que necesitan. Así la tabla cabe en la ventana sin desplazarse a lo ancho:
+  /// las etiquetas y el texto pasan a la línea siguiente.
+  /// Mínimo [min] (para no partir palabras como «Especificaciones») y reparto [flex] del resto
+  static TableColumnWidth _flex(double min, double flex) => MaxColumnWidth(FixedColumnWidth(min), FlexColumnWidth(flex));
+
+  static final _activeWidths = <int, TableColumnWidth>{
+    0: const IntrinsicColumnWidth(),
+    1: _flex(130, 1.2),
+    2: const IntrinsicColumnWidth(),
+    3: _flex(140, 1.6),
+    4: _flex(120, 1.1),
+    5: _flex(130, 1.3),
+    6: _flex(120, 1.3),
+    7: const FixedColumnWidth(92),
+  };
+
+  static final _closedWidths = <int, TableColumnWidth>{
+    0: const IntrinsicColumnWidth(),
+    1: _flex(130, 1.2),
+    2: _flex(140, 1.6),
+    3: _flex(120, 1.1),
+    4: _flex(120, 1.4),
+    5: const IntrinsicColumnWidth(),
+    6: _flex(90, 0.9),
+    7: const IntrinsicColumnWidth(),
+  };
+
+  static Widget _cell(Widget child) => Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), child: child);
+
   @override
   Widget build(BuildContext context) {
     final columns = _active
-        ? const ['Hab.', 'Paciente', 'Día', 'Tiempo', 'Consistencia', 'Especificaciones', 'Observaciones', 'Aislam.', 'Cambios', 'Acciones']
+        ? const ['Hab.', 'Paciente', 'Día', 'Tiempo', 'Consistencia', 'Especificaciones', 'Observaciones', 'Acciones']
         : ['Hab.', 'Paciente', 'Tiempo', 'Consistencia', 'Observaciones', data.tab == 'cancelled' ? 'Cancelada' : 'Alta', 'Por', 'Estado'];
+    const header = TextStyle(fontWeight: FontWeight.w600, color: NtColors.textoSuave, fontSize: 12.5);
 
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: NtColors.superficie,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: NtColors.borde),
       ),
       child: SingleChildScrollView(
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            headingRowHeight: 40,
-            dataRowMinHeight: 48,
-            dataRowMaxHeight: 76,
-            columnSpacing: 20,
-            headingTextStyle: const TextStyle(fontWeight: FontWeight.w600, color: NtColors.textoSuave, fontSize: 12.5),
-            columns: [for (final c in columns) DataColumn(label: Text(c))],
-            rows: [
-              for (final d in data.diets)
-                DataRow(
-                  key: ValueKey('diet-${d.id}-v${d.version}'),
-                  cells: _active
-                      ? [
-                          DataCell(RoomBadge(d.habitation)),
-                          DataCell(_text(d.patient, width: 200)),
-                          DataCell(_day(d)),
-                          DataCell(_tags(d.timeFood, TagKind.meal, catalogs.mealLabel, delivery: d.delivery)),
-                          DataCell(_tags(d.consistency, TagKind.consistency, catalogs.consistencyLabel)),
-                          DataCell(_tags(d.specifications, TagKind.specification, catalogs.specificationLabel)),
-                          DataCell(_text(d.observations, width: 180)),
-                          DataCell(Text(d.isolated ? 'Sí' : 'No')),
-                          DataCell(Text(Catalogs.changeLabel(d.changes), style: const TextStyle(fontSize: 13))),
-                          DataCell(_actions(d)),
-                        ]
-                      : [
-                          DataCell(RoomBadge(d.habitation)),
-                          DataCell(_text(d.patient, width: 200)),
-                          DataCell(_tags(d.timeFood, TagKind.meal, catalogs.mealLabel)),
-                          DataCell(_tags(d.consistency, TagKind.consistency, catalogs.consistencyLabel)),
-                          DataCell(_text(d.observations, width: 180)),
-                          DataCell(Text(_date(d.updatedAt), style: const TextStyle(fontSize: 13))),
-                          DataCell(Text(d.updatedBy ?? '—', style: const TextStyle(fontSize: 13))),
-                          DataCell(_actions(d)),
-                        ],
-                ),
-            ],
-          ),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Table(
+          columnWidths: _active ? _activeWidths : _closedWidths,
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          border: const TableBorder(horizontalInside: BorderSide(color: NtColors.borde)),
+          children: [
+            TableRow(children: [for (final c in columns) _cell(Text(c, style: header))]),
+            for (final d in data.diets)
+              TableRow(
+                key: ValueKey('diet-${d.id}-v${d.version}'),
+                children: [
+                  for (final cell
+                      in _active
+                          ? [
+                              RoomBadge(d.habitation),
+                              _patient(d),
+                              _day(d),
+                              _tags(d.timeFood, TagKind.meal, catalogs.mealLabel, delivery: d.delivery),
+                              _tags(d.consistency, TagKind.consistency, catalogs.consistencyLabel),
+                              _tags(d.specifications, TagKind.specification, catalogs.specificationLabel),
+                              _text(d.observations),
+                              _actions(d),
+                            ]
+                          : [
+                              RoomBadge(d.habitation),
+                              _text(d.patient, lines: 2),
+                              _tags(d.timeFood, TagKind.meal, catalogs.mealLabel),
+                              _tags(d.consistency, TagKind.consistency, catalogs.consistencyLabel),
+                              _text(d.observations),
+                              Text(_date(d.updatedAt), style: const TextStyle(fontSize: 13)),
+                              _text(d.updatedBy, lines: 2),
+                              _actions(d),
+                            ])
+                    _cell(cell),
+                ],
+              ),
+          ],
         ),
       ),
     );

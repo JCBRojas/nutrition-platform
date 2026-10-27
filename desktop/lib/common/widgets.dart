@@ -57,13 +57,18 @@ class NtTag extends StatelessWidget {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           if (change == TagChange.added) Text('+ ', style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w800)),
           if (icon != null) ...[Icon(icon, size: 12, color: delivery == Delivery.received ? Colors.white : NtColors.dietaEntregado), const SizedBox(width: 3)],
-          Text(label,
-              style: TextStyle(
-                color: fg,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                decoration: change == TagChange.removed ? TextDecoration.lineThrough : null,
-              )),
+          // Flexible: en una columna angosta la etiqueta pasa a dos líneas en lugar de desbordarse
+          Flexible(
+            child: Text(label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: fg,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  decoration: change == TagChange.removed ? TextDecoration.lineThrough : null,
+                )),
+          ),
         ]),
       ),
     );
@@ -139,16 +144,19 @@ Future<String?> voidDialog(BuildContext context, {required String title, require
 
 /// Indicador con franja de color (stats-grid de la web)
 class StatCard extends StatelessWidget {
-  const StatCard({super.key, required this.label, required this.value, required this.sub, required this.accent});
+  const StatCard({super.key, required this.label, required this.value, required this.sub, required this.accent, this.width = 230});
 
   final String label;
   final String value;
   final String sub;
   final Color accent;
 
+  /// null: ocupa el ancho que le dé el padre (p. ej. dentro de un Expanded)
+  final double? width;
+
   @override
   Widget build(BuildContext context) => Container(
-        width: 230,
+        width: width,
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
         // Bordes de distinto color no admiten borderRadius: franja de color como sombra interior
         decoration: BoxDecoration(
@@ -160,7 +168,7 @@ class StatCard extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(label, style: const TextStyle(color: NtColors.textoSuave, fontSize: 12.5, fontWeight: FontWeight.w600)),
           Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
-          Text(sub, style: const TextStyle(color: NtColors.textoSuave, fontSize: 12)),
+          Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: NtColors.textoSuave, fontSize: 12)),
         ]),
       );
 }
