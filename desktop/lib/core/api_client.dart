@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import 'api_exception.dart';
@@ -41,6 +43,27 @@ class ApiClient {
 
   Future<Map<String, dynamic>> put(String path, Map<String, dynamic> body) =>
       _send(() => _dio.put<dynamic>(path, data: body));
+
+  /// Descarga un archivo (p. ej. el Excel del reporte): bytes y nombre de Content-Disposition
+  Future<({List<int> bytes, String? filename})> download(String path, {Map<String, dynamic>? query}) async {
+    try {
+      final response = await _dio.get<List<int>>(path, queryParameters: query, options: Options(responseType: ResponseType.bytes));
+      final disposition = response.headers.value('content-disposition') ?? '';
+      final match = RegExp(r'filename="?([^";]+)"?').firstMatch(disposition);
+      return (bytes: response.data ?? const <int>[], filename: match?.group(1));
+    } on DioException catch (e) {
+      // El error llega en bytes: se decodifica para leer el mensaje en español
+      final data = e.response?.data;
+      if (data is List<int>) {
+        try {
+          e.response!.data = jsonDecode(utf8.decode(data));
+        } on FormatException {
+          // sin cuerpo JSON: mensaje genérico según el estado
+        }
+      }
+      throw ApiException.fromDio(e);
+    }
+  }
 
   Future<Map<String, dynamic>> _send(Future<Response<dynamic>> Function() request) async {
     try {

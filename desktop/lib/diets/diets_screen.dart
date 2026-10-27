@@ -12,6 +12,8 @@ import '../common/widgets.dart';
 import '../core/api_exception.dart';
 import '../core/catalogs.dart';
 import '../core/theme.dart';
+import '../history/history_controller.dart';
+import '../home/home_shell.dart';
 import 'close_dialog.dart';
 import 'diet_form.dart';
 import 'diets_controller.dart';
@@ -99,7 +101,13 @@ class _DietsScreenState extends ConsumerState<DietsScreen> {
     if (message != null && mounted) showNotice(context, message);
   }
 
-  Future<void> _history(Diet diet) async {
+  /// Nutrición abre el historial en la app; otros roles con Premium, en la web
+  Future<void> _history(Diet diet, Me? me) async {
+    if (me?.nutritionTools ?? false) {
+      ref.read(historyDietRequestProvider.notifier).request(diet.id);
+      ref.read(sectionRequestProvider.notifier).open('history');
+      return;
+    }
     final base = ref.read(sessionProvider.notifier).meta?.webUrl ?? '';
     await launchUrl(Uri.parse('$base/historial?dieta=${diet.id}'));
   }
@@ -198,7 +206,7 @@ class _DietsScreenState extends ConsumerState<DietsScreen> {
                         onEdit: (d) => _edit(d, catalogs),
                         onFinish: (d) => _close(d, finish: true),
                         onCancel: (d) => _close(d, finish: false),
-                        onHistory: _history,
+                        onHistory: (d) => _history(d, me),
                       ),
               ),
               if (data != null) ...[
@@ -230,28 +238,7 @@ class _Stats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget card(String label, int value, String sub, Color accent) => Container(
-      width: 230,
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-      // Bordes de distinto color no admiten borderRadius: franja de color como sombra interior
-      decoration: BoxDecoration(
-        color: NtColors.superficie,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: NtColors.borde),
-        boxShadow: [BoxShadow(color: accent, offset: const Offset(-4, 0), spreadRadius: -1)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(color: NtColors.textoSuave, fontSize: 12.5, fontWeight: FontWeight.w600),
-          ),
-          Text('$value', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
-          Text(sub, style: const TextStyle(color: NtColors.textoSuave, fontSize: 12)),
-        ],
-      ),
-    );
+    Widget card(String label, int value, String sub, Color accent) => StatCard(label: label, value: '$value', sub: sub, accent: accent);
 
     return Wrap(
       spacing: 12,
@@ -307,7 +294,8 @@ class _DietTable extends StatelessWidget {
 
   bool get _active => data.tab == 'active';
   bool get _canEdit => me?.can('editDiets') ?? false;
-  bool get _canHistory => (me?.can('viewDiets') ?? false) && (me?.hasPremium('history') ?? false);
+  bool get _canHistory => (me?.can('viewDiets') ?? false) && ((me?.nutritionTools ?? false) || (me?.hasPremium('history') ?? false));
+  bool get _historyInApp => me?.nutritionTools ?? false;
 
   Widget _tags(List<String> keys, TagKind kind, String Function(String) label, {Map<String, String> delivery = const {}}) {
     if (keys.isEmpty) return const Text('—');
@@ -398,7 +386,8 @@ class _DietTable extends StatelessWidget {
     mainAxisSize: MainAxisSize.min,
     children: [
       if (!_active) _closedTag(),
-      if (_canHistory) _iconButton('Ver historial (se abre en el navegador)', Icons.history, NtColors.textoSuave, () => onHistory(d)),
+      if (_canHistory)
+        _iconButton(_historyInApp ? 'Ver historial de ${d.patient}' : 'Ver historial (se abre en el navegador)', Icons.history, NtColors.textoSuave, () => onHistory(d)),
       if (_active && _canEdit) ...[
         _iconButton('Editar dieta de ${d.patient}', Icons.edit_outlined, NtColors.btnSuccess, () => onEdit(d)),
         _iconButton('Dar de alta (finalizar dieta)', Icons.logout, NtColors.primarioSuaveTexto, () => onFinish(d)),

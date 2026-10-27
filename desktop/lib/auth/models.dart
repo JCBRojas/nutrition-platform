@@ -42,6 +42,7 @@ class Me {
     required this.companies,
     required this.currentCompanyId,
     required this.premium,
+    this.nutritionTools = false,
     required this.privacyRequired,
     required this.twoFactorSetupRequired,
   });
@@ -57,6 +58,9 @@ class Me {
   final List<Company> companies;
   final int? currentCompanyId;
   final Set<String> premium;
+
+  /// «Historial de cambios» y «Reporte nutricional»: solo nutrición (desktop.nutrition_roles)
+  final bool nutritionTools;
   final bool privacyRequired;
   final bool twoFactorSetupRequired;
 
@@ -85,6 +89,7 @@ class Me {
           .toList(),
       currentCompanyId: json['current_company_id'] as int?,
       premium: strings('premium').toSet(),
+      nutritionTools: json['nutrition_tools'] == true,
       privacyRequired: compliance['privacy_required'] == true,
       twoFactorSetupRequired: compliance['two_factor_setup_required'] == true,
     );

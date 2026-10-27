@@ -37,6 +37,8 @@ class MeController extends Controller
             'companies' => $user->selectableCompanies()->orderBy('name')->get(['companies.id', 'name', 'is_default'])
                 ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'is_default' => (bool) $c->is_default])->values(),
             'current_company_id' => $company->id() ?: null,
+            // «Historial de cambios» y «Reporte nutricional» (config desktop.nutrition_roles)
+            'nutrition_tools' => $user->hasAnyRole(config('desktop.nutrition_roles')),
             'premium' => collect(array_keys(config('subscriptions.premium_features')))
                 ->filter(fn ($feature) => $subscriptions->hasFeature($feature, $user))->values(),
             'compliance' => [

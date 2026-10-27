@@ -10,6 +10,11 @@ return [
     // Minutos de validez del token de la app (Sanctum). Al vencer, se vuelve a iniciar sesión.
     'token_minutes' => (int) env('DESKTOP_TOKEN_MINUTES', 720),
 
+    // Roles con «Historial de cambios» y «Reporte nutricional» en la app (además del permiso
+    // viewDiets o viewReports). Decisión de producto: en la app son solo de nutrición, aunque en la
+    // web otros roles tengan esos permisos; el historial no exige Premium en la app.
+    'nutrition_roles' => ['nutricionista', 'jefe_nutricion'],
+
     // WebSocket que ve la app (puede diferir del host interno que usa Laravel para publicar)
     'realtime' => [
         'host' => env('DESKTOP_WS_HOST', env('PUSHER_HOST')),

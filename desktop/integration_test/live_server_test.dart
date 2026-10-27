@@ -27,6 +27,7 @@ const dispatchToken = String.fromEnvironment('NT_DISPATCH_TOKEN');
 const nutriToken = String.fromEnvironment('NT_NUTRI_TOKEN');
 const dietId = int.fromEnvironment('NT_DIET');
 const skip = server == '' || dispatchToken == '' || nutriToken == '' || dietId == 0;
+const skipNutrition = server == '' || nutriToken == '';
 
 final _shotKey = GlobalKey();
 
@@ -169,5 +170,23 @@ void main() {
     await open(tester, 'Despachos del día');
     await waitFor(tester, find.text('«Prueba de integración»'));
     await shot(tester, '7-despachos-del-dia');
+  });
+
+  testWidgets('nutrición: historial de cambios y reporte nutricional con datos reales', skip: skipNutrition, (tester) async {
+    await launch(tester, nutriToken);
+    await waitFor(tester, find.text('Dietas activas'));
+
+    await open(tester, 'Historial');
+    await waitFor(tester, find.byType(ListTile));
+    await tester.tap(find.byType(ListTile).first);
+    await tester.pump();
+    await waitFor(tester, find.textContaining('Versión '));
+    await shot(tester, '8-historial');
+
+    await open(tester, 'Reportes');
+    await waitFor(tester, find.text('Bandejas programadas'));
+    final download = tester.widget<ButtonStyleButton>(find.ancestor(of: find.text('Descargar Excel'), matching: find.byWidgetPredicate((w) => w is ButtonStyleButton)));
+    expect(download.onPressed, isNotNull, reason: '«Descargar Excel» habilitado');
+    await shot(tester, '9-reporte');
   });
 }

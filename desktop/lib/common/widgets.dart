@@ -137,8 +137,36 @@ Future<String?> voidDialog(BuildContext context, {required String title, require
   );
 }
 
-/// Aviso breve abajo (resultado de una acción)
-void showNotice(BuildContext context, String message, {bool error = false}) {
+/// Indicador con franja de color (stats-grid de la web)
+class StatCard extends StatelessWidget {
+  const StatCard({super.key, required this.label, required this.value, required this.sub, required this.accent});
+
+  final String label;
+  final String value;
+  final String sub;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 230,
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+        // Bordes de distinto color no admiten borderRadius: franja de color como sombra interior
+        decoration: BoxDecoration(
+          color: NtColors.superficie,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: NtColors.borde),
+          boxShadow: [BoxShadow(color: accent, offset: const Offset(-4, 0), spreadRadius: -1)],
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, style: const TextStyle(color: NtColors.textoSuave, fontSize: 12.5, fontWeight: FontWeight.w600)),
+          Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+          Text(sub, style: const TextStyle(color: NtColors.textoSuave, fontSize: 12)),
+        ]),
+      );
+}
+
+/// Aviso breve abajo (resultado de una acción), con un botón opcional (p. ej. «Abrir»)
+void showNotice(BuildContext context, String message, {bool error = false, SnackBarAction? action}) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(
@@ -146,7 +174,8 @@ void showNotice(BuildContext context, String message, {bool error = false}) {
       backgroundColor: error ? NtColors.error : NtColors.texto,
       behavior: SnackBarBehavior.floating,
       width: 460,
-      duration: const Duration(seconds: 5),
+      action: action,
+      duration: Duration(seconds: action == null ? 5 : 8),
     ));
 }
 

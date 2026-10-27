@@ -74,6 +74,15 @@ class Catalogs {
   }
 }
 
+/// Número con separador de miles y coma decimal (es-CO): 1.234 o 12,5
+String formatNumber(num value, {int decimals = 0}) {
+  final fixed = value.toStringAsFixed(decimals);
+  final parts = fixed.split('.');
+  final digits = parts[0].replaceAll('-', '');
+  final grouped = digits.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => '.');
+  return '${value < 0 ? '-' : ''}$grouped${parts.length > 1 ? ',${parts[1]}' : ''}';
+}
+
 /// «10:32 a. m.» en hora local
 String formatTime(DateTime? value) {
   if (value == null) return '—';

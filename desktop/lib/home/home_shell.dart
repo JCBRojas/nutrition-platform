@@ -10,8 +10,10 @@ import '../diets/diets_screen.dart';
 import '../dispatch/dispatch_controller.dart';
 import '../dispatch/dispatch_screen.dart';
 import '../dispatch_log/dispatch_log_screen.dart';
+import '../history/history_screen.dart';
 import '../receipts/receipts_controller.dart';
 import '../receipts/receipts_screen.dart';
+import '../reports/reports_screen.dart';
 
 /// Sección del menú lateral, visible según los permisos (como config/navigation.php en la web)
 class Section {
@@ -27,6 +29,10 @@ final sections = <Section>[
   Section('dispatch', 'Despacho', Icons.local_shipping_outlined, (me) => me.can('confirmDelivery')),
   Section('receipts', 'Recepción', Icons.fact_check_outlined, (me) => me.can('confirmReception')),
   Section('diets', 'Dietas activas', Icons.grid_view_outlined, (me) => me.can('viewActiveDiets')),
+  // Solo nutrición (desktop.nutrition_roles en el servidor), además del permiso; sin Premium
+  // Etiquetas cortas: el menú se ensancha con la más larga y quita espacio a las tablas
+  Section('history', 'Historial', Icons.history, (me) => me.nutritionTools && me.can('viewDiets')),
+  Section('reports', 'Reportes', Icons.insights_outlined, (me) => me.nutritionTools && me.can('viewReports')),
   Section('dispatches', 'Despachos del día', Icons.event_note_outlined, (me) => me.can('viewDispatches') && me.hasPremium('dispatch_log')),
 ];
 
@@ -34,6 +40,8 @@ Widget _dispatchScreen(BuildContext context) => const DispatchScreen();
 Widget _receiptsScreen(BuildContext context) => const ReceiptsScreen();
 Widget _dietsScreen(BuildContext context) => const DietsScreen();
 Widget _dispatchLogScreen(BuildContext context) => const DispatchLogScreen();
+Widget _historyScreen(BuildContext context) => const HistoryScreen();
+Widget _reportsScreen(BuildContext context) => const ReportsScreen();
 
 /// Pantalla de cada sección del menú
 const defaultScreens = <String, WidgetBuilder>{
@@ -41,7 +49,19 @@ const defaultScreens = <String, WidgetBuilder>{
   'receipts': _receiptsScreen,
   'diets': _dietsScreen,
   'dispatches': _dispatchLogScreen,
+  'history': _historyScreen,
+  'reports': _reportsScreen,
 };
+
+/// Sección que otra pantalla pide abrir (p. ej. «Ver historial» lleva a Historial de cambios)
+final sectionRequestProvider = NotifierProvider<SectionRequest, String?>(SectionRequest.new);
+
+class SectionRequest extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void open(String? section) => state = section;
+}
 
 /// Marco de la app con sesión: menú lateral, empresa activa, usuario y cierre de sesión.
 /// Mantiene vivos el tablero de despacho y la recepción (según los permisos) para que las
@@ -91,6 +111,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(sectionRequestProvider, (_, section) {
+      if (section == null) return;
+      ref.read(sectionRequestProvider.notifier).open(null);
+      if (_visible.any((s) => s.id == section)) setState(() => _current = section);
+    });
     final me = widget.me;
     final visible = _visible;
     final index = visible.indexWhere((s) => s.id == _current);
@@ -117,21 +142,31 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       body: Row(
         children: [
           if (visible.isNotEmpty)
-            NavigationRail(
-              selectedIndex: index < 0 ? null : index,
-              labelType: NavigationRailLabelType.all,
-              onDestinationSelected: (i) => setState(() => _current = visible[i].id),
-              destinations: [
-                for (final s in visible)
-                  NavigationRailDestination(
-                    icon: Badge(
-                      isLabelVisible: (badges[s.id] ?? 0) > 0,
-                      label: Text('${badges[s.id]}'),
-                      child: Icon(s.icon),
+            // Con muchas secciones y la ventana baja, el menú se desplaza en lugar de desbordarse
+            LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: NavigationRail(
+                      selectedIndex: index < 0 ? null : index,
+                      labelType: NavigationRailLabelType.all,
+                      onDestinationSelected: (i) => setState(() => _current = visible[i].id),
+                      destinations: [
+                        for (final s in visible)
+                          NavigationRailDestination(
+                            icon: Badge(
+                              isLabelVisible: (badges[s.id] ?? 0) > 0,
+                              label: Text('${badges[s.id]}'),
+                              child: Icon(s.icon),
+                            ),
+                            label: Text(s.label),
+                          ),
+                      ],
                     ),
-                    label: Text(s.label),
                   ),
-              ],
+                ),
+              ),
             ),
           const VerticalDivider(width: 1),
           Expanded(

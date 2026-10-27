@@ -4,9 +4,11 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DietController;
 use App\Http\Controllers\Api\V1\DispatchController;
 use App\Http\Controllers\Api\V1\DispatchLogController;
+use App\Http\Controllers\Api\V1\HistoryController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\MetaController;
 use App\Http\Controllers\Api\V1\ReceiptController;
+use App\Http\Controllers\Api\V1\ReportController;
 use Illuminate\Broadcasting\BroadcastController;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Route;
@@ -60,6 +62,13 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
                 Route::post('/diets/{diet}/cancel', [DietController::class, 'cancel'])->name('diets.cancel');
                 Route::post('/diets/{diet}/finish', [DietController::class, 'finish'])->name('diets.finish');
             });
+
+            // Historial de cambios y reporte nutricional: solo nutrición (config desktop.nutrition_roles,
+            // comprobado en el controlador junto con viewDiets / viewReports); el historial sin Premium
+            Route::get('/history/diets', [HistoryController::class, 'diets'])->name('history.diets');
+            Route::get('/diets/{diet}/history', [HistoryController::class, 'show'])->whereNumber('diet')->name('diets.history');
+            Route::get('/reports/monthly', [ReportController::class, 'monthly'])->name('reports.monthly');
+            Route::get('/reports/monthly/excel', [ReportController::class, 'monthlyExcel'])->name('reports.monthly.excel');
 
             // Despachos del día (Premium)
             Route::get('/dispatches/day', DispatchLogController::class)

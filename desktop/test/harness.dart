@@ -6,6 +6,7 @@ import 'package:nutritrack_desktop/core/storage.dart';
 import 'package:nutritrack_desktop/home/home_shell.dart';
 import 'package:nutritrack_desktop/live/alerts.dart';
 import 'package:nutritrack_desktop/live/live_feed.dart';
+import 'package:nutritrack_desktop/reports/reports_controller.dart';
 
 import 'fake_server.dart';
 
@@ -25,18 +26,21 @@ final meta = <String, Object>{
 
 /// App completa con servidor, tiempo real y alertas simulados
 class Harness {
-  Harness({List<String> permissions = const ['confirmDelivery'], List<String> premium = const [], String home = 'web', bool connected = true, bool alertsOn = true})
+  Harness({List<String> permissions = const ['confirmDelivery'], List<String> premium = const [], String home = 'web', bool nutritionTools = false, bool connected = true, bool alertsOn = true})
     : feed = FakeLiveFeed(connected: connected),
       storage = MemoryStorage(server: 'https://nutritrack.test', savedToken: 't', alerts: alertsOn) {
     server
       ..on('GET', '/meta', meta)
-      ..on('GET', '/me', meJson(permissions: permissions, home: home, premium: premium));
+      ..on('GET', '/me', meJson(permissions: permissions, home: home, premium: premium, nutritionTools: nutritionTools));
   }
 
   final server = FakeServer();
   final FakeLiveFeed feed;
   final alerts = RecordingAlerts();
   final MemoryStorage storage;
+
+  /// Archivos que la app guardó (diálogo «Guardar» simulado): nombre sugerido → bytes
+  final saved = <String, List<int>>{};
 
   Future<void> start(WidgetTester tester, {Size size = const Size(1600, 1000)}) async {
     tester.view.physicalSize = size;
@@ -52,6 +56,10 @@ class Harness {
           apiClientFactoryProvider.overrideWithValue(server.client),
           liveFeedFactoryProvider.overrideWithValue((api, meta, company) => feed),
           alertsProvider.overrideWithValue(alerts),
+          fileSaverProvider.overrideWithValue((name, bytes) async {
+            saved[name] = bytes;
+            return '/Descargas/$name';
+          }),
         ],
         child: const MaterialApp(home: AuthGate()),
       ),
